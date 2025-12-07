@@ -1,245 +1,248 @@
 -- ============================================
---  EXTENSION (per gen_random_uuid)
+-- ENUM TYPES
 -- ============================================
 
-create extension if not exists "pgcrypto";
+create type user_role as enum ('HOST', 'COHOST', 'PERSONNEL');
+create type member_status as enum ('ACTIVE', 'INVITED', 'LEFT');
+create type personnel_type as enum ('CLEANER', 'GARDENER', 'COOK', 'OTHER');
+
+create type area_type as enum ('PANTRY', 'FRIDGE', 'FREEZER');
+create type shopping_status as enum ('PENDING', 'BOUGHT', 'CANCELLED');
+
+create type task_status as enum ('TODO', 'DONE', 'SKIPPED');
+create type repeat_rule as enum ('NONE', 'DAILY', 'WEEKLY', 'MONTHLY');
+
+create type notification_type as enum ('TASK', 'REMINDER', 'PANTRY_LOW', 'SYSTEM', 'DIET');
 
 -- ============================================
---  ENUM TYPES
+-- USERS PROFILE
 -- ============================================
 
-create type public.household_role as enum ('HOST', 'COHOST', 'PERSONNEL');
-
-create type public.storage_area as enum ('FRIDGE', 'PANTRY', 'FREEZER');
-
-create type public.shopping_item_status as enum ('PENDING', 'BOUGHT', 'CANCELLED');
-
-create type public.task_status as enum ('PENDING', 'IN_PROGRESS', 'DONE', 'CANCELLED');
-
-create type public.task_category as enum ('PERSONAL', 'FAMILY', 'PERSONNEL', 'PET', 'OTHER');
-
-create type public.task_source as enum ('MANUAL', 'GOOGLE_CALENDAR', 'AI_SUGGESTED');
-
-create type public.notification_type as enum (
-  'TASK_REMINDER',
-  'PANTRY_MISSING_ITEM',
-  'DIET_SUGGESTION',
-  'SYSTEM'
-);
-
-create type public.calendar_provider as enum ('GOOGLE');
-
--- ============================================
---  PROFILI / UTENTI (collegati a auth.users)
--- ============================================
-
-create table public.profiles (
-  id uuid primary key references auth.users (id) on delete cascade,
-  full_name text not null,
-  default_locale text,
-  timezone text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+create table if not exists users_profile (
+    id uuid primary key references auth.users(id) on delete cascade,
+    name text,
+    email text unique,
+    birthdate date,
+    avatar_url text,
+    created_at timestamptz default now()
 );
 
 -- ============================================
---  CASA / FAMIGLIA
+-- HOUSEHOLD
 -- ============================================
 
-create table public.households (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  address text,
-  timezone text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table public.household_members (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households (id) on delete cascade,
-  profile_id uuid not null references public.profiles (id) on delete cascade,
-  role public.household_role not null,
-  display_name text,            -- "Mamma", "Enrico", ecc.
-  personnel_type text,          -- "housekeeper", "gardener", ecc. (solo per PERSONNEL)
-  status text,                  -- "AT_HOME", "NOT_AT_HOME", ecc. opzionale
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  unique (household_id, profile_id)
-);
-
-create table public.pets (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households (id) on delete cascade,
-  name text not null,
-  species text not null,        -- dog, cat, ecc.
-  breed text,
-  birthdate date,
-  notes text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+create table if not exists household (
+    id uuid primary key default gen_random_uuid(),
+    name text not null,
+    address text,
+    timezone text default 'Europe/Rome',
+    created_at timestamptz default now()
 );
 
 -- ============================================
---  CONFIGURAZIONE CASA
+-- HOUSEHOLD MEMBER
 -- ============================================
 
-create table public.home_configs (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households (id) on delete cascade,
-  nickname text,                 -- "Villa al mare"
-  floors integer,                -- numero piani
-  square_meters integer,
-  notes text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (household_id)
-);
-
-create table public.rooms (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households (id) on delete cascade,
-  name text not null,            -- "Kitchen", "Bathroom 1"
-  type text,                     -- "kitchen", "bedroom", "bathroom"...
-  floor integer,                 -- piano (0 = ground)
-  area_m2 numeric(10,2),
-  created_at timestamptz not null default now()
+create table if not exists household_member (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid references users_profile(id) on delete set null,
+    household_id uuid references household(id) on delete cascade,
+    role user_role not null,
+    member_status member_status default 'ACTIVE',
+    is_personnel boolean default false,
+    personnel_type personnel_type,
+    created_at timestamptz default now()
 );
 
 -- ============================================
---  TASK / ROUTINE / SUBTASK
+-- PETS
 -- ============================================
 
-create table public.tasks (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households (id) on delete cascade,
-  title text not null,
-  description text,
-  category public.task_category not null default 'PERSONAL',
-  start_at timestamptz,
-  due_at timestamptz,
-  duration_minutes integer,
-  status public.task_status not null default 'PENDING',
-  source public.task_source not null default 'MANUAL',
-  created_by_member_id uuid not null references public.household_members (id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table public.subtasks (
-  id uuid primary key default gen_random_uuid(),
-  task_id uuid not null references public.tasks (id) on delete cascade,
-  label text not null,           -- "Cleanser", "Serum", ...
-  is_done boolean not null default false,
-  sort_order integer not null default 0,
-  created_at timestamptz not null default now()
-);
-
--- task assegnate a uno o più membri (Home / Family / Personnel)
-create table public.task_assignees (
-  id uuid primary key default gen_random_uuid(),
-  task_id uuid not null references public.tasks (id) on delete cascade,
-  member_id uuid not null references public.household_members (id) on delete cascade,
-  unique (task_id, member_id)
+create table if not exists pets (
+    id uuid primary key default gen_random_uuid(),
+    household_id uuid references household(id) on delete cascade,
+    name text not null,
+    species text,
+    breed text,
+    birthdate date,
+    created_at timestamptz default now()
 );
 
 -- ============================================
---  DISPENSA / FRIGO / FREEZER
+-- TASKS
 -- ============================================
 
-create table public.pantry_items (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households (id) on delete cascade,
-  name text not null,            -- "chicken breast", "rice", ...
-  storage_area public.storage_area not null,
-  quantity numeric(10,2),
-  unit text,                     -- "kg", "pcs"...
-  expires_at date,
-  grid_row integer,              -- posizione nella griglia (opzionale)
-  grid_col integer,
-  is_deleted boolean not null default false,
-  last_updated_by_member_id uuid references public.household_members (id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+create table if not exists tasks (
+    id uuid primary key default gen_random_uuid(),
+    household_id uuid references household(id) on delete cascade,
+    title text not null,
+    description text,
+    task_date date not null,
+    time_from time,
+    time_to time,
+    repeat_rule repeat_rule default 'NONE',
+    visibility text default 'ALL', -- ALL, HOST_ONLY, PERSONNEL_ONLY (gestibile da app)
+    created_by uuid references household_member(id),
+    created_at timestamptz default now()
 );
 
 -- ============================================
---  LISTA DELLA SPESA
+-- SUBTASK
 -- ============================================
 
-create table public.shopping_lists (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households (id) on delete cascade,
-  name text not null,
-  is_default boolean not null default false,
-  created_at timestamptz not null default now()
-);
-
-create table public.shopping_list_items (
-  id uuid primary key default gen_random_uuid(),
-  shopping_list_id uuid not null references public.shopping_lists (id) on delete cascade,
-  pantry_item_id uuid references public.pantry_items (id),
-  name text not null,
-  quantity numeric(10,2),
-  unit text,
-  status public.shopping_item_status not null default 'PENDING',
-  created_by_member_id uuid references public.household_members (id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+create table if not exists subtask (
+    id uuid primary key default gen_random_uuid(),
+    task_id uuid references tasks(id) on delete cascade,
+    title text not null,
+    is_done boolean default false
 );
 
 -- ============================================
---  DIETA (PDF CARICATI)
+-- TASK ASSIGNMENTS
 -- ============================================
 
-create table public.diet_documents (
-  id uuid primary key default gen_random_uuid(),
-  member_id uuid not null references public.household_members (id) on delete cascade,
-  file_path text not null,       -- path nello storage Supabase
-  original_filename text,
-  uploaded_at timestamptz not null default now()
+create table if not exists task_assignment (
+    id uuid primary key default gen_random_uuid(),
+    task_id uuid references tasks(id) on delete cascade,
+    member_id uuid references household_member(id),
+    status task_status default 'TODO',
+    completed_at timestamptz
+);
+
+-- NO UNIQUE CONSTRAINT (puoi assegnare stesso task in giorni diversi)
+
+-- ============================================
+-- PANTRY / FRIDGE / FREEZER ITEMS
+-- ============================================
+
+create table if not exists pantry_item (
+    id uuid primary key default gen_random_uuid(),
+    household_id uuid references household(id) on delete cascade,
+    name text not null,
+    quantity integer default 1,
+    area area_type not null,
+    expiration_date date,
+    barcode text,
+    created_at timestamptz default now()
 );
 
 -- ============================================
---  NOTIFICHE
+-- SHOPPING LIST
 -- ============================================
 
-create table public.notifications (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households (id) on delete cascade,
-  member_id uuid references public.household_members (id), -- destinatario
-  type public.notification_type not null,
-  title text not null,
-  body text not null,
-  scheduled_for timestamptz,
-  read_at timestamptz,
-  created_at timestamptz not null default now()
+create table if not exists shopping_item (
+    id uuid primary key default gen_random_uuid(),
+    household_id uuid references household(id) on delete cascade,
+    name text not null,
+    quantity integer default 1,
+    status shopping_status default 'PENDING',
+    created_at timestamptz default now()
 );
 
 -- ============================================
---  GOOGLE CALENDAR (SOLO IMPORT)
+-- NOTIFICATIONS
 -- ============================================
 
--- account esterno collegato a un membro (es. Google)
-create table public.external_calendar_accounts (
-  id uuid primary key default gen_random_uuid(),
-  member_id uuid not null references public.household_members (id) on delete cascade,
-  provider public.calendar_provider not null,
-  email text not null,
-  access_token text not null,        -- da cifrare lato backend / vault
-  refresh_token text not null,
-  token_expires_at timestamptz not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+create table if not exists notifications (
+    id uuid primary key default gen_random_uuid(),
+    household_id uuid references household(id) on delete cascade,
+    title text not null,
+    description text,
+    type notification_type,
+    read boolean default false,
+    created_at timestamptz default now()
 );
 
--- mappa un evento Google importato a una task creata nell'app
-create table public.external_event_mappings (
-  id uuid primary key default gen_random_uuid(),
-  task_id uuid not null references public.tasks (id) on delete cascade,
-  external_account_id uuid not null references public.external_calendar_accounts (id) on delete cascade,
-  external_event_id text not null,      -- id evento su Google
-  external_calendar_id text not null,   -- es. 'primary'
-  last_synced_at timestamptz not null default now(),
-  unique (task_id, external_account_id)
+-- ============================================
+-- DIET DOCUMENT
+-- ============================================
+
+create table if not exists diet_document (
+    id uuid primary key default gen_random_uuid(),
+    member_id uuid references household_member(id) on delete cascade,
+    url text not null,
+    uploaded_at timestamptz default now()
 );
+
+-- ============================================
+-- ACTIVITY DAYS (SEMPLIFICATO)
+-- ============================================
+
+create table if not exists member_activity_days (
+    id uuid primary key default gen_random_uuid(),
+    member_id uuid references household_member(id) on delete cascade,
+    day date not null,
+    has_tasks boolean default true,
+    created_at timestamptz default now(),
+    constraint unique_member_day unique (member_id, day)
+);
+
+-- ============================================
+-- GOOGLE CALENDAR INTEGRATION
+-- ============================================
+
+create table if not exists google_calendar_integration (
+    id uuid primary key default gen_random_uuid(),
+    member_id uuid references household_member(id) on delete cascade,
+
+    oauth_provider text default 'google',        -- provider OAuth
+    access_token text,                           -- access token corrente
+    refresh_token text,                          -- per ottenere nuovi token
+    token_expires_at timestamptz,                -- ora in cui il token scade
+
+    external_calendar_id text,                   -- es: primary o id custom
+
+    last_sync_at timestamptz,
+    created_at timestamptz default now()
+);
+
+-- ============================================
+-- CONSUMPTION HISTORY (OPZIONALE)
+-- ============================================
+
+create table if not exists consumption_history (
+    id uuid primary key default gen_random_uuid(),
+    pantry_item_id uuid references pantry_item(id) on delete set null,
+    household_id uuid references household(id) on delete cascade,
+    consumed_at timestamptz default now(),
+    quantity integer default 1
+);
+
+-- ============================================
+-- RPC FUNCTIONS
+-- ============================================
+
+-- 1) Assegna task a più membri
+create or replace function assign_task_to_members(task uuid, members uuid[])
+returns void as $$
+begin
+    insert into task_assignment (task_id, member_id)
+    select task, unnest(members)
+    on conflict do nothing;
+end;
+$$ language plpgsql;
+
+-- 2) Registra activity day
+create or replace function register_activity(member uuid, day date)
+returns void as $$
+begin
+    insert into member_activity_days (member_id, day)
+    values (member, day)
+    on conflict do nothing;
+end;
+$$ language plpgsql;
+
+-- 3) Aggiunta massiva prodotti da OCR + AI
+create or replace function add_pantry_items_from_json(items jsonb)
+returns void as $$
+begin
+  insert into pantry_item (household_id, name, quantity, area, expiration_date)
+  select 
+    (items->>'household_id')::uuid,
+    p->>'name',
+    coalesce((p->>'qty')::int, 1),
+    (p->>'area')::area_type,
+    (p->>'exp')::date
+  from jsonb_array_elements(items->'products') as p;
+end;
+$$ language plpgsql;
