@@ -1,5 +1,6 @@
 import '../models/household.dart';
 import 'supabase_client.dart';
+import 'package:flutter/foundation.dart';
 
 class HouseholdRepository {
 
@@ -58,7 +59,9 @@ class HouseholdRepository {
       return caseTrovate;
 
     } catch (e) {
-      print('Errore recupero case: $e');
+      // prima era presente solo "print", sostituita da "debugPrint"
+      // ci servirà quando l'app sarà in fase di produzione, poichè con questo eviteremo problemi legati alla sicurezza dei dati
+      debugPrint('Errore recupero case: $e'); 
       return []; // Se fallisce, restituisci lista vuota
     }
   }

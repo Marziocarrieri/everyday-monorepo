@@ -1,5 +1,6 @@
 import '../models/user.dart'; // Importiamo lo stampino "AppUser"
 import 'supabase_client.dart'; // Importiamo il telecomando
+import 'package:flutter/foundation.dart';
 
 class UserRepository {
   
@@ -27,7 +28,9 @@ class UserRepository {
 
     } catch (e) {
       // Se qualcosa va storto (internet non va, tabella non trovata), stampiamo l'errore
-      print('Errore nel recupero profilo: $e');
+      // prima era presente solo "print", sostituita da "debugPrint"
+      // ci servirà quando l'app sarà in fase di produzione, poichè con questo eviteremo problemi legati alla sicurezza dei dati
+      debugPrint('Errore nel recupero profilo: $e');
       return null; // Restituiamo "niente"
     }
   }
