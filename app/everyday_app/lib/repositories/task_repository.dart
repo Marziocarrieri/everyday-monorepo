@@ -39,4 +39,11 @@ class TaskRepository {
       'status': 'TODO'
     });
   }
+  // Serve per dire: "L'assegnazione X ora è 'DONE' o 'SKIPPED'"
+  Future<void> updateAssignmentStatus(String assignmentId, String newStatus) async {
+    await supabase
+        .from('task_assignment') // Andiamo nella tabella delle assegnazioni
+        .update({'status': newStatus}) // Cambiamo la colonna status
+        .eq('id', assignmentId); 
+  }
 }
