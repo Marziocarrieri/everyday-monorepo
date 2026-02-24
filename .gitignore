@@ -10,3 +10,7 @@ Podfile.lock
 ios/Podfile
 macos/Podfile
 *.jpg
+# Flutter iOS/macOS generated files
+app/everyday_app/ios/Podfile
+app/everyday_app/macos/Podfile
+app/everyday_app/macos/Podfile.lock
