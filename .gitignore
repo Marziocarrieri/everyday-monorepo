@@ -7,3 +7,6 @@ build/
 ios/Pods/
 macos/Pods/
 Podfile.lock
+ios/Podfile
+macos/Podfile
+*.jpg
