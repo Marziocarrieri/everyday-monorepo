@@ -1,32 +1,56 @@
 import '../models/household.dart';
 import '../repositories/household_repository.dart';
 import 'auth_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HouseholdService {
   final HouseholdRepository _repo = HouseholdRepository();
   final AuthService _auth = AuthService();
 
+  Future<void> addMember({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {
+    final supabase = Supabase.instance.client;
+    await supabase.from('household_member').insert({
+      'household_id': householdId,
+      'user_id': userId,
+      'role': role,
+      'member_status': 'ACTIVE',
+    });
+  }
+
   // Crea una nuova casa e coordina il lavoro
-  Future<void> createHousehold(String name, String address) async {
-    // Controllo di sicurezza
-    final user = _auth.currentUser;
+  Future<Household> createHousehold(String name) async {
+    final supabase = Supabase.instance.client;
+
+    final user = supabase.auth.currentUser;
+
     if (user == null) {
-      throw Exception("Devi essere loggato per creare una casa!");
+      throw Exception('User not authenticated');
     }
 
-    // Creo la casa
-    // Uso l'household_repository per  creare la riga nella tabella 'household'.
-    // Lui mi risponde dandomi l'ID della nuova casa
-    final householdId = await _repo.createHousehold(name, address);
+    final householdResponse = await supabase
+        .from('household')
+        .insert({
+          'name': name,
+          'created_by': user.id,
+        })
+        .select()
+        .single();
 
-    // Nomina ad amministratore
-    // Uso l'Id ottenuto prima per andare a inserire come HOST l'utente che ha creato la casa
-    await _repo.addMember(
+    final householdId = householdResponse['id'];
+
+    print('Creating membership with role HOST for user ${user.id}');
+
+    await addMember(
       householdId: householdId,
       userId: user.id,
       role: 'HOST',
     );
-    
+
+    return Household.fromJson(householdResponse);
   }
 
   // Lista delle proprie case

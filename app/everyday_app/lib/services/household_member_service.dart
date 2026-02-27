@@ -1,8 +1,10 @@
 import '../models/household_member.dart';
 import '../repositories/household_repository.dart';
+import 'household_service.dart';
 
 class HouseholdMemberService {
   final HouseholdRepository _repo = HouseholdRepository();
+  final HouseholdService _householdService = HouseholdService();
 
   // Restituisce la lista completa con nomi e foto 
   Future<List<HouseholdMember>> getMembers(String householdId) async {
@@ -11,7 +13,7 @@ class HouseholdMemberService {
 
   // Aggiungi un coinquilino
   Future<void> addPerson(String householdId, String userId, String role) async {
-    await _repo.addMember(
+    await _householdService.addMember(
       householdId: householdId,
       userId: userId,
       role: role,

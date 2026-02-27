@@ -6,27 +6,13 @@ import 'supabase_client.dart';
 class HouseholdRepository {
 
   // Crea una nuova casa
-  Future<String> createHousehold(String name, String address) async {
+  Future<String> createHousehold(String name, String createdBy) async {
     final response = await supabase.from('household').insert({
       'name': name,
-      'address': address,
+      'created_by': createdBy,
     }).select('id').single();
 
     return response['id'];
-  }
-
-  // Aggiungi membro
-  Future<void> addMember({
-    required String householdId,
-    required String userId,
-    required String role,
-  }) async {
-    await supabase.from('household_member').insert({
-      'household_id': householdId,
-      'user_id': userId,
-      'role': role,
-      'member_status': 'ACTIVE',
-    });
   }
 
   // Le mie case
