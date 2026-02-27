@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; 
+import '../core/app_context.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,6 +12,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+
+    debugPrint("USER: ${AppContext.instance.userId}");
+    debugPrint("HOUSEHOLD: ${AppContext.instance.householdId}");
+  }
   
   @override
   Widget build(BuildContext context) {

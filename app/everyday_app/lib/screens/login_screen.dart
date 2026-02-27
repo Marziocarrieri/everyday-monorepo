@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:everyday_app/services/auth_service.dart';
 import 'package:everyday_app/features/household/data/household_service.dart';
 import 'package:everyday_app/features/household/presentation/screens/household_setup_screen.dart';
-import 'package:everyday_app/features/household/presentation/screens/home_screen.dart';
+import 'package:everyday_app/core/app_context.dart';
+import 'package:everyday_app/screens/main_layout.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,9 +25,13 @@ class _LoginScreenState extends State<LoginScreen> {
     final households = await _householdService.getUserHouseholds();
     if (!mounted) return;
 
+    if (households.isNotEmpty) {
+      AppContext.instance.setHousehold(households.first.id);
+    }
+
     final nextScreen = households.isEmpty
         ? const HouseholdSetupScreen()
-        : HomeScreen(household: households.first);
+      : const MainLayout();
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => nextScreen),
@@ -45,6 +50,12 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
+
+      final currentUser = AuthService().currentUser;
+      if (currentUser != null) {
+        AppContext.instance.setUser(currentUser.id);
+      }
+
       await _routeAfterAuth();
     } catch (e) {
       print(e);
@@ -70,6 +81,12 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
         _nameController.text.trim(),
       );
+
+      final currentUser = AuthService().currentUser;
+      if (currentUser != null) {
+        AppContext.instance.setUser(currentUser.id);
+      }
+
       await _routeAfterAuth();
     } catch (e) {
       print(e);

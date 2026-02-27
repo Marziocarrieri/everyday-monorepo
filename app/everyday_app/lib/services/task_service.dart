@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart'; // Ci serve per TimeOfDay
+import '../core/context_extensions.dart';
 import '../models/task.dart';
 import '../repositories/task_repository.dart';
 import 'auth_service.dart';
@@ -9,7 +10,6 @@ class TaskService {
 
   // creazione nuovo task
   Future<void> createTask({
-    required String householdId,
     required String title,
     String? description,
     required DateTime date,
@@ -19,6 +19,8 @@ class TaskService {
   }) async {
     final user = _auth.currentUser;
     if (user == null) return;
+
+    final householdId = requireHouseholdId();
     
     // Converto l'orario in testo
     String? formatTime(TimeOfDay? time) {
@@ -43,7 +45,9 @@ class TaskService {
   }
 
   // Lettura dei dailytask
-  Future<List<Task>> getTasksForDay(String householdId, DateTime date) async {
+  Future<List<Task>> getTasksForDay(DateTime date) async {
+    final householdId = requireHouseholdId();
+
     // Chiamiamo il repository per avere i dati grezzi già trasformati in oggetti Task
     return await _repo.getTasksByDate(householdId, date);
   }

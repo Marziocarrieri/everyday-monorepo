@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'features/household/data/household_service.dart';
-import 'features/household/presentation/screens/home_screen.dart';
-import 'features/household/presentation/screens/household_setup_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/login2_screen.dart';
+import 'screens/main_layout.dart';
+import 'screens/welcome_screen.dart';
+import 'services/session_initializer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,21 +45,21 @@ class AppEntryGate extends StatefulWidget {
 }
 
 class _AppEntryGateState extends State<AppEntryGate> {
-  final HouseholdFeatureService _householdService = HouseholdFeatureService();
+  final SessionInitializer _sessionInitializer = SessionInitializer();
   late final Future<Widget> _initialScreenFuture = _resolveInitialScreen();
 
   Future<Widget> _resolveInitialScreen() async {
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session == null) {
-      return const LoginScreen();
+    final state = await _sessionInitializer.initialize();
+
+    if (state == BootstrapState.noSession) {
+      return const Login2Screen();
     }
 
-    final households = await _householdService.getUserHouseholds();
-    if (households.isEmpty) {
-      return const HouseholdSetupScreen();
+    if (state == BootstrapState.noHousehold) {
+      return const WelcomeScreen();
     }
 
-    return HomeScreen(household: households.first);
+    return const MainLayout();
   }
 
   @override

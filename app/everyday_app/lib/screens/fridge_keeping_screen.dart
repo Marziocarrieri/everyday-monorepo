@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 
+import '../core/app_context.dart';
+import '../models/fridge_item.dart';
+import '../repositories/fridge_repository.dart';
+
 class InventoryItem {
   final String name;
   final IconData icon;
@@ -20,33 +24,74 @@ class FridgeKeepingScreen extends StatefulWidget {
 class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   String _selectedCategory = 'Pantry'; 
   bool _isListView = true;
+  final FridgeRepository _fridgeRepository = FridgeRepository();
+  List<FridgeItem> _items = [];
+  bool _isLoading = true;
+  String? _error;
 
-  // I DATI REALI CHE CAMBIANO IN BASE ALLA CATEGORIA
-  final Map<String, List<InventoryItem>> _inventoryData = {
-    'Pantry': [
-      InventoryItem('Spray Cleaner', Icons.cleaning_services_outlined, 'safe'),
-      InventoryItem('Pasta', Icons.lunch_dining_outlined, 'safe'),
-      InventoryItem('Canned Beans', Icons.takeout_dining_outlined, 'warning'),
-      InventoryItem('Flour', Icons.bakery_dining_outlined, 'safe'),
-      InventoryItem('Olive Oil', Icons.opacity_rounded, 'safe'),
-    ],
-    'Fridge': [
-      InventoryItem('Milk', Icons.water_drop_outlined, 'warning'),
-      InventoryItem('Eggs', Icons.egg_outlined, 'safe'),
-      InventoryItem('Yogurt', Icons.icecream_outlined, 'expired'),
-      InventoryItem('Cheese', Icons.breakfast_dining_outlined, 'safe'),
-    ],
-    'Refrigerator': [
-      InventoryItem('Ice Cream', Icons.icecream, 'safe'),
-      InventoryItem('Frozen Peas', Icons.grass_outlined, 'safe'),
-      InventoryItem('Frozen Meat', Icons.set_meal_outlined, 'warning'),
-      InventoryItem('Pizza', Icons.local_pizza_outlined, 'safe'),
-    ],
-  };
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final householdId = AppContext.instance.requireHouseholdId();
+      final items = await _fridgeRepository.getItems(householdId);
+
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addItem(String name) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) return;
+
+    try {
+      final householdId = AppContext.instance.requireHouseholdId();
+      await _fridgeRepository.addItem(
+        householdId: householdId,
+        name: trimmedName,
+      );
+      await _loadItems();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final currentItems = _inventoryData[_selectedCategory] ?? [];
+    final currentItems = _items
+        .map(
+          (item) => InventoryItem(
+            item.name,
+            Icons.kitchen_outlined,
+            'safe',
+          ),
+        )
+        .toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -70,9 +115,21 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
                 ],
               ),
               const SizedBox(height: 20),
+
+              if (_error != null) ...[
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+                const SizedBox(height: 8),
+              ],
               
               Expanded(
-                child: _isListView ? _buildGlassList(currentItems) : _buildSmallGlassGrid(currentItems),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _isListView
+                        ? _buildGlassList(currentItems)
+                        : _buildSmallGlassGrid(currentItems),
               ),
             ],
           ),
@@ -403,6 +460,8 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   }
 
   void _showAddElementModal(BuildContext context) {
+    final nameController = TextEditingController();
+
     showModalBottomSheet(
       context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
       builder: (BuildContext context) {
@@ -425,13 +484,17 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
                       physics: const BouncingScrollPhysics(),
                       child: Column(
                         children: [
-                          _buildModalTextField('Name', true, false), const SizedBox(height: 20),
+                          _buildModalTextField('Name', true, false, controller: nameController), const SizedBox(height: 20),
                           _buildModalTextField('Weight (g) [optional]', false, true), const SizedBox(height: 20),
                           _buildModalTextField('Quantity [optional]', false, true), const SizedBox(height: 20),
                           _buildModalTextField('Expire date [optional]', false, false, isDate: true),
                           const SizedBox(height: 40),
                           GestureDetector(
-                            onTap: () => Navigator.pop(context),
+                            onTap: () async {
+                              await _addItem(nameController.text);
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                            },
                             child: Container(
                               width: 70, height: 70,
                               // Gradiente carino e luminoso per il tasto di spunta
@@ -452,7 +515,13 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     );
   }
 
-  Widget _buildModalTextField(String label, bool isRequired, bool isNumber, {bool isDate = false}) {
+  Widget _buildModalTextField(
+    String label,
+    bool isRequired,
+    bool isNumber, {
+    bool isDate = false,
+    TextEditingController? controller,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -469,6 +538,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
           decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFF7CB9E8).withValues(alpha: 0.3), width: 1.5)),
           child: Center(
             child: TextField(
+              controller: controller,
               keyboardType: isNumber ? TextInputType.number : TextInputType.text,
               decoration: InputDecoration(border: InputBorder.none, hintText: isDate ? 'DD/MM/YYYY' : '', suffixIcon: isDate ? const Icon(Icons.calendar_today_rounded, color: Color(0xFF7CB9E8), size: 20) : null),
               style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C)),

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../models/household.dart';
+import '../../../../core/app_context.dart';
 import '../../../../screens/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final Household household;
-
-  const HomeScreen({super.key, required this.household});
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -44,9 +42,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final householdId = AppContext.instance.householdId;
+    if (householdId == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Household context not ready'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.household.name),
+        title: const Text('Home'),
         actions: [
           IconButton(
             onPressed: _isLoggingOut ? null : _logout,

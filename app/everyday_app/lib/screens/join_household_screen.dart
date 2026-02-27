@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'package:everyday_app/screens/main_layout.dart';
+import 'package:everyday_app/screens/welcome_screen.dart';
+import 'package:everyday_app/services/auth_service.dart';
+import 'package:everyday_app/services/household_member_service.dart';
+import 'package:everyday_app/services/session_initializer.dart';
 
 class JoinHouseholdScreen extends StatefulWidget {
   const JoinHouseholdScreen({super.key});
@@ -11,6 +16,65 @@ class JoinHouseholdScreen extends StatefulWidget {
 
 class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
   final TextEditingController _codeController = TextEditingController();
+  final HouseholdMemberService _householdMemberService = HouseholdMemberService();
+  final SessionInitializer _sessionInitializer = SessionInitializer();
+
+  bool _isLoading = false;
+  String? _error;
+
+  Future<void> _joinHousehold() async {
+    final inviteCode = _codeController.text.trim();
+    if (inviteCode.isEmpty) {
+      setState(() {
+        _error = 'Invite code is required';
+      });
+      return;
+    }
+
+    final currentUser = AuthService().currentUser;
+    if (currentUser == null) {
+      setState(() {
+        _error = 'User not authenticated';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await _householdMemberService.addPerson(inviteCode, currentUser.id, 'PERSONNEL');
+      final state = await _sessionInitializer.initialize();
+
+      if (!mounted) return;
+      if (state != BootstrapState.ready) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          (route) => false,
+        );
+        return;
+      }
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainLayout()),
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -63,9 +127,15 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
 
                       // BOTTONE CONFERMA
                       _buildPrimaryButton('Join', () {
-                        debugPrint("Unione con codice: ${_codeController.text}");
-                        // Logica Supabase qui!
+                        _joinHousehold();
                       }),
+                      if (_error != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -143,7 +213,7 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
   // --- BOTTONE ---
   Widget _buildPrimaryButton(String text, VoidCallback onTap) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: _isLoading ? null : onTap,
       child: Container(
         height: 60, width: double.infinity,
         decoration: BoxDecoration(
@@ -152,7 +222,16 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
           boxShadow: [BoxShadow(color: const Color(0xFF5A8B9E).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
         ),
         child: Center(
-          child: Text(text, style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(text, style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
         ),
       ),
     );

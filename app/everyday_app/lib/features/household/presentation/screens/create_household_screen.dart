@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../models/household.dart';
+import '../../../../core/app_context.dart';
 import '../../../../screens/login_screen.dart';
+import '../../../../screens/main_layout.dart';
 import '../../data/household_service.dart';
-import 'home_screen.dart';
 
 class CreateHouseholdScreen extends StatefulWidget {
   const CreateHouseholdScreen({super.key});
@@ -62,14 +62,12 @@ class _CreateHouseholdScreenState extends State<CreateHouseholdScreen> {
     });
 
     try {
-      final Household household =
-          await _householdService.createHousehold(name: householdName);
+      final household = await _householdService.createHousehold(name: householdName);
+      AppContext.instance.setHousehold(household.id);
 
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => HomeScreen(household: household),
-        ),
+        MaterialPageRoute(builder: (_) => const MainLayout()),
         (route) => false,
       );
     } catch (error) {

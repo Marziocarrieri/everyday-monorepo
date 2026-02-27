@@ -1,9 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'create_household_screen.dart';
+import 'join_household_screen.dart';
+import 'login2_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
+
+  void _openCreateFlow(BuildContext context) {
+    final session = Supabase.instance.client.auth.currentSession;
+    final destination = session == null
+        ? const Login2Screen()
+        : const CreateHouseholdScreen();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => destination),
+    );
+  }
+
+  void _openJoinFlow(BuildContext context) {
+    final session = Supabase.instance.client.auth.currentSession;
+    final destination = session == null
+        ? const Login2Screen()
+        : const JoinHouseholdScreen();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => destination),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +62,7 @@ class WelcomeScreen extends StatelessWidget {
                   icon: Icons.add_home_outlined,
                   color: const Color(0xFFF4A261),
                   onTap: () {
-                    debugPrint("Vai a Create Household");
+                    _openCreateFlow(context);
                   }
                 ),
                 
@@ -48,7 +75,7 @@ class WelcomeScreen extends StatelessWidget {
                   icon: Icons.login_rounded,
                   color: const Color(0xFF5A8B9E),
                   onTap: () {
-                    debugPrint("Vai a Join Household");
+                    _openJoinFlow(context);
                   }
                 ),
 

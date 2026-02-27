@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'package:everyday_app/features/household/data/household_service.dart';
+import 'package:everyday_app/screens/main_layout.dart';
+import 'package:everyday_app/screens/welcome_screen.dart';
+import 'package:everyday_app/services/session_initializer.dart';
 
 class CreateHouseholdScreen extends StatefulWidget {
   const CreateHouseholdScreen({super.key});
@@ -11,6 +15,57 @@ class CreateHouseholdScreen extends StatefulWidget {
 
 class _CreateHouseholdScreenState extends State<CreateHouseholdScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final HouseholdFeatureService _householdService = HouseholdFeatureService();
+  final SessionInitializer _sessionInitializer = SessionInitializer();
+
+  bool _isLoading = false;
+  String? _error;
+
+  Future<void> _createHousehold() async {
+    final householdName = _nameController.text.trim();
+    if (householdName.isEmpty) {
+      setState(() {
+        _error = 'Household name is required';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await _householdService.createHousehold(name: householdName);
+      final state = await _sessionInitializer.initialize();
+
+      if (!mounted) return;
+      if (state != BootstrapState.ready) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          (route) => false,
+        );
+        return;
+      }
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainLayout()),
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -63,9 +118,15 @@ class _CreateHouseholdScreenState extends State<CreateHouseholdScreen> {
 
                       // BOTTONE CONFERMA
                       _buildPrimaryButton('Create', () {
-                        debugPrint("Creazione casa: ${_nameController.text}");
-                        // Logica Supabase qui!
+                        _createHousehold();
                       }),
+                      if (_error != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -143,7 +204,7 @@ class _CreateHouseholdScreenState extends State<CreateHouseholdScreen> {
   // --- BOTTONE ---
   Widget _buildPrimaryButton(String text, VoidCallback onTap) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: _isLoading ? null : onTap,
       child: Container(
         height: 60, width: double.infinity,
         decoration: BoxDecoration(
@@ -152,7 +213,16 @@ class _CreateHouseholdScreenState extends State<CreateHouseholdScreen> {
           boxShadow: [BoxShadow(color: const Color(0xFF5A8B9E).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
         ),
         child: Center(
-          child: Text(text, style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(text, style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
         ),
       ),
     );

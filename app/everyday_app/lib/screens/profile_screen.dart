@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/app_context.dart';
+import 'login2_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,8 +13,53 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoggingOut = false;
+
+  Future<void> _logout() async {
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    try {
+      await Supabase.instance.client.auth.signOut();
+      AppContext.instance.clear();
+
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const Login2Screen()),
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoggingOut = false;
+      });
+    }
+  }
+
+  String _initialFromName(String? name) {
+    if (name == null || name.trim().isEmpty) return 'U';
+    return name.trim()[0].toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final profile = AppContext.instance.profile;
+    final householdId = AppContext.instance.householdId;
+    if (householdId == null || profile == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Session context not ready'),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -23,16 +71,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // HEADER PREMIUM BLOCCATO
               SizedBox(
                 height: 48,
-                child: Center(
-                  child: Text(
-                    'Profile',
-                    style: GoogleFonts.poppins(
-                      fontSize: 24, 
-                      fontWeight: FontWeight.w700, 
-                      color: const Color(0xFF5A8B9E),
-                      letterSpacing: 0.5,
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    Text(
+                      'Profile',
+                      style: GoogleFonts.poppins(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF5A8B9E),
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: _isLoggingOut ? null : _logout,
+                      icon: const Icon(Icons.logout, color: Color(0xFF5A8B9E)),
+                      tooltip: 'Logout',
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 40),
@@ -44,23 +101,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     width: 85, height: 85,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3D342C), 
+                      color: const Color(0xFF3D342C),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(color: const Color(0xFF3D342C).withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 8))
                       ]
                     ),
-                    child: Center(child: Text('F', style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white))),
+                    child: Center(child: Text(_initialFromName(profile.name), style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white))),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Fabiana Rossi', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C), letterSpacing: -0.5)),
+                        Text(profile.name ?? '', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C), letterSpacing: -0.5)),
                         const SizedBox(height: 2),
                         Text('Host', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF5A8B9E))),
-                        Text('HomeID: 76543', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF5A8B9E).withValues(alpha: 0.7))),
+                        Text('HomeID: $householdId', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF5A8B9E).withValues(alpha: 0.7))),
                       ],
                     ),
                   ),
