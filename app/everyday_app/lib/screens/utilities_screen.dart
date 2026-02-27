@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'fridge_keeping_screen.dart';
 
 class UtilitiesScreen extends StatefulWidget {
   const UtilitiesScreen({super.key});
@@ -38,7 +39,15 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> {
               const SizedBox(height: 40),
               
               // BOTTONI PREMIUM
-              _buildPremiumMenuButton(icon: Icons.kitchen, text: 'Fridge Keeping'),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const FridgeKeepingScreen()),
+                  );
+                },
+                child: _buildPremiumMenuButton(icon: Icons.kitchen, text: 'Fridge Keeping'),
+              ),             
               const SizedBox(height: 24),
               _buildPremiumMenuButton(icon: Icons.list_alt_rounded, text: 'Provisions List'),
             ],

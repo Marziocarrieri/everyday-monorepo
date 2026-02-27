@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // Importiamo le nostre 5 bellissime schermate!
 import 'utilities_screen.dart';
 import 'personnel_screen.dart';
-import 'home_screen2.dart';
+import 'home_screen.dart';
 import 'family_screen.dart';
 import 'profile_screen.dart';
 
@@ -22,7 +22,7 @@ class _MainLayoutState extends State<MainLayout> {
   final List<Widget> _screens = [
     const UtilitiesScreen(), // 0: Frigo
     const PersonnelScreen(), // 1: Faccina
-    const HomeScreen2(),      // 2: Home
+    const HomeScreen(),      // 2: Home
     const FamilyScreen(),    // 3: Globo
     const ProfileScreen(),   // 4: Omino
   ];
