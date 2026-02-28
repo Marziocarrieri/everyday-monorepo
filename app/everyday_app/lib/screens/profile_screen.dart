@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/app_context.dart';
 import 'login2_screen.dart';
+import 'diet_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -139,7 +140,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 50),
 
               // BOTTONI PREMIUM
-              _buildPremiumMenuButton(icon: Icons.fastfood_outlined, text: 'Your Diet'),
+              _buildPremiumMenuButton(
+                icon: Icons.fastfood_outlined, 
+                text: 'Your Diet',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DietScreen()),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              _buildPremiumMenuButton(
+                icon: Icons.receipt_long_rounded, 
+                text: 'Your Home',
+                // Per ora questo rimane senza onTap finché non creiamo la sua pagina
+              ),
               const SizedBox(height: 24),
               _buildPremiumMenuButton(icon: Icons.receipt_long_rounded, text: 'Your Home'),
             ],
@@ -150,44 +166,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // --- BOTTONI GRANDI PREMIUM ---
-  Widget _buildPremiumMenuButton({required IconData icon, required String text}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(32),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
-        child: Container(
-          height: 110,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [const Color(0xFFF4A261).withValues(alpha: 0.2), Colors.white.withValues(alpha: 0.5)],
+  Widget _buildPremiumMenuButton({required IconData icon, required String text, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap, // Aggiunto qui!
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
+          child: Container(
+            height: 110,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [const Color(0xFFF4A261).withValues(alpha: 0.2), Colors.white.withValues(alpha: 0.5)],
+              ),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.2),
+              boxShadow: [
+                BoxShadow(color: const Color(0xFFF4A261).withValues(alpha: 0.08), blurRadius: 30, offset: const Offset(0, 15))
+              ],
             ),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.2),
-            boxShadow: [
-              BoxShadow(color: const Color(0xFFF4A261).withValues(alpha: 0.08), blurRadius: 30, offset: const Offset(0, 15))
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 55, height: 55,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.6), shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]
+            child: Row(
+              children: [
+                Container(
+                  width: 55, height: 55,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.6), shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]
+                  ),
+                  child: Icon(icon, color: const Color(0xFF5A8B9E), size: 28),
                 ),
-                child: Icon(icon, color: const Color(0xFF5A8B9E), size: 28),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Text(
-                  text, 
-                  style: GoogleFonts.poppins(fontSize: 19, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C), letterSpacing: -0.3)
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Text(
+                    text, 
+                    style: GoogleFonts.poppins(fontSize: 19, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C), letterSpacing: -0.3)
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: const Color(0xFF5A8B9E).withValues(alpha: 0.5), size: 32),
-            ],
+                Icon(Icons.chevron_right_rounded, color: const Color(0xFF5A8B9E).withValues(alpha: 0.5), size: 32),
+              ],
+            ),
           ),
         ),
       ),
