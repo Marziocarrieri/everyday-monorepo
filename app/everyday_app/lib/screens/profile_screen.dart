@@ -155,12 +155,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildPremiumMenuButton(
                 icon: Icons.receipt_long_rounded, 
                 text: 'Your Home',
-                // Per ora questo rimane senza onTap finché non creiamo la sua pagina
-              ),
-              const SizedBox(height: 24),
-              _buildPremiumMenuButton(
-                icon: Icons.receipt_long_rounded, 
-                text: 'Your Home',
                 onTap: () {
                   Navigator.push(
                     context,

@@ -5,6 +5,6 @@ set -a
 source .env
 set +a
 
-flutter run -d "iPhone 16e" \
+flutter run -d "Pixel 9a" \
   --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-  --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+  --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"q
