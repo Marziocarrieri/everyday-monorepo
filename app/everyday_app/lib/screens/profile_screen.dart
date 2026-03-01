@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/app_context.dart';
 import 'login2_screen.dart';
 import 'diet_screen.dart';
+import 'your_home_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -157,7 +158,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // Per ora questo rimane senza onTap finché non creiamo la sua pagina
               ),
               const SizedBox(height: 24),
-              _buildPremiumMenuButton(icon: Icons.receipt_long_rounded, text: 'Your Home'),
+              _buildPremiumMenuButton(
+                icon: Icons.receipt_long_rounded, 
+                text: 'Your Home',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const YourHomeScreen()),
+                  );
+                },
+              ),
             ],
           ),
         ),
