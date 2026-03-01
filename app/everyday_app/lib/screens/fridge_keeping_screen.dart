@@ -3,16 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 
 import '../core/app_context.dart';
+import '../models/area_type.dart';
 import '../models/fridge_item.dart';
 import '../repositories/fridge_repository.dart';
-
-class InventoryItem {
-  final String name;
-  final IconData icon;
-  final String expiryStatus; // 'safe', 'warning', 'expired'
-
-  InventoryItem(this.name, this.icon, this.expiryStatus);
-}
 
 class FridgeKeepingScreen extends StatefulWidget {
   const FridgeKeepingScreen({super.key});
@@ -22,7 +15,12 @@ class FridgeKeepingScreen extends StatefulWidget {
 }
 
 class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
-  String _selectedCategory = 'Pantry'; 
+  AreaType _selectedCategory = AreaType.pantry;
+  DateTime? selectedDate;
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController quantityController = TextEditingController();
+  final TextEditingController weightController = TextEditingController();
+  final TextEditingController dateTextController = TextEditingController();
   bool _isListView = true;
   final FridgeRepository _fridgeRepository = FridgeRepository();
   List<FridgeItem> _items = [];
@@ -36,6 +34,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   }
 
   Future<void> _loadItems() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -43,7 +42,10 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
 
     try {
       final householdId = AppContext.instance.requireHouseholdId();
-      final items = await _fridgeRepository.getItems(householdId);
+      final items = await _fridgeRepository.getItems(
+        householdId,
+        _selectedCategory,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -55,22 +57,47 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
         _error = error.toString();
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  Future<void> _addItem(String name) async {
-    final trimmedName = name.trim();
+  @override
+  void dispose() {
+    nameController.dispose();
+    quantityController.dispose();
+    weightController.dispose();
+    dateTextController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addItem() async {
+    final trimmedName = nameController.text.trim();
     if (trimmedName.isEmpty) return;
+
+    final parsedQuantity = int.tryParse(quantityController.text.trim());
+    final parsedWeight = int.tryParse(weightController.text.trim());
+
+    debugPrint(
+      'UI VALUES: '
+      'q=${quantityController.text}, '
+      'w=${weightController.text}, '
+      'date=$selectedDate',
+    );
 
     try {
       final householdId = AppContext.instance.requireHouseholdId();
       await _fridgeRepository.addItem(
         householdId: householdId,
         name: trimmedName,
+        area: _selectedCategory,
+        quantity: parsedQuantity,
+        weight: parsedWeight,
+        unit: 'g',
+        expirationDate: selectedDate,
       );
       await _loadItems();
     } catch (error) {
@@ -81,17 +108,43 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     }
   }
 
+  Future<bool?> _confirmDelete(FridgeItem item) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete this item?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteItem(FridgeItem item) async {
+    try {
+      await _fridgeRepository.deleteItem(item.id);
+      await _loadItems();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+      await _loadItems();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final currentItems = _items
-        .map(
-          (item) => InventoryItem(
-            item.name,
-            Icons.kitchen_outlined,
-            'safe',
-          ),
-        )
-        .toList();
+    final currentItems = _items;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -230,7 +283,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_selectedCategory, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+            Text(_selectedCategory.label, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
             const SizedBox(width: 8),
             const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
           ],
@@ -255,9 +308,9 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
                 children: [
                   Container(width: 50, height: 5, decoration: BoxDecoration(color: const Color(0xFF5A8B9E).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10))),
                   const SizedBox(height: 30),
-                  _buildModalOption('Pantry'), const Divider(color: Colors.black12, height: 30),
-                  _buildModalOption('Fridge'), const Divider(color: Colors.black12, height: 30),
-                  _buildModalOption('Refrigerator'), const SizedBox(height: 20),
+                  _buildModalOption(AreaType.pantry), const Divider(color: Colors.black12, height: 30),
+                  _buildModalOption(AreaType.fridge), const Divider(color: Colors.black12, height: 30),
+                  _buildModalOption(AreaType.freezer), const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -267,14 +320,18 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     );
   }
 
-  Widget _buildModalOption(String title) {
-    bool isSelected = _selectedCategory == title;
+  Widget _buildModalOption(AreaType areaType) {
+    bool isSelected = _selectedCategory == areaType;
     return GestureDetector(
-      onTap: () { setState(() => _selectedCategory = title); Navigator.pop(context); },
+      onTap: () {
+        setState(() => _selectedCategory = areaType);
+        _loadItems();
+        Navigator.pop(context);
+      },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: GoogleFonts.poppins(fontSize: 18, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: isSelected ? const Color(0xFFF4A261) : const Color(0xFF3D342C))),
+          Text(areaType.label, style: GoogleFonts.poppins(fontSize: 18, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: isSelected ? const Color(0xFFF4A261) : const Color(0xFF3D342C))),
           if (isSelected) const Icon(Icons.check_circle_rounded, color: Color(0xFFF4A261)),
         ],
       ),
@@ -292,18 +349,45 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     return const Color(0xFF7CB9E8); // Azzurro Nuvola
   }
 
-  Widget _buildGlassList(List<InventoryItem> items) {
+  Widget _buildGlassList(List<FridgeItem> items) {
     if (items.isEmpty) return _buildEmptyState();
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
       itemCount: items.length,
       separatorBuilder: (context, index) => const SizedBox(height: 16),
-      itemBuilder: (context, index) => _buildListItem(items[index]),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return Dismissible(
+          key: ValueKey(item.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 24),
+            child: const Icon(
+              Icons.delete_outline_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          confirmDismiss: (direction) async {
+            final shouldDelete = await _confirmDelete(item);
+            return shouldDelete ?? false;
+          },
+          onDismissed: (direction) async {
+            await _deleteItem(item);
+          },
+          child: _buildListItem(item),
+        );
+      },
     );
   }
 
-  Widget _buildListItem(InventoryItem item) {
-    Color iconColor = _getColorFromStatus(item.expiryStatus);
+  Widget _buildListItem(FridgeItem item) {
+    Color iconColor = _getColorFromStatus('safe');
     return GestureDetector(
       onTap: () => _showItemDetailModal(context, item),
       child: ClipRRect(
@@ -318,7 +402,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: iconColor.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5))]),
-                  child: Icon(item.icon, color: iconColor, size: 28), 
+                  child: Icon(Icons.kitchen_outlined, color: iconColor, size: 28),
                 ),
                 const SizedBox(width: 20),
                 Expanded(child: Text(item.name, style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C)))),
@@ -331,7 +415,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     );
   }
 
-  Widget _buildSmallGlassGrid(List<InventoryItem> items) {
+  Widget _buildSmallGlassGrid(List<FridgeItem> items) {
     if (items.isEmpty) return _buildEmptyState();
     return GridView.builder(
       physics: const BouncingScrollPhysics(),
@@ -341,8 +425,8 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     );
   }
 
-  Widget _buildSmallGridCard(InventoryItem item) {
-    Color iconColor = _getColorFromStatus(item.expiryStatus);
+  Widget _buildSmallGridCard(FridgeItem item) {
+    Color iconColor = _getColorFromStatus('safe');
     return GestureDetector(
       onTap: () => _showItemDetailModal(context, item),
       child: ClipRRect(
@@ -358,7 +442,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: iconColor.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))]),
-                  child: Icon(item.icon, color: iconColor, size: 24),
+                  child: Icon(Icons.kitchen_outlined, color: iconColor, size: 24),
                 ),
                 const SizedBox(height: 10),
                 Text(item.name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C), height: 1.1)),
@@ -374,68 +458,26 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     return Center(child: Text('No items found.', style: GoogleFonts.poppins(color: const Color(0xFF5A8B9E).withValues(alpha: 0.5), fontSize: 16, fontWeight: FontWeight.w500)));
   }
 
-  void _showItemDetailModal(BuildContext context, InventoryItem item) {
-    Color itemColor = _getColorFromStatus(item.expiryStatus);
-
-    showModalBottomSheet(
-      context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
-      builder: (BuildContext context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.65, padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [itemColor.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.7)]), border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: Container(width: 50, height: 5, margin: const EdgeInsets.only(bottom: 30), decoration: BoxDecoration(color: itemColor.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(10)))),
-                  Row(
-                    children: [
-                      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: itemColor.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5))]), child: Icon(item.icon, color: itemColor, size: 30)),
-                      const SizedBox(width: 16),
-                      Expanded(child: Text(item.name, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.w700, color: itemColor, letterSpacing: -0.5))),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  _buildModalDetailRow('Weight (g)', 'none', itemColor), _buildModalDivider(),
-                  _buildModalDetailRow('Quantity', '1', itemColor), _buildModalDivider(),
-                  _buildModalDetailRow('Expire date', 'none', itemColor),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'none';
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    return '$day/$month/$year';
   }
 
-  Widget _buildModalDetailRow(String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)), const SizedBox(width: 10),
-              Text(label, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.7))),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white, width: 1)),
-            child: Text(value, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C))),
-          ),
-        ],
+  Future<void> _showItemDetailModal(BuildContext context, FridgeItem item) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
+      builder: (_) => FridgeItemDetailSheet(
+        item: item,
+        fridgeRepository: _fridgeRepository,
       ),
     );
-  }
 
-  Widget _buildModalDivider() {
-    return Container(height: 1, margin: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.8), Colors.white.withValues(alpha: 0.0)])));
+    if (result == true && mounted) {
+      await _loadItems();
+    }
   }
 
   // ==========================================
@@ -460,7 +502,11 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   }
 
   void _showAddElementModal(BuildContext context) {
-    final nameController = TextEditingController();
+    nameController.clear();
+    quantityController.clear();
+    weightController.clear();
+    dateTextController.clear();
+    selectedDate = null;
 
     showModalBottomSheet(
       context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
@@ -485,13 +531,13 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
                       child: Column(
                         children: [
                           _buildModalTextField('Name', true, false, controller: nameController), const SizedBox(height: 20),
-                          _buildModalTextField('Weight (g) [optional]', false, true), const SizedBox(height: 20),
-                          _buildModalTextField('Quantity [optional]', false, true), const SizedBox(height: 20),
-                          _buildModalTextField('Expire date [optional]', false, false, isDate: true),
+                          _buildModalTextField('Weight (g) [optional]', false, true, controller: weightController), const SizedBox(height: 20),
+                          _buildModalTextField('Quantity [optional]', false, true, controller: quantityController), const SizedBox(height: 20),
+                          _buildModalTextField('Expire date [optional]', false, false, isDate: true, controller: dateTextController),
                           const SizedBox(height: 40),
                           GestureDetector(
                             onTap: () async {
-                              await _addItem(nameController.text);
+                              await _addItem();
                               if (!context.mounted) return;
                               Navigator.pop(context);
                             },
@@ -539,6 +585,24 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
           child: Center(
             child: TextField(
               controller: controller,
+              readOnly: isDate,
+              onTap: isDate
+                  ? () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+
+                      if (pickedDate != null) {
+                        setState(() {
+                          selectedDate = pickedDate;
+                          dateTextController.text = _formatDate(pickedDate);
+                        });
+                      }
+                    }
+                  : null,
               keyboardType: isNumber ? TextInputType.number : TextInputType.text,
               decoration: InputDecoration(border: InputBorder.none, hintText: isDate ? 'DD/MM/YYYY' : '', suffixIcon: isDate ? const Icon(Icons.calendar_today_rounded, color: Color(0xFF7CB9E8), size: 20) : null),
               style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C)),
@@ -546,6 +610,446 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class FridgeItemDetailSheet extends StatefulWidget {
+  const FridgeItemDetailSheet({
+    super.key,
+    required this.item,
+    required this.fridgeRepository,
+  });
+
+  final FridgeItem item;
+  final FridgeRepository fridgeRepository;
+
+  @override
+  State<FridgeItemDetailSheet> createState() => _FridgeItemDetailSheetState();
+}
+
+class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
+  bool _isEditing = false;
+  late final TextEditingController _nameController;
+  late final TextEditingController _quantityController;
+  late final TextEditingController _weightController;
+  late final TextEditingController _expirationDateController;
+  DateTime? _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.item.expirationDate;
+    _nameController = TextEditingController(text: widget.item.name);
+    _quantityController = TextEditingController(
+      text: widget.item.quantity?.toString() ?? '',
+    );
+    _weightController = TextEditingController(
+      text: widget.item.weight?.toString() ?? '',
+    );
+    _expirationDateController = TextEditingController(
+      text: _formatDate(widget.item.expirationDate),
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _quantityController.dispose();
+    _weightController.dispose();
+    _expirationDateController.dispose();
+    super.dispose();
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'none';
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    return '$day/$month/$year';
+  }
+
+  DateTime? _parseDateFromInput(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty || trimmed.toLowerCase() == 'none') {
+      return null;
+    }
+
+    final parts = trimmed.split('/');
+    if (parts.length == 3) {
+      final day = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final year = int.tryParse(parts[2]);
+      if (day != null && month != null && year != null) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    return DateTime.tryParse(trimmed);
+  }
+
+  Color _getColorFromStatus(String expiryStatus) {
+    if (expiryStatus == 'warning') return const Color(0xFFFFB347);
+    if (expiryStatus == 'expired') return const Color(0xFFF28482);
+    return const Color(0xFF7CB9E8);
+  }
+
+  Future<void> _handleSaveEdit() async {
+    final name = _nameController.text.trim();
+    final quantityText = _quantityController.text.trim();
+    final weightText = _weightController.text.trim();
+    final dateText = _expirationDateController.text.trim();
+
+    if (name.isEmpty) return;
+
+    final quantity = quantityText.isEmpty ? null : int.tryParse(quantityText);
+    final weight = weightText.isEmpty ? null : int.tryParse(weightText);
+
+    if (weightText.isNotEmpty && weight == null) return;
+    if (quantityText.isNotEmpty && quantity == null) return;
+
+    final selectedDate = dateText.isEmpty
+        ? _selectedDate
+        : _parseDateFromInput(dateText);
+
+    if (dateText.isNotEmpty && selectedDate == null) return;
+
+    final updatedItem = FridgeItem(
+      id: widget.item.id,
+      householdId: widget.item.householdId,
+      name: name,
+      area: widget.item.area,
+      quantity: quantity,
+      weight: weight,
+      unit: widget.item.unit,
+      expirationDate: selectedDate,
+      createdAt: widget.item.createdAt,
+    );
+
+    await widget.fridgeRepository.updateItem(updatedItem);
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final itemColor = _getColorFromStatus('safe');
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.65,
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                itemColor.withValues(alpha: 0.15),
+                Colors.white.withValues(alpha: 0.7),
+              ],
+            ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.8),
+              width: 1.5,
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 50,
+                    height: 5,
+                    margin: const EdgeInsets.only(bottom: 30),
+                    decoration: BoxDecoration(
+                      color: itemColor.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: itemColor.withValues(alpha: 0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.kitchen_outlined,
+                        color: itemColor,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _isEditing
+                          ? TextField(
+                              controller: _nameController,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Name',
+                              ),
+                              style: GoogleFonts.poppins(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: itemColor,
+                                letterSpacing: -0.5,
+                              ),
+                            )
+                          : Text(
+                              widget.item.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                                color: itemColor,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                    ),
+                    if (!_isEditing)
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _isEditing = true;
+                          });
+                        },
+                        icon: Icon(
+                          Icons.edit,
+                          color: itemColor,
+                          size: 22,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                if (!_isEditing) ...[
+                  _buildModalDetailRow(
+                    'Weight (g)',
+                    widget.item.weight?.toString() ?? 'none',
+                    itemColor,
+                  ),
+                  _buildModalDivider(),
+                  _buildModalDetailRow(
+                    'Quantity',
+                    widget.item.quantity?.toString() ?? 'none',
+                    itemColor,
+                  ),
+                  _buildModalDivider(),
+                  _buildModalDetailRow(
+                    'Expire date',
+                    _formatDate(widget.item.expirationDate),
+                    itemColor,
+                  ),
+                ] else ...[
+                  _buildModalEditRow(
+                    label: 'Weight (g)',
+                    controller: _weightController,
+                    color: itemColor,
+                    keyboardType: TextInputType.number,
+                  ),
+                  _buildModalDivider(),
+                  _buildModalEditRow(
+                    label: 'Quantity',
+                    controller: _quantityController,
+                    color: itemColor,
+                    keyboardType: TextInputType.number,
+                  ),
+                  _buildModalDivider(),
+                  _buildModalEditRow(
+                    label: 'Expire date',
+                    controller: _expirationDateController,
+                    color: itemColor,
+                    readOnly: true,
+                    onTap: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: _selectedDate ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (pickedDate != null && mounted) {
+                        setState(() {
+                          _selectedDate = pickedDate;
+                          _expirationDateController.text =
+                              _formatDate(pickedDate);
+                        });
+                      }
+                    },
+                  ),
+                ],
+                if (_isEditing)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _isEditing = false;
+                              _nameController.text = widget.item.name;
+                              _weightController.text =
+                                  widget.item.weight?.toString() ?? '';
+                              _quantityController.text =
+                                  widget.item.quantity?.toString() ?? '';
+                              _selectedDate = widget.item.expirationDate;
+                              _expirationDateController.text =
+                                  _formatDate(widget.item.expirationDate);
+                            });
+                          },
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: _handleSaveEdit,
+                          child: const Text('Save'),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModalDetailRow(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF3D342C).withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white, width: 1),
+            ),
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF3D342C),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModalDivider() {
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.0),
+            Colors.white.withValues(alpha: 0.8),
+            Colors.white.withValues(alpha: 0.0),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModalEditRow({
+    required String label,
+    required TextEditingController controller,
+    required Color color,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF3D342C).withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white, width: 1),
+            ),
+            child: TextField(
+              controller: controller,
+              readOnly: readOnly,
+              onTap: onTap,
+              keyboardType: keyboardType,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                suffixIcon: label == 'Expire date'
+                    ? const Icon(Icons.calendar_today_rounded, size: 18)
+                    : null,
+              ),
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF3D342C),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
