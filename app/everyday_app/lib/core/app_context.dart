@@ -14,6 +14,7 @@ class AppContext {
   String? userId;
   String? householdId;
   String? membershipId;
+  String? nickname;
 
   bool get isReady => userId != null && householdId != null;
 
@@ -28,7 +29,6 @@ class AppContext {
   String requireHouseholdId() {
     final id = householdId;
     if (id == null) {
-      print('APP CONTEXT ERROR → householdId missing');
       throw Exception('Household context not initialized');
     }
     return id;
@@ -46,6 +46,29 @@ class AppContext {
     userId = authUser.id;
     householdId = household?.id;
     this.membershipId = membershipId;
+    nickname = null;
+  }
+
+  Future<void> reloadMemberContext() async {
+    final currentMembershipId = membershipId;
+    if (currentMembershipId == null) {
+      nickname = null;
+      return;
+    }
+
+    final row = await Supabase.instance.client
+        .from('household_member')
+        .select('nickname')
+        .eq('id', currentMembershipId)
+        .maybeSingle();
+
+    if (row == null) {
+      nickname = null;
+      return;
+    }
+
+    final mapped = Map<String, dynamic>.from(row);
+    nickname = mapped['nickname'] as String?;
   }
 
   void clear() {
@@ -55,5 +78,6 @@ class AppContext {
     userId = null;
     householdId = null;
     membershipId = null;
+    nickname = null;
   }
 }

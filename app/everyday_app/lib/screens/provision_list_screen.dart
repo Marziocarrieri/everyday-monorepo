@@ -18,6 +18,20 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
   bool _isLoading = true;
   String? _error;
 
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +96,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
     try {
       await _shoppingRepository.deleteItem(id);
       await _loadItems();
+      _showSuccessSnackBar('Item deleted');
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -105,6 +120,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
 
     if (changed == true && mounted) {
       await _loadItems();
+      _showSuccessSnackBar('Item added');
     }
   }
 
@@ -121,6 +137,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
 
     if (changed == true && mounted) {
       await _loadItems();
+      _showSuccessSnackBar('Item updated');
     }
   }
 
