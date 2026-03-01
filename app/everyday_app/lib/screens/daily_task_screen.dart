@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import '../utils/status_color_utils.dart';
+import 'add_task_screen.dart';
 
-// --- MODELLI DATI FINTI PER TESTARE IL DESIGN ---
+// --- MODELLI DATI ---
 class SubTask {
   String title;
   bool isCompleted;
@@ -31,7 +33,7 @@ class DailyTaskScreen extends StatefulWidget {
 }
 
 class _DailyTaskScreenState extends State<DailyTaskScreen> {
-  // Dati di esempio basati sul tuo Figma
+  // Dati di esempio (stessi del tuo Figma)
   final List<DailyTask> _tasks = [
     DailyTask(
       id: '1', title: 'Homework oversight', timeLabel: '7:45AM - 8:45AM', status: 'warning',
@@ -66,40 +68,21 @@ class _DailyTaskScreenState extends State<DailyTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F1E9), // Sfondo panna/crema
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // --- HEADER ---
+            // --- HEADER PREMIUM  ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF5A8B9E), size: 24),
-                  ),
-                  Text(
-                    'Daily Task',
-                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF5A8B9E)),
-                  ),
-                  Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white, shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF5A8B9E), width: 2),
-                    ),
-                    child: const Icon(Icons.add_rounded, color: Color(0xFF5A8B9E), size: 28),
-                  ),
-                ],
-              ),
+              child: _buildPremiumHeader(context),
             ),
+            const SizedBox(height: 10),
             
             // --- LISTA DEI TASK ---
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+                padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 40.0),
                 physics: const BouncingScrollPhysics(),
                 itemCount: _tasks.length,
                 itemBuilder: (context, index) {
@@ -112,9 +95,56 @@ class _DailyTaskScreenState extends State<DailyTaskScreen> {
       ),
     );
   }
+
+  // --- HEADER WIDGET ---
+  Widget _buildPremiumHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Tasto Indietro
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white, shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF5A8B9E).withValues(alpha: 0.1), width: 1),
+              boxShadow: [BoxShadow(color: const Color(0xFF5A8B9E).withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+            ),
+            child: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF5A8B9E), size: 20),
+          ),
+        ),
+        
+        // Titolo
+        Text(
+          'Daily Task',
+          style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF5A8B9E)),
+        ),
+        
+        // Tasto Aggiungi (+)
+     GestureDetector(
+       onTap: () {
+         Navigator.push(
+           context,
+           MaterialPageRoute(builder: (context) => const AddTaskScreen()),
+         );
+       },
+       child: Container(
+         width: 48, height: 48,
+         decoration: BoxDecoration(
+           color: Colors.white, shape: BoxShape.circle,
+           border: Border.all(color: const Color(0xFF5A8B9E).withValues(alpha: 0.1), width: 1),
+           boxShadow: [BoxShadow(color: const Color(0xFF5A8B9E).withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+         ),
+         child: const Icon(Icons.add_rounded, color: Color(0xFF5A8B9E), size: 28),
+       ),
+     ),
+      ],
+    );
+  }
 }
 
-// --- WIDGET ACCORDION (LA CARD CHE SI ESPANDE) ---
+// --- WIDGET ACCORDION (LIQUID GLASS 2.0) ---
 class ExpandableTaskCard extends StatefulWidget {
   final DailyTask task;
   const ExpandableTaskCard({super.key, required this.task});
@@ -126,34 +156,33 @@ class ExpandableTaskCard extends StatefulWidget {
 class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
   bool _isExpanded = false;
 
-  // Riprendiamo la logica dei colori del frigo!
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'danger': return const Color(0xFFD67771); // Rosso
-      case 'warning': return const Color(0xFFEFC066); // Giallo
-      case 'safe': return const Color(0xFF8DBB75); // Verde
-      default: return const Color(0xFF5A8B9E);
-    }
+  // Nuova Logica Colori: Usa la funzione del Fridge Keeping per l'azzurro, o un grigio scuro se completato
+  Color _getDynamicColor() {
+    bool isAllDone = widget.task.subTasks.every((st) => st.isCompleted);
+    return isAllDone ? const Color(0xFF7A898D) : getStatusColor('safe'); // <-- Usa la TUA funzione per l'azzurro esatto
   }
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = _getStatusColor(widget.task.status);
+    final statusColor = _getDynamicColor();
+    final bool isAllDone = widget.task.subTasks.every((st) => st.isCompleted);
 
-    return marginContainer(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Sfondo bianco (appare solo quando espanso)
+          // --- SFONDO BIANCO ESPANSO CON I SUB-TASKS ---
           if (_isExpanded)
             Container(
               margin: const EdgeInsets.only(top: 25), // Lascia spazio alla pillola colorata
-              padding: const EdgeInsets.only(top: 45, bottom: 16, left: 16, right: 16), // Padding interno per i subtasks
+              padding: const EdgeInsets.only(top: 70, bottom: 16, left: 16, right: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withValues(alpha: 0.8), // Bianco traslucido morbidissimo
                 borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white, width: 1.5),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))
+                  BoxShadow(color: statusColor.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 10))
                 ]
               ),
               child: Column(
@@ -161,54 +190,86 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
               ),
             ),
 
-          // Pillola Colorata Principale
+          // --- PILLOLA COLORATA PRINCIPALE (VETRO) ---
           GestureDetector(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            child: Container(
-              margin: const EdgeInsets.only(top: 8), // Lascia spazio per l'etichetta dell'orario
-              height: 60,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(color: bgColor.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
-                ]
-              ),
-              child: Row(
-                children: [
-                  const Text('•', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF3D342C))),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      widget.task.title,
-                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                child: AnimatedContainer( // Sfuma il colore quando completi tutto!
+                  duration: const Duration(milliseconds: 300),
+                  height: 75, // Più alta per far respirare titolo e orario
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      colors: [
+                        statusColor.withValues(alpha: 0.15), // <-- Sfumatura leggera, come nel Fridge Keeping
+                        Colors.white.withValues(alpha: 0.6)  
+                      ]
                     ),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.5),
                   ),
-                  Icon(
-                    _isExpanded ? Icons.keyboard_arrow_down_rounded : Icons.arrow_back_ios_new_rounded, 
-                    color: const Color(0xFF3D342C).withValues(alpha: 0.6), 
-                    size: 20
+                  child: Row(
+                    children: [
+                      // Icona tonda per richiamare lo stile del frigo, invece del pallino nero
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: statusColor.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))]
+                        ),
+                        child: Icon(Icons.check_circle_outline_rounded, color: statusColor, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // TITOLO TASK
+                            Text(
+                              widget.task.title,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16, 
+                                fontWeight: FontWeight.w700, 
+                                color: const Color(0xFF3D342C),
+                                decoration: isAllDone ? TextDecoration.lineThrough : TextDecoration.none, // Sbarra il titolo se finito
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            // NUOVO ORARIO: Pulito, integrato sotto il titolo
+                            Row(
+                              children: [
+                                Icon(Icons.access_time_rounded, size: 14, color: const Color(0xFF3D342C).withValues(alpha: 0.5)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  widget.task.timeLabel,
+                                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.6)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, 
+                          color: statusColor, 
+                          size: 20
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          // Etichetta Orario (sovrapposta in alto a sinistra)
-          Positioned(
-            top: 0,
-            left: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8), // Leggermente trasparente
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: bgColor.withValues(alpha: 0.5), width: 1),
-              ),
-              child: Text(
-                widget.task.timeLabel,
-                style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
+                ),
               ),
             ),
           ),
@@ -217,20 +278,12 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
     );
   }
 
-  // Helper per distanziare le card
-  Widget marginContainer({required Widget child}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
-      child: child,
-    );
-  }
-
-  // --- SINGOLO SUB-TASK (Lista bianca) ---
+  // --- SINGOLO SUB-TASK (Lista Interna) ---
   Widget _buildSubTaskRow(SubTask subTask) {
     final isDone = subTask.isCompleted;
     
-    // Colori per la spunta o per la X
-    final boxColor = isDone ? const Color(0xFF7CB9E8) : const Color(0xFFF28482);
+    // Aggiornati anche i colori dei check interni per usare lo stesso azzurro del frigo
+    final boxColor = isDone ? getStatusColor('safe') : const Color(0xFFF28482);
     final iconData = isDone ? Icons.check : Icons.close;
 
     return Padding(
@@ -243,21 +296,18 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
             style: GoogleFonts.poppins(
               fontSize: 14, 
               fontWeight: FontWeight.w600, 
-              color: const Color(0xFF3D342C)
+              color: isDone ? const Color(0xFF3D342C).withValues(alpha: 0.5) : const Color(0xFF3D342C),
+              decoration: isDone ? TextDecoration.lineThrough : TextDecoration.none,
             ),
           ),
-          // Checkbox personalizzata stile Figma
           GestureDetector(
-            onTap: () {
-              // Qui in futuro metteremo la logica per invertire lo stato
-              setState(() => subTask.isCompleted = !subTask.isCompleted);
-            },
+            onTap: () => setState(() => subTask.isCompleted = !subTask.isCompleted),
             child: Container(
-              width: 22, height: 22,
+              width: 24, height: 24,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDone ? boxColor.withValues(alpha: 0.1) : Colors.white,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: boxColor, width: 1.5),
+                border: Border.all(color: boxColor.withValues(alpha: 0.6), width: 1.5),
               ),
               child: Center(
                 child: Icon(iconData, color: boxColor, size: 16),
