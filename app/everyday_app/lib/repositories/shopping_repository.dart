@@ -2,13 +2,16 @@ import '../models/shopping_item.dart';
 import 'supabase_client.dart';
 
 class ShoppingRepository {
-
-  Future<void> addItem(String householdId, String name) async {
+  Future<void> addItem(
+    String householdId,
+    String name, {
+    int quantity = 1,
+  }) async {
     await supabase.from('shopping_item').insert({
       'household_id': householdId,
       'name': name,
       'status': 'PENDING', // Di default è da comprare
-      'quantity': 1,
+      'quantity': quantity,
     });
   }
 
@@ -27,15 +30,26 @@ class ShoppingRepository {
   // Cambia stato (da PENDING a BOUGHT)
   Future<void> toggleStatus(String itemId, String currentStatus) async {
     final newStatus = currentStatus == 'PENDING' ? 'BOUGHT' : 'PENDING';
-    
+
     await supabase
         .from('shopping_item')
         .update({'status': newStatus})
         .eq('id', itemId);
   }
-  
+
   // Cancella dalla lista
   Future<void> deleteItem(String itemId) async {
     await supabase.from('shopping_item').delete().eq('id', itemId);
+  }
+
+  Future<void> updateItem(ShoppingItem item) async {
+    await supabase
+        .from('shopping_item')
+        .update({
+          'name': item.name,
+          'quantity': item.quantity,
+          'status': item.status,
+        })
+        .eq('id', item.id);
   }
 }

@@ -6,6 +6,8 @@ import '../core/app_context.dart';
 import '../models/area_type.dart';
 import '../models/fridge_item.dart';
 import '../repositories/fridge_repository.dart';
+import '../utils/date_utils.dart';
+import '../utils/status_color_utils.dart';
 
 class FridgeKeepingScreen extends StatefulWidget {
   const FridgeKeepingScreen({super.key});
@@ -342,13 +344,6 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   // 2. SEZIONE ITEMS (Colori Carini e Coerenti)
   // ==========================================
 
-  // Funzione che dona i "Colori Carini" coerenti con la palette
-  Color _getColorFromStatus(String expiryStatus) {
-    if (expiryStatus == 'warning') return const Color(0xFFFFB347); // Arancione Pesca Luminoso
-    if (expiryStatus == 'expired') return const Color(0xFFF28482); // Rosso Corallo Morbido
-    return const Color(0xFF7CB9E8); // Azzurro Nuvola
-  }
-
   Widget _buildGlassList(List<FridgeItem> items) {
     if (items.isEmpty) return _buildEmptyState();
     return ListView.separated(
@@ -387,9 +382,9 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   }
 
   Widget _buildListItem(FridgeItem item) {
-    Color iconColor = _getColorFromStatus('safe');
+    Color iconColor = getStatusColor('safe');
     return GestureDetector(
-      onTap: () => _showItemDetailModal(context, item),
+      onTap: () => _showItemDetailModal(item),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
@@ -426,9 +421,9 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   }
 
   Widget _buildSmallGridCard(FridgeItem item) {
-    Color iconColor = _getColorFromStatus('safe');
+    Color iconColor = getStatusColor('safe');
     return GestureDetector(
-      onTap: () => _showItemDetailModal(context, item),
+      onTap: () => _showItemDetailModal(item),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
@@ -458,15 +453,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     return Center(child: Text('No items found.', style: GoogleFonts.poppins(color: const Color(0xFF5A8B9E).withValues(alpha: 0.5), fontSize: 16, fontWeight: FontWeight.w500)));
   }
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'none';
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year.toString();
-    return '$day/$month/$year';
-  }
-
-  Future<void> _showItemDetailModal(BuildContext context, FridgeItem item) async {
+  Future<void> _showItemDetailModal(FridgeItem item) async {
     final result = await showModalBottomSheet<bool>(
       context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
       builder: (_) => FridgeItemDetailSheet(
@@ -598,7 +585,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
                       if (pickedDate != null) {
                         setState(() {
                           selectedDate = pickedDate;
-                          dateTextController.text = _formatDate(pickedDate);
+                          dateTextController.text = formatDate(pickedDate);
                         });
                       }
                     }
@@ -648,7 +635,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
       text: widget.item.weight?.toString() ?? '',
     );
     _expirationDateController = TextEditingController(
-      text: _formatDate(widget.item.expirationDate),
+      text: formatDate(widget.item.expirationDate),
     );
   }
 
@@ -659,14 +646,6 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     _weightController.dispose();
     _expirationDateController.dispose();
     super.dispose();
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'none';
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year.toString();
-    return '$day/$month/$year';
   }
 
   DateTime? _parseDateFromInput(String input) {
@@ -686,12 +665,6 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     }
 
     return DateTime.tryParse(trimmed);
-  }
-
-  Color _getColorFromStatus(String expiryStatus) {
-    if (expiryStatus == 'warning') return const Color(0xFFFFB347);
-    if (expiryStatus == 'expired') return const Color(0xFFF28482);
-    return const Color(0xFF7CB9E8);
   }
 
   Future<void> _handleSaveEdit() async {
@@ -733,7 +706,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final itemColor = _getColorFromStatus('safe');
+    final itemColor = getStatusColor('safe');
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
@@ -850,7 +823,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                   _buildModalDivider(),
                   _buildModalDetailRow(
                     'Expire date',
-                    _formatDate(widget.item.expirationDate),
+                    formatDate(widget.item.expirationDate),
                     itemColor,
                   ),
                 ] else ...[
@@ -884,7 +857,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                         setState(() {
                           _selectedDate = pickedDate;
                           _expirationDateController.text =
-                              _formatDate(pickedDate);
+                              formatDate(pickedDate);
                         });
                       }
                     },
@@ -907,7 +880,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                                   widget.item.quantity?.toString() ?? '';
                               _selectedDate = widget.item.expirationDate;
                               _expirationDateController.text =
-                                  _formatDate(widget.item.expirationDate);
+                                  formatDate(widget.item.expirationDate);
                             });
                           },
                           child: const Text('Cancel'),
