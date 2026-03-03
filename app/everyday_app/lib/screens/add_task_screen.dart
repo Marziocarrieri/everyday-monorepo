@@ -8,7 +8,10 @@ import '../utils/status_color_utils.dart'; // IMPORTA LA TUA MAGICA FUNZIONE COL
 // 1. SCHERMATA PRINCIPALE (LIBRERIA TASK)
 // ==========================================
 class AddTaskScreen extends StatefulWidget {
-  const AddTaskScreen({super.key});
+  // --- NOVITÀ: Parametro opzionale per ricevere i membri selezionati! ---
+  final Set<String>? assignedMemberIds;
+
+  const AddTaskScreen({super.key, this.assignedMemberIds});
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
@@ -39,7 +42,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => AddTaskSheet(initialTitle: initialTitle),
+      builder: (context) => AddTaskSheet(
+        initialTitle: initialTitle,
+        assignedMemberIds: widget.assignedMemberIds, // <-- Passiamo i membri al Bottom Sheet!
+      ),
     );
   }
 
@@ -222,7 +228,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 // ==========================================
 class AddTaskSheet extends StatefulWidget {
   final String? initialTitle;
-  const AddTaskSheet({super.key, this.initialTitle});
+  // --- NOVITÀ: Il popup ora sa a chi stiamo assegnando il task ---
+  final Set<String>? assignedMemberIds; 
+
+  const AddTaskSheet({super.key, this.initialTitle, this.assignedMemberIds});
 
   @override
   State<AddTaskSheet> createState() => _AddTaskSheetState();
@@ -330,6 +339,23 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
             children: [
               Container(width: 50, height: 5, decoration: BoxDecoration(color: const Color(0xFF3D342C).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10))),
               const SizedBox(height: 24),
+              
+              // --- SE ABBIAMO RICEVUTO DEI MEMBRI DALLA FAMILY SCREEN, MOSTRIAMO UN BADGE ---
+              if (widget.assignedMemberIds != null && widget.assignedMemberIds!.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: colorOrange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Assigning to ${widget.assignedMemberIds!.length} member(s)',
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: colorOrange),
+                  ),
+                ),
+              // --------------------------------------------------------------------------------
+
               Text('Task Details', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: colorSafeAzzurro)),
               const SizedBox(height: 24),
               
@@ -339,7 +365,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // --- CARD DEL TITOLO (ORA AZZURRA!) ---
+                      // --- CARD DEL TITOLO ---
                       _buildGlassTextField(controller: _titleController, hint: 'Task Name', color: colorSafeAzzurro, isTitle: true),
                       const SizedBox(height: 20),
                       
@@ -388,8 +414,15 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 ),
               ),
               
+              // --- TASTO SALVA (Qui un domani ci sarà la vera logica per Supabase) ---
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  // ESEMPIO DI LOGICA FUTURA:
+                  // final assignedTo = widget.assignedMemberIds ?? ['me'];
+                  // print("Salvando il task per gli utenti: $assignedTo");
+                  Navigator.pop(context); // Chiude il Bottom Sheet
+                  Navigator.pop(context); // Chiude la AddTaskScreen
+                },
                 child: Container(
                   width: 70, height: 70, 
                   decoration: BoxDecoration(
