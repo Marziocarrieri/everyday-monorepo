@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'dart:math';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/app_context.dart';
@@ -248,10 +249,11 @@ class _ProfileHouseholdBottomSheetState
         ),
       );
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -378,6 +380,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nicknameController;
 
   ActiveMembership? get _activeMembership => AppContext.instance.activeMembership;
+
+  static const String _inviteAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
   void _handleAppContextChanged() {
     if (!mounted) return;
@@ -536,9 +540,170 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _copyHomeId(String householdId) {
-    Clipboard.setData(ClipboardData(text: householdId));
-    _showSuccessSnackBar('HomeID copied');
+  String _generateInviteCode({int length = 8}) {
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => _inviteAlphabet[random.nextInt(_inviteAlphabet.length)],
+    ).join();
+  }
+
+  Future<String> _createInviteCode(
+    String householdId, {
+    bool replaceExisting = false,
+  }) async {
+    if (replaceExisting) {
+      await Supabase.instance.client
+          .from('household_invite')
+          .delete()
+          .eq('household_id', householdId);
+    }
+
+    for (var attempt = 0; attempt < 8; attempt++) {
+      final code = _generateInviteCode();
+      try {
+        final inserted = await Supabase.instance.client
+            .from('household_invite')
+            .insert({'household_id': householdId, 'invite_code': code})
+            .select('invite_code')
+            .single();
+
+        final inviteCode = inserted['invite_code'] as String?;
+        if (inviteCode == null || inviteCode.isEmpty) {
+          throw Exception('Invite code creation failed');
+        }
+        return inviteCode;
+      } catch (_) {
+        if (attempt == 7) rethrow;
+      }
+    }
+
+    throw Exception('Unable to generate invite code');
+  }
+
+  Future<void> _showInviteCodeDialog({
+    required String householdId,
+    required String initialCode,
+  }) async {
+    var code = initialCode;
+    var isRegenerating = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogBuildContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Invite code'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SelectableText(
+                    code,
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: code));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Invite code copied'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.copy_rounded),
+                        label: const Text('Copy'),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: isRegenerating
+                            ? null
+                            : () async {
+                                setDialogState(() {
+                                  isRegenerating = true;
+                                });
+                                try {
+                                  final newCode = await _createInviteCode(
+                                    householdId,
+                                    replaceExisting: true,
+                                  );
+                                  setDialogState(() {
+                                    code = newCode;
+                                  });
+                                } catch (error) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(error.toString()),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                } finally {
+                                  if (dialogBuildContext.mounted) {
+                                    setDialogState(() {
+                                      isRegenerating = false;
+                                    });
+                                  }
+                                }
+                              },
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Regenerate'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handleInviteMember() async {
+    final householdId = AppContext.instance.householdId;
+    if (householdId == null) return;
+
+    try {
+      final existing = await Supabase.instance.client
+          .from('household_invite')
+          .select('invite_code')
+          .eq('household_id', householdId)
+          .maybeSingle();
+
+      final code = existing == null
+          ? await _createInviteCode(householdId)
+          : (Map<String, dynamic>.from(existing)['invite_code'] as String?);
+
+      if (code == null || code.isEmpty) {
+        throw Exception('Invite code is empty');
+      }
+
+      await _showInviteCodeDialog(householdId: householdId, initialCode: code);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   String _cacheBustedAvatarUrl(String url) {
@@ -976,32 +1141,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: const Color(0xFF5A8B9E),
                           ),
                         ),
-                        Row(
-                          children: [
-                            Text(
-                              'HomeID',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(
-                                  0xFF5A8B9E,
-                                ).withValues(alpha: 0.7),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            IconButton(
-                              onPressed: () => _copyHomeId(householdId),
-                              icon: const Icon(
-                                Icons.copy_rounded,
-                                size: 16,
-                                color: Color(0xFF5A8B9E),
-                              ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -1047,24 +1186,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: _handleHouseholdSettingsAction,
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red.shade400,
-                    padding: EdgeInsets.zero,
-                  ),
-                  child: Text(
-                    (_activeMembership?.role.toUpperCase() == 'HOST')
-                        ? 'Delete household'
-                        : 'Leave household',
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: _handleInviteMember,
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF5A8B9E),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: Text(
+                      'Invite Member',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 18),
+                  TextButton(
+                    onPressed: _handleHouseholdSettingsAction,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red.shade400,
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: Text(
+                      (_activeMembership?.role.toUpperCase() == 'HOST')
+                          ? 'Delete household'
+                          : 'Leave household',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

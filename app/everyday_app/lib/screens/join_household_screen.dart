@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'package:everyday_app/screens/main_layout.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/screens/welcome_screen.dart';
+import 'package:everyday_app/screens/household_onboarding_screen.dart';
 import 'package:everyday_app/services/auth_service.dart';
-import 'package:everyday_app/services/household_member_service.dart';
 import 'package:everyday_app/services/session_initializer.dart';
 
 class JoinHouseholdScreen extends StatefulWidget {
@@ -16,11 +17,11 @@ class JoinHouseholdScreen extends StatefulWidget {
 
 class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
   final TextEditingController _codeController = TextEditingController();
-  final HouseholdMemberService _householdMemberService = HouseholdMemberService();
   final SessionInitializer _sessionInitializer = SessionInitializer();
 
   bool _isLoading = false;
   String? _error;
+  String _selectedRole = 'PERSONNEL';
 
   Future<void> _joinHousehold() async {
     final inviteCode = _codeController.text.trim();
@@ -45,7 +46,46 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
     });
 
     try {
-      await _householdMemberService.addPerson(inviteCode, currentUser.id, 'PERSONNEL');
+      final normalizedCode = inviteCode.toUpperCase();
+
+      final inviteRow = await Supabase.instance.client
+          .from('household_invite')
+          .select('household_id')
+          .eq('invite_code', normalizedCode)
+          .maybeSingle();
+
+      if (inviteRow == null) {
+        throw Exception('Invalid invite code');
+      }
+
+      final inviteMap = Map<String, dynamic>.from(inviteRow);
+      final householdId = inviteMap['household_id'] as String?;
+      if (householdId == null) {
+        throw Exception('Invalid invite code');
+      }
+
+      final membershipRow = await Supabase.instance.client
+          .from('household_member')
+          .insert({
+            'user_id': currentUser.id,
+            'household_id': householdId,
+            'role': _selectedRole,
+          })
+          .select('id, household_id')
+          .single();
+
+      final membershipMap = Map<String, dynamic>.from(membershipRow);
+      final membershipId = membershipMap['id'] as String?;
+      final joinedHouseholdId = membershipMap['household_id'] as String?;
+
+      if (membershipId == null || joinedHouseholdId == null) {
+        throw Exception('Membership creation failed');
+      }
+
+      AppContext.instance.setMembership(membershipId);
+      AppContext.instance.setActiveHousehold(joinedHouseholdId);
+      await AppContext.instance.reloadMemberContext();
+
       final state = await _sessionInitializer.initialize();
 
       if (!mounted) return;
@@ -58,10 +98,8 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
         return;
       }
 
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainLayout()),
-        (route) => false,
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HouseholdOnboardingScreen()),
       );
     } catch (error) {
       if (!mounted) return;
@@ -69,10 +107,11 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
         _error = error.toString();
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -122,6 +161,66 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
                       
                       // CAMPO DI TESTO IN VETRO
                       _buildGlassTextField(label: 'Invite code', controller: _codeController, icon: Icons.qr_code_2_rounded),
+
+                      const SizedBox(height: 24),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Role',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF3D342C),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                        ),
+                        child: RadioGroup<String>(
+                          groupValue: _selectedRole,
+                          onChanged: (value) {
+                            if (_isLoading || value == null) return;
+                            setState(() {
+                              _selectedRole = value;
+                            });
+                          },
+                          child: const Column(
+                            children: [
+                              RadioListTile<String>(
+                                value: 'HOST',
+                                title: Text('Host'),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                              RadioListTile<String>(
+                                value: 'COHOST',
+                                title: Text('Co-Host'),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                              RadioListTile<String>(
+                                value: 'PERSONNEL',
+                                title: Text('Personnel'),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                       
                       const SizedBox(height: 50),
 

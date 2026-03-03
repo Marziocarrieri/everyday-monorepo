@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:everyday_app/features/household/data/household_service.dart';
-import 'package:everyday_app/screens/main_layout.dart';
 import 'package:everyday_app/screens/welcome_screen.dart';
 import 'package:everyday_app/services/session_initializer.dart';
 import 'package:everyday_app/core/app_context.dart';
+import 'package:everyday_app/screens/household_onboarding_screen.dart';
 
 class CreateHouseholdScreen extends StatefulWidget {
   const CreateHouseholdScreen({super.key});
@@ -53,10 +53,8 @@ class _CreateHouseholdScreenState extends State<CreateHouseholdScreen> {
         return;
       }
 
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainLayout()),
-        (route) => false,
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HouseholdOnboardingScreen()),
       );
     } catch (error) {
       if (!mounted) return;
