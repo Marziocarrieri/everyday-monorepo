@@ -8,6 +8,358 @@ import '../core/app_context.dart';
 import 'login2_screen.dart';
 import 'diet_screen.dart';
 import 'your_home_screen.dart';
+import 'welcome_screen.dart';
+
+void showProfileHouseholdBottomSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (_) => const _ProfileHouseholdBottomSheet(),
+  );
+}
+
+class _HouseholdOption {
+  final String id;
+  final String name;
+
+  const _HouseholdOption({
+    required this.id,
+    required this.name,
+  });
+}
+
+class _HouseholdRemovalActions {
+  static Future<List<Map<String, dynamic>>> _loadMembershipRows() async {
+    final userId = AppContext.instance.userId;
+    if (userId == null) return const [];
+
+    final response = await Supabase.instance.client
+        .from('household_member')
+        .select('id, household_id, role')
+        .eq('user_id', userId);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  static Future<bool> _showConfirmActionDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+
+    return confirmed ?? false;
+  }
+
+  static Future<void> _applyFallbackAfterActiveRemoval(
+    BuildContext context,
+  ) async {
+    final memberships = await _loadMembershipRows();
+
+    if (memberships.isEmpty) {
+      AppContext.instance.setMembership(null);
+      AppContext.instance.setActiveHousehold(null);
+
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const WelcomeScreen(fromProfile: false),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    final fallback = memberships.first;
+    final fallbackMembershipId = fallback['id'] as String?;
+    final fallbackHouseholdId = fallback['household_id'] as String?;
+
+    AppContext.instance.setMembership(fallbackMembershipId);
+    AppContext.instance.setActiveHousehold(fallbackHouseholdId);
+    await AppContext.instance.reloadMemberContext();
+  }
+
+  static Future<void> leaveActiveHousehold(
+    BuildContext context, {
+    required String householdName,
+  }) async {
+    final membershipId = AppContext.instance.membershipId;
+    final activeHouseholdId = AppContext.instance.householdId;
+
+    if (membershipId == null || activeHouseholdId == null) return;
+
+    final confirmed = await _showConfirmActionDialog(
+      context,
+      title: 'Leave household',
+      message: 'Do you want to leave $householdName?',
+      confirmLabel: 'Leave',
+    );
+    if (!context.mounted) return;
+    if (!confirmed) return;
+
+    await Supabase.instance.client
+        .from('household_member')
+        .delete()
+        .eq('id', membershipId);
+
+    if (!context.mounted) return;
+    await _applyFallbackAfterActiveRemoval(context);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Household left'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  static Future<void> deleteActiveHousehold(
+    BuildContext context, {
+    required String householdId,
+    required String householdName,
+  }) async {
+    final confirmed = await _showConfirmActionDialog(
+      context,
+      title: 'Delete household',
+      message:
+          'This will permanently delete $householdName for all members. Continue?',
+      confirmLabel: 'Delete',
+    );
+    if (!context.mounted) return;
+    if (!confirmed) return;
+
+    await Supabase.instance.client
+        .from('household_member')
+        .delete()
+        .eq('household_id', householdId);
+
+    await Supabase.instance.client
+        .from('household')
+        .delete()
+        .eq('id', householdId);
+
+    if (!context.mounted) return;
+    await _applyFallbackAfterActiveRemoval(context);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Household deleted'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
+
+class _ProfileHouseholdBottomSheet extends StatefulWidget {
+  const _ProfileHouseholdBottomSheet();
+
+  @override
+  State<_ProfileHouseholdBottomSheet> createState() =>
+      _ProfileHouseholdBottomSheetState();
+}
+
+class _ProfileHouseholdBottomSheetState
+    extends State<_ProfileHouseholdBottomSheet> {
+  List<_HouseholdOption> _households = const [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    AppContext.instance.addListener(_handleAppContextChanged);
+    _loadHouseholds();
+  }
+
+  @override
+  void dispose() {
+    AppContext.instance.removeListener(_handleAppContextChanged);
+    super.dispose();
+  }
+
+  void _handleAppContextChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _loadHouseholds() async {
+    final userId = AppContext.instance.userId;
+    if (userId == null) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final response = await Supabase.instance.client
+          .from('household_member')
+          .select('household_id, household(id, name)')
+          .eq('user_id', userId);
+
+      final households = List<Map<String, dynamic>>.from(response)
+          .map((row) {
+            final household = row['household'] as Map<String, dynamic>?;
+            final householdId = row['household_id'] as String?;
+
+            if (household == null || householdId == null) {
+              return null;
+            }
+
+            final name = (household['name'] as String?)?.trim();
+            return _HouseholdOption(
+              id: householdId,
+              name: (name == null || name.isEmpty) ? 'Unnamed Household' : name,
+            );
+          })
+          .whereType<_HouseholdOption>()
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _households = households;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to load households'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    final activeHouseholdId = AppContext.instance.householdId;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Your Households',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF5A8B9E),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: CircularProgressIndicator(),
+                )
+              else ...[
+                for (final household in _households)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: household.id == activeHouseholdId
+                          ? const Color(0xFF5A8B9E).withValues(alpha: 0.08)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.home_rounded,
+                        color: Color(0xFF5A8B9E),
+                      ),
+                      title: Text(
+                        household.name,
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                      ),
+                      trailing: household.id == activeHouseholdId
+                          ? const Icon(
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF5A8B9E),
+                            )
+                          : null,
+                      onTap: household.id == activeHouseholdId
+                          ? null
+                          : () {
+                              AppContext.instance.setActiveHousehold(
+                                household.id,
+                              );
+                              Navigator.of(context).pop();
+                            },
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final rootNavigator = Navigator.of(
+                        context,
+                        rootNavigator: true,
+                      );
+                      Navigator.of(context).pop();
+                      await rootNavigator.push(
+                        MaterialPageRoute(
+                          builder: (_) => const WelcomeScreen(fromProfile: true),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add_home_outlined),
+                    label: const Text('Add Home'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,11 +374,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUploadingAvatar = false;
   bool _editingNickname = false;
   bool _isSavingNickname = false;
-  String? _nickname;
-  String? _avatarUrl;
   int? _avatarCacheBuster;
-  String _role = 'Member';
   late TextEditingController _nicknameController;
+
+  ActiveMembership? get _activeMembership => AppContext.instance.activeMembership;
+
+  void _handleAppContextChanged() {
+    if (!mounted) return;
+
+    if (!_editingNickname) {
+      final nickname = _activeMembership?.nickname;
+      _nicknameController.text = nickname ?? '';
+    }
+
+    setState(() {});
+  }
 
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
@@ -46,8 +408,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _nicknameController = TextEditingController(
-      text: AppContext.instance.nickname ?? '',
+      text: _activeMembership?.nickname ?? '',
     );
+    AppContext.instance.addListener(_handleAppContextChanged);
     _loadMemberContext();
   }
 
@@ -69,20 +432,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     try {
-      final response = await Supabase.instance.client
-          .from('household_member')
-          .select('nickname, avatar_url, role')
-          .eq('id', membershipId)
-          .single();
+      await AppContext.instance.reloadMemberContext();
 
       if (!mounted) return;
       setState(() {
-        _nickname = response['nickname'] as String?;
-        AppContext.instance.nickname = _nickname;
-        _nicknameController.text = _nickname ?? '';
-        _avatarUrl = response['avatar_url'] as String?;
+        _nicknameController.text = _activeMembership?.nickname ?? '';
         _avatarCacheBuster = DateTime.now().millisecondsSinceEpoch;
-        _role = (response['role'] as String?) ?? 'Member';
       });
     } catch (error) {
       if (!mounted) return;
@@ -100,6 +455,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    AppContext.instance.removeListener(_handleAppContextChanged);
     _nicknameController.dispose();
     super.dispose();
   }
@@ -159,8 +515,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await AppContext.instance.reloadMemberContext();
       if (!mounted) return;
       setState(() {
-        _nickname = AppContext.instance.nickname;
-        _nicknameController.text = _nickname ?? '';
+        _nicknameController.text = _activeMembership?.nickname ?? '';
       });
       _showSuccessSnackBar('Nickname updated');
       if (!mounted) return;
@@ -271,7 +626,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _handleAvatarRemove() async {
     final membershipId = AppContext.instance.membershipId;
-    if (membershipId == null || _avatarUrl == null || _avatarUrl!.isEmpty) {
+    final avatarUrl = _activeMembership?.avatarUrl;
+    if (membershipId == null || avatarUrl == null || avatarUrl.isEmpty) {
       return;
     }
 
@@ -281,7 +637,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final oldPath = _extractAvatarStoragePath(_avatarUrl);
+      final oldPath = _extractAvatarStoragePath(avatarUrl);
       if (oldPath != null) {
         try {
           await Supabase.instance.client.storage.from('avatars').remove([
@@ -322,7 +678,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       backgroundColor: Colors.white,
       builder: (modalContext) {
-        final hasAvatar = _avatarUrl != null && _avatarUrl!.isNotEmpty;
+        final currentAvatarUrl = _activeMembership?.avatarUrl;
+        final hasAvatar =
+            currentAvatarUrl != null && currentAvatarUrl.isNotEmpty;
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -358,6 +716,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _handleHouseholdSettingsAction() async {
+    final membership = _activeMembership;
+    final householdId = AppContext.instance.householdId;
+    if (membership == null || householdId == null) return;
+
+    final householdName = AppContext.instance.household?.name ?? 'this household';
+    final isHost = membership.role.toUpperCase() == 'HOST';
+
+    if (isHost) {
+      await _HouseholdRemovalActions.deleteActiveHousehold(
+        context,
+        householdId: householdId,
+        householdName: householdName,
+      );
+      return;
+    }
+
+    await _HouseholdRemovalActions.leaveActiveHousehold(
+      context,
+      householdName: householdName,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = AppContext.instance.profile;
@@ -372,8 +753,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final displayName = (_nickname != null && _nickname!.trim().isNotEmpty)
-        ? _nickname!
+    final nickname = _activeMembership?.nickname;
+    final role = _activeMembership?.role ?? 'Member';
+    final avatarUrl = _activeMembership?.avatarUrl;
+
+    final displayName = (nickname != null && nickname.trim().isNotEmpty)
+      ? nickname
         : (profile.name ?? '');
 
     return Scaffold(
@@ -437,9 +822,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Positioned.fill(
                             child: ClipOval(
                               child:
-                                  _avatarUrl != null && _avatarUrl!.isNotEmpty
+                                  avatarUrl != null && avatarUrl.isNotEmpty
                                   ? Image.network(
-                                      _cacheBustedAvatarUrl(_avatarUrl!),
+                                    _cacheBustedAvatarUrl(avatarUrl),
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, error, stackTrace) =>
                                           Center(
@@ -515,7 +900,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               : () {
                                   setState(() {
                                     _editingNickname = true;
-                                    _nicknameController.text = _nickname ?? '';
+                                    _nicknameController.text =
+                                        _activeMembership?.nickname ?? '';
                                   });
                                 },
                           child: Row(
@@ -570,7 +956,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     setState(() {
                                       _editingNickname = true;
                                       _nicknameController.text =
-                                          _nickname ?? '';
+                                          _activeMembership?.nickname ?? '';
                                     });
                                   },
                                   icon: const Icon(
@@ -583,7 +969,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _role,
+                          role,
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -647,6 +1033,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
                 },
+              ),
+              const SizedBox(height: 24),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Household Settings',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF5A8B9E).withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: _handleHouseholdSettingsAction,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red.shade400,
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: Text(
+                    (_activeMembership?.role.toUpperCase() == 'HOST')
+                        ? 'Delete household'
+                        : 'Leave household',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

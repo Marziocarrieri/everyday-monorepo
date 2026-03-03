@@ -5,6 +5,7 @@ import 'package:everyday_app/features/household/data/household_service.dart';
 import 'package:everyday_app/screens/main_layout.dart';
 import 'package:everyday_app/screens/welcome_screen.dart';
 import 'package:everyday_app/services/session_initializer.dart';
+import 'package:everyday_app/core/app_context.dart';
 
 class CreateHouseholdScreen extends StatefulWidget {
   const CreateHouseholdScreen({super.key});
@@ -36,7 +37,10 @@ class _CreateHouseholdScreenState extends State<CreateHouseholdScreen> {
     });
 
     try {
-      await _householdService.createHousehold(name: householdName);
+      final household = await _householdService.createHousehold(
+        name: householdName,
+      );
+      AppContext.instance.setActiveHousehold(household.id);
       final state = await _sessionInitializer.initialize();
 
       if (!mounted) return;

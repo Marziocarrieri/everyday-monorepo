@@ -8,7 +8,9 @@ import 'join_household_screen.dart';
 import 'login2_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+  final bool fromProfile;
+
+  const WelcomeScreen({super.key, this.fromProfile = false});
 
   void _openCreateFlow(BuildContext context) {
     final session = Supabase.instance.client.auth.currentSession;
@@ -35,6 +37,14 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: fromProfile
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
+            )
+          : null,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

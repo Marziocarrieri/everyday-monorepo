@@ -54,14 +54,14 @@ class SessionInitializer {
       return BootstrapState.noSession;
     }
 
-    final membershipRow = await supabase
+    final membershipRows = await supabase
         .from('household_member')
         .select('id, household_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
+      .eq('user_id', user.id);
 
-    if (membershipRow == null) {
+    final memberships = List<Map<String, dynamic>>.from(membershipRows);
+
+    if (memberships.isEmpty) {
       final profile = AppUser.fromJson(Map<String, dynamic>.from(profileRow));
       AppContext.instance.setSession(
         authUser: user,
@@ -75,7 +75,21 @@ class SessionInitializer {
       return BootstrapState.noHousehold;
     }
 
-    final membership = Map<String, dynamic>.from(membershipRow);
+    final currentActiveHouseholdId = AppContext.instance.householdId;
+
+    Map<String, dynamic>? selectedMembership;
+    if (currentActiveHouseholdId != null) {
+      for (final membership in memberships) {
+        if (membership['household_id'] == currentActiveHouseholdId) {
+          selectedMembership = membership;
+          break;
+        }
+      }
+    }
+
+    selectedMembership ??= memberships.first;
+
+    final membership = Map<String, dynamic>.from(selectedMembership);
     final householdId = membership['household_id'] as String;
     final householdMap = await supabase
         .from('household')
