@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import '../repositories/member_repository.dart';
+import '../models/household_member.dart';
+import '../core/app_context.dart';
+
 
 class PersonnelScreen extends StatefulWidget {
   const PersonnelScreen({super.key});
@@ -10,6 +14,56 @@ class PersonnelScreen extends StatefulWidget {
 }
 
 class _PersonnelScreenState extends State<PersonnelScreen> {
+  final MemberRepository _memberRepository = MemberRepository();
+  List<HouseholdMember> _members = [];
+  bool _isLoading = false;
+  String? _error;
+  
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMembers();
+  }
+
+  Future<void> _loadMembers() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // Fetches the current active household ID from your AppContext
+      final householdId = AppContext.instance.requireHouseholdId();
+      
+      final members = await _memberRepository.getMembers(householdId);
+
+      if (!mounted) return;
+      
+      setState(() {
+        _members = members;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      
+      setState(() {
+        _error = error.toString();
+      });
+      debugPrint('UI Error loading members: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+ 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,33 +92,43 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
 
               // LISTA CARD PREMIUM (3 righe di testo)
               Expanded(
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    _buildPremiumPersonnelCard(
-                      name: 'Luana Gonzalez', role: 'HouseKeeper', status: 'At home', initial: 'L', color: const Color(0xFFF4A261),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator()) // Show loader while fetching
+                    : _error != null
+                        ? Center(child: Text('Error: $_error')) // Show error if it fails
+                        : _members.isEmpty
+                            ? const Center(child: Text('No members found')) // Show empty state
+                            : ListView.builder(
+                                physics: const BouncingScrollPhysics(),
+                                itemCount: _members.length,
+                                itemBuilder: (context, index) {
+                                  final member = _members[index];
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 20.0),
+                                    child: _buildPremiumPersonnelCard(
+
+                                      name: member.profile?.name ?? 'Unknown',
+                                      role: member.role,
+                                      initial: (member.profile?.name ?? '?').isNotEmpty ? (member.profile?.name ?? '?')[0].toUpperCase() : '?',
+                                      color: Colors.orange
+                                      
+                                    ),
+                                  );
+                                },
+                              ),
                     ),
-                    const SizedBox(height: 20),
-                    _buildPremiumPersonnelCard(
-                      name: 'Romeo De Luca', role: 'Gardener', status: 'Not at home', initial: 'R', color: const Color(0xFFF4A261),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildPremiumPersonnelCard(
-                      name: 'Simon Pearson', role: 'Plumber', status: 'Not at home', initial: 'S', color: const Color(0xFFF4A261),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
+           
       ),
     );
   }
 
   // --- CARD PERSONALE PREMIUM ---
   Widget _buildPremiumPersonnelCard({
-    required String name, required String role, required String status, required String initial, required Color color
+    required String name, required String role, required String initial, required Color color //, required String status
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(32),
@@ -121,11 +185,11 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                               style: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontSize: 13, fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              status,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 0.3),
-                            ),
+                            // Text(
+                            //   status,
+                            //   overflow: TextOverflow.ellipsis,
+                            //   style: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 0.3),
+                            // ),
                           ],
                         ),
                       ),

@@ -35,8 +35,8 @@ class HouseholdMember {
       // Gestione Oggetti Annidati
       // Se nel JSON c'è un pezzo chiamato 'users_profile' e non è vuoto, 
       // usiamo il traduttore di AppUser (AppUser.fromJson) per convertirlo.
-      profile: json['users_profile'] != null 
-          ? AppUser.fromJson(json['users_profile']) 
+      profile: json['profile'] != null 
+          ? AppUser.fromJson(json['profile']) 
           : null,
     );
   }
