@@ -16,7 +16,7 @@ class FamilyScreen extends StatefulWidget {
 }
 
 class _FamilyScreenState extends State<FamilyScreen> {
-  final FamilyRepository _memberRepository = FamilyRepository();
+  final FamilyRepository _familyRepository = FamilyRepository();
   List<HouseholdMember> _members = [];
   bool _isLoading = false;
   String? _error;
@@ -40,7 +40,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
       // Fetches the current active household ID from your AppContext
       final householdId = AppContext.instance.requireHouseholdId();
       
-      final members = await _memberRepository.getMembers(householdId);
+      final members = await _familyRepository.getMembers(householdId);
 
       if (!mounted) return;
       

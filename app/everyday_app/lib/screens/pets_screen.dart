@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'pet_activities_screen.dart'; 
+import '../models/pet.dart';
+import '../repositories/pets_repository.dart';
+import '../core/app_context.dart';
+
 
 class PetsScreen extends StatefulWidget {
   const PetsScreen({super.key});
@@ -13,6 +17,53 @@ class PetsScreen extends StatefulWidget {
 class _PetsScreenState extends State<PetsScreen> {
   // Sfondo Azzurro Premium (Tema Invertito)
   final Color invertedBgColor = const Color(0xFF5A8B9E); 
+  final PetRepository _petRepository = PetRepository();
+  List<Pet> _pets = [];
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMembers();
+  }
+
+  Future<void> _loadMembers() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // Fetches the current active household ID from your AppContext
+      final householdId = AppContext.instance.requireHouseholdId();
+      
+      final pets = await _petRepository.getPets(householdId);
+
+      if (!mounted) return;
+      
+      setState(() {
+        _pets = pets;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      
+      setState(() {
+        _error = error.toString();
+      });
+      debugPrint('UI Error loading members: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+
 
   // Funzione per aprire il popup di aggiunta Pet
   void _openAddPetSheet() {
@@ -62,15 +113,31 @@ class _PetsScreenState extends State<PetsScreen> {
               const SizedBox(height: 35),
 
               // --- LISTA ANIMALI (Card Vetro Bianco) ---
+
+
               Expanded(
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    _buildInvertedPetCard('Margot', 'Dog', const Color(0xFF3D342C)),
-                    const SizedBox(height: 20),
-                    _buildInvertedPetCard('Whisky', 'Cat', const Color(0xFFF4A261)), 
-                  ],
-                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator()) // Show loader while fetching
+                    : _error != null
+                        ? Center(child: Text('Error: $_error')) // Show error if it fails
+                        : _pets.isEmpty
+                            ? const Center(child: Text('No pets found')) // Show empty state
+                            : ListView.builder(
+                                physics: const BouncingScrollPhysics(),
+                                itemCount: _pets.length,
+                                itemBuilder: (context, index) {
+                                  final pet = _pets[index];
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 20.0),
+                                    child: _buildInvertedPetCard(
+                                      pet.name,
+                                      pet.species ?? 'Unknown Species',
+                                      const Color(0xFFF4A261),
+                                    ),
+                                  );
+                                },
+                              ),
               ),
             ],
           ),
