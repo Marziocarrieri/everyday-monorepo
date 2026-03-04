@@ -4,7 +4,7 @@ import 'dart:ui';
 import '../repositories/member_repository.dart';
 import '../models/household_member.dart';
 import '../core/app_context.dart';
-
+import 'member_activities_screen.dart'; // <-- IMPORTANTE: Aggiungi questo import!
 
 class PersonnelScreen extends StatefulWidget {
   const PersonnelScreen({super.key});
@@ -18,8 +18,6 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   List<HouseholdMember> _members = [];
   bool _isLoading = false;
   String? _error;
-  
-
 
   @override
   void initState() {
@@ -36,9 +34,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
     });
 
     try {
-      // Fetches the current active household ID from your AppContext
       final householdId = AppContext.instance.requireHouseholdId();
-      
       final members = await _memberRepository.getMembers(householdId);
 
       if (!mounted) return;
@@ -62,7 +58,22 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
     }
   }
 
- 
+  // --- GENERATORE DI COLORI PASTELLO BASATO SULL'INIZIALE ---
+  Color _getColorForMember(String name) {
+    if (name.isEmpty) return const Color(0xFF5A8B9E); // Default Azzurro
+    
+    final List<Color> palette = [
+      const Color(0xFFF4A261), // Arancio
+      const Color(0xFF2A9D8F), // Verde Acqua
+      const Color(0xFFE76F51), // Corallo
+      const Color(0xFFE9C46A), // Giallo
+      const Color(0xFF8AB17D), // Verde Salvia
+      const Color(0xFF5A8B9E), // Azzurro
+    ];
+
+    int colorIndex = name.toUpperCase().codeUnitAt(0) % palette.length;
+    return palette[colorIndex];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,52 +101,68 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
               ),
               const SizedBox(height: 30),
 
-              // LISTA CARD PREMIUM (3 righe di testo)
+              // LISTA CARD PREMIUM
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator()) // Show loader while fetching
+                    ? const Center(child: CircularProgressIndicator())
                     : _error != null
-                        ? Center(child: Text('Error: $_error')) // Show error if it fails
+                        ? Center(child: Text('Error: $_error'))
                         : _members.isEmpty
-                            ? const Center(child: Text('No members found')) // Show empty state
+                            ? const Center(child: Text('No personnel found'))
                             : ListView.builder(
                                 physics: const BouncingScrollPhysics(),
                                 itemCount: _members.length,
                                 itemBuilder: (context, index) {
                                   final member = _members[index];
+                                  final String memberName = member.profile?.name ?? 'Unknown';
+                                  // Generiamo un colore unico per questo membro
+                                  final Color memberColor = _getColorForMember(memberName);
                                   
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 20.0),
-                                    child: _buildPremiumPersonnelCard(
-
-                                      name: member.profile?.name ?? 'Unknown',
-                                      role: member.role,
-                                      initial: (member.profile?.name ?? '?').isNotEmpty ? (member.profile?.name ?? '?')[0].toUpperCase() : '?',
-                                      color: Colors.orange
-                                      
+                                    child: GestureDetector(
+                                      // --- IL COLLEGAMENTO MAGICO ---
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => MemberActivitiesScreen(
+                                              memberId: member.id, // ID vero dal DB
+                                              memberName: memberName,
+                                              themeColor: memberColor,
+                                              isPersonnel: true, // <-- Diciamo alla schermata che è un dipendente!
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: _buildPremiumPersonnelCard(
+                                        name: memberName,
+                                        role: member.role,
+                                        initial: memberName != 'Unknown' ? memberName[0].toUpperCase() : '?',
+                                        color: memberColor, // Usiamo il colore generato!
+                                      ),
                                     ),
                                   );
                                 },
                               ),
-                    ),
+              ),
             ],
           ),
         ),
-           
       ),
     );
   }
 
-  // --- CARD PERSONALE PREMIUM ---
+  // --- CARD PERSONALE PREMIUM (Invariata) ---
   Widget _buildPremiumPersonnelCard({
-    required String name, required String role, required String initial, required Color color //, required String status
+    required String name, required String role, required String initial, required Color color 
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(32),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
         child: Container(
-          height: 135, // Più alta per far respirare le 3 righe
+          height: 135,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -155,7 +182,6 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Row(
                     children: [
-                      // Avatar con piccola ombra
                       Container(
                         width: 48, height: 48,
                         decoration: BoxDecoration(
@@ -168,7 +194,6 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                         child: Center(child: Text(initial, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18))),
                       ),
                       const SizedBox(width: 16),
-                      // 3 Righe di Testi
                       Expanded(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -184,12 +209,6 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontSize: 13, fontWeight: FontWeight.w600),
                             ),
-                            const SizedBox(height: 2),
-                            // Text(
-                            //   status,
-                            //   overflow: TextOverflow.ellipsis,
-                            //   style: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 0.3),
-                            // ),
                           ],
                         ),
                       ),
@@ -197,7 +216,6 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                   ),
                 ),
               ),
-              // DIVISORE SFUMATO
               Container(
                 width: 1, 
                 margin: const EdgeInsets.symmetric(vertical: 20),
@@ -208,7 +226,6 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                   )
                 ),
               ),
-              // PARTE DESTRA
               Expanded(
                 flex: 2,
                 child: Center(

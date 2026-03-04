@@ -7,12 +7,14 @@ class MemberActivitiesScreen extends StatefulWidget {
   final String memberId;
   final String memberName;
   final Color themeColor;
+  final bool isPersonnel;
 
   const MemberActivitiesScreen({
     super.key, 
     required this.memberId, 
     required this.memberName, 
-    required this.themeColor
+    required this.themeColor,
+    this.isPersonnel = false,
   });
 
   @override
