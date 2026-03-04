@@ -8,10 +8,11 @@ import '../utils/status_color_utils.dart'; // IMPORTA LA TUA MAGICA FUNZIONE COL
 // 1. SCHERMATA PRINCIPALE (LIBRERIA TASK)
 // ==========================================
 class AddTaskScreen extends StatefulWidget {
-  // --- NOVITÀ: Parametro opzionale per ricevere i membri selezionati! ---
   final Set<String>? assignedMemberIds;
+  // --- NOVITÀ: Riceviamo la data dalla schermata precedente ---
+  final DateTime? initialDate;
 
-  const AddTaskScreen({super.key, this.assignedMemberIds});
+  const AddTaskScreen({super.key, this.assignedMemberIds, this.initialDate});
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
@@ -20,21 +21,10 @@ class AddTaskScreen extends StatefulWidget {
 class _AddTaskScreenState extends State<AddTaskScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  // Categorie e Task preimpostati
   final Map<String, List<String>> _suggestedTasks = {
-    'Kids Management': [
-      'School Drop-off / Pick-up',
-      'After-School Activities',
-      'Pediatric Check-ups',
-    ],
-    'Home Management': [
-      'Home Repairs',
-      'Car Maintenance',
-    ],
-    'Personal Care': [
-      'Beauty Appointment',
-      'Mental Health Check',
-    ],
+    'Kids Management': ['School Drop-off / Pick-up', 'After-School Activities', 'Pediatric Check-ups'],
+    'Home Management': ['Home Repairs', 'Car Maintenance'],
+    'Personal Care': ['Beauty Appointment', 'Mental Health Check'],
   };
 
   void _openTaskSheet({String? initialTitle}) {
@@ -44,7 +34,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       isScrollControlled: true,
       builder: (context) => AddTaskSheet(
         initialTitle: initialTitle,
-        assignedMemberIds: widget.assignedMemberIds, // <-- Passiamo i membri al Bottom Sheet!
+        assignedMemberIds: widget.assignedMemberIds,
+        // --- NOVITÀ: Passiamo la data al Bottom Sheet! ---
+        initialDate: widget.initialDate, 
       ),
     );
   }
@@ -57,7 +49,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Usiamo la TUA funzione per l'azzurro esatto
     final Color colorSafeAzzurro = getStatusColor('safe');
 
     return Scaffold(
@@ -185,10 +176,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [
-                    colorSafeAzzurro.withValues(alpha: 0.15),
-                    Colors.white.withValues(alpha: 0.4) 
-                  ]
+                  colors: [colorSafeAzzurro.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.4)]
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
@@ -199,8 +187,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+                      color: Colors.white, shape: BoxShape.circle,
                       boxShadow: [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))]
                     ),
                     child: Icon(Icons.check_circle_outline_rounded, color: colorSafeAzzurro, size: 20),
@@ -222,16 +209,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   }
 }
 
-
 // ==========================================
 // 2. BOTTOM SHEET (IL POPUP PER AGGIUNGERE IL TASK)
 // ==========================================
 class AddTaskSheet extends StatefulWidget {
   final String? initialTitle;
-  // --- NOVITÀ: Il popup ora sa a chi stiamo assegnando il task ---
   final Set<String>? assignedMemberIds; 
+  // --- NOVITÀ: Il BottomSheet ora accetta la data iniziale! ---
+  final DateTime? initialDate; 
 
-  const AddTaskSheet({super.key, this.initialTitle, this.assignedMemberIds});
+  const AddTaskSheet({super.key, this.initialTitle, this.assignedMemberIds, this.initialDate});
 
   @override
   State<AddTaskSheet> createState() => _AddTaskSheetState();
@@ -252,6 +239,8 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.initialTitle ?? '');
+    // --- NOVITÀ: Preimpostiamo la data scelta dal calendario se esiste ---
+    _selectedDate = widget.initialDate; 
   }
 
   void _addSubTask() {
@@ -324,7 +313,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final Color colorSafeAzzurro = getStatusColor('safe'); // Azzurro esatto!
+    final Color colorSafeAzzurro = getStatusColor('safe');
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
@@ -340,7 +329,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               Container(width: 50, height: 5, decoration: BoxDecoration(color: const Color(0xFF3D342C).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10))),
               const SizedBox(height: 24),
               
-              // --- SE ABBIAMO RICEVUTO DEI MEMBRI DALLA FAMILY SCREEN, MOSTRIAMO UN BADGE ---
               if (widget.assignedMemberIds != null && widget.assignedMemberIds!.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -354,7 +342,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                     style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: colorOrange),
                   ),
                 ),
-              // --------------------------------------------------------------------------------
 
               Text('Task Details', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: colorSafeAzzurro)),
               const SizedBox(height: 24),
@@ -365,7 +352,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // --- CARD DEL TITOLO ---
                       _buildGlassTextField(controller: _titleController, hint: 'Task Name', color: colorSafeAzzurro, isTitle: true),
                       const SizedBox(height: 20),
                       
@@ -414,12 +400,8 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 ),
               ),
               
-              // --- TASTO SALVA (Qui un domani ci sarà la vera logica per Supabase) ---
               GestureDetector(
                 onTap: () {
-                  // ESEMPIO DI LOGICA FUTURA:
-                  // final assignedTo = widget.assignedMemberIds ?? ['me'];
-                  // print("Salvando il task per gli utenti: $assignedTo");
                   Navigator.pop(context); // Chiude il Bottom Sheet
                   Navigator.pop(context); // Chiude la AddTaskScreen
                 },

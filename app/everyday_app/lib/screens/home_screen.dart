@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; 
 import '../core/app_context.dart';
 import 'daily_task_screen.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -51,7 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildIconBtn(Icons.calendar_today_outlined),
+        // TASTO CALENDARIO COLLEGATO!
+        GestureDetector(
+          onTap: () => _showCalendarPopup(context),
+          child: _buildIconBtn(Icons.calendar_today_outlined),
+        ),
+        
         Text(
           'Home', 
           style: GoogleFonts.poppins(
@@ -61,7 +67,12 @@ class _HomeScreenState extends State<HomeScreen> {
             letterSpacing: 0.5,
           )
         ),
-        _buildIconBtn(Icons.notifications_none_rounded),
+        
+        // Tasto Notifiche (da collegare in futuro)
+        GestureDetector(
+          onTap: () { /* Futura pagina notifiche */ },
+          child: _buildIconBtn(Icons.notifications_none_rounded),
+        ),
       ],
     );
   }
@@ -86,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- CARD PREMIUM ---
-  // --- CARD PREMIUM ---
   Widget _buildDailyTaskCard() {
     return GestureDetector(
       // --- ECCO IL COLLEGAMENTO MAGICO ---
@@ -94,7 +104,8 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const DailyTaskScreen(),
+            // Togli "const" e passagli la data di oggi!
+            builder: (context) => DailyTaskScreen(date: DateTime.now()), 
           ),
         );
       },
@@ -262,3 +273,134 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+// --- POPUP CALENDARIO STILE LIQUID GLASS (Design coerente) ---
+  void _showCalendarPopup(BuildContext context) {
+    DateTime focusedDay = DateTime.now();
+    DateTime? selectedDay = DateTime.now();
+
+    final Color colorAzzurro = const Color(0xFF5A8B9E); // Il tuo azzurro core
+    final Color colorOrange = const Color(0xFFF4A261); // L'arancione del progresso card
+
+    showDialog(
+      context: context,
+      barrierColor: colorAzzurro.withValues(alpha: 0.15), // Overlay azzurrino leggero
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8), // Sfoca la Home dietro
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                return Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85), // Vetro bianco
+                    borderRadius: BorderRadius.circular(40),
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorAzzurro.withValues(alpha: 0.12),
+                        blurRadius: 30,
+                        offset: const Offset(0, 15)
+                      )
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // --- CALENDARIO ---
+                      TableCalendar(
+                        firstDay: DateTime.utc(2020, 1, 1),
+                        lastDay: DateTime.utc(2030, 12, 31),
+                        focusedDay: focusedDay,
+                        selectedDayPredicate: (day) => isSameDay(selectedDay, day),
+                        
+                        // --- HEADER STILE FIGMA + APP ---
+                        headerStyle: HeaderStyle(
+                          formatButtonVisible: false,
+                          titleCentered: true,
+                          leftChevronIcon: _buildCalNavBtn(Icons.chevron_left_rounded, colorAzzurro),
+                          rightChevronIcon: _buildCalNavBtn(Icons.chevron_right_rounded, colorAzzurro),
+                          titleTextStyle: GoogleFonts.poppins(
+                            fontSize: 18, 
+                            fontWeight: FontWeight.w800, 
+                            color: const Color(0xFF3D342C)
+                          ),
+                        ),
+
+                        // --- GIORNI SETTIMANA (Arancio come su Figma) ---
+                        daysOfWeekStyle: DaysOfWeekStyle(
+                          weekdayStyle: GoogleFonts.poppins(color: colorOrange, fontSize: 13, fontWeight: FontWeight.w700),
+                          weekendStyle: GoogleFonts.poppins(color: colorOrange, fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+
+                        // --- STILE NUMERI E SELEZIONE ---
+                        calendarStyle: CalendarStyle(
+                          outsideDaysVisible: false,
+                          defaultTextStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontWeight: FontWeight.w600),
+                          weekendTextStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontWeight: FontWeight.w600),
+                          
+                          // Oggi (Solo un cerchio vuoto azzurro)
+                          todayDecoration: BoxDecoration(
+                            border: Border.all(color: colorAzzurro.withValues(alpha: 0.5), width: 2),
+                            shape: BoxShape.circle,
+                          ),
+                          todayTextStyle: GoogleFonts.poppins(color: colorAzzurro, fontWeight: FontWeight.w800),
+
+                          // Selezionato (Pillola Azzurra con Ombra Glow)
+                          selectedDecoration: BoxDecoration(
+                            color: colorAzzurro,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: colorAzzurro.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
+                            ]
+                          ),
+
+                          // Pallino Task (Arancio come nella Home Card)
+                          markerDecoration: BoxDecoration(color: colorOrange, shape: BoxShape.circle),
+                          markersMaxCount: 1,
+                        ),
+
+                        // --- AZIONE AL CLICK ---
+                        onDaySelected: (selected, focused) {
+                          setDialogState(() {
+                            selectedDay = selected;
+                            focusedDay = focused;
+                          });
+
+                          Future.delayed(const Duration(milliseconds: 250), () {
+                            Navigator.pop(context); // Chiude Popup
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DailyTaskScreen(date: selected),
+                              ),
+                            );
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper per i tastini di navigazione del calendario
+  Widget _buildCalNavBtn(IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Icon(icon, color: color, size: 24),
+    );
+  }

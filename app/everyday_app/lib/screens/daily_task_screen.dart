@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart'; // IMPORTANTE: Aggiunto per formattare la data
 import 'dart:ui';
 import '../utils/status_color_utils.dart';
 import 'add_task_screen.dart';
@@ -26,7 +27,10 @@ class DailyTask {
 
 // --- SCHERMATA PRINCIPALE ---
 class DailyTaskScreen extends StatefulWidget {
-  const DailyTaskScreen({super.key});
+  // --- NOVITÀ: Richiede la data dal calendario ---
+  final DateTime date; 
+
+  const DailyTaskScreen({super.key, required this.date});
 
   @override
   State<DailyTaskScreen> createState() => _DailyTaskScreenState();
@@ -86,7 +90,87 @@ class _DailyTaskScreenState extends State<DailyTaskScreen> {
                 physics: const BouncingScrollPhysics(),
                 itemCount: _tasks.length,
                 itemBuilder: (context, index) {
-                  return ExpandableTaskCard(task: _tasks[index]);
+                  final task = _tasks[index];
+                  return Dismissible(
+                    key: Key(task.id),
+                    direction: DismissDirection.endToStart,
+                    onDismissed: (direction) {
+                      final removedTask = _tasks[index];
+                      final removedIndex = index;
+
+                      setState(() {
+                        _tasks.removeAt(index);
+                      });
+
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          elevation: 0,
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: Colors.transparent,
+                          margin: const EdgeInsets.only(bottom: 20, left: 24, right: 24),
+                          content: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF5A8B9E).withValues(alpha: 0.15), width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                )
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info_outline_rounded, color: Color(0xFF5A8B9E), size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Task rimosso',
+                                    style: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontSize: 14, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                    setState(() {
+                                      _tasks.insert(removedIndex, removedTask);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'Annulla',
+                                      style: GoogleFonts.poppins(color: const Color(0xFFF28482), fontSize: 13, fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                    },
+                    background: Container(
+                      margin: const EdgeInsets.only(bottom: 24.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF28482).withValues(alpha: 0.8), 
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 32),
+                    ),
+                    child: ExpandableTaskCard(task: task),
+                  );
                 },
               ),
             ),
@@ -98,6 +182,9 @@ class _DailyTaskScreenState extends State<DailyTaskScreen> {
 
   // --- HEADER WIDGET ---
   Widget _buildPremiumHeader(BuildContext context) {
+    // Formatta la data per mostrarla sotto il titolo (Es. "15 Mar, 2026")
+    String formattedDate = DateFormat('dd MMM, yyyy').format(widget.date);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -115,30 +202,41 @@ class _DailyTaskScreenState extends State<DailyTaskScreen> {
           ),
         ),
         
-        // Titolo
-        Text(
-          'Daily Task',
-          style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF5A8B9E)),
+        // Titolo Centrale con la Data sotto
+        Column(
+          children: [
+            Text(
+              'Daily Task',
+              style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF5A8B9E)),
+            ),
+            Text(
+              formattedDate, 
+              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.5)),
+            ),
+          ],
         ),
         
         // Tasto Aggiungi (+)
-     GestureDetector(
-       onTap: () {
-         Navigator.push(
-           context,
-           MaterialPageRoute(builder: (context) => const AddTaskScreen()),
-         );
-       },
-       child: Container(
-         width: 48, height: 48,
-         decoration: BoxDecoration(
-           color: Colors.white, shape: BoxShape.circle,
-           border: Border.all(color: const Color(0xFF5A8B9E).withValues(alpha: 0.1), width: 1),
-           boxShadow: [BoxShadow(color: const Color(0xFF5A8B9E).withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
-         ),
-         child: const Icon(Icons.add_rounded, color: Color(0xFF5A8B9E), size: 28),
-       ),
-     ),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                // --- NOVITÀ: Passiamo la data al form di aggiunta! ---
+                builder: (context) => AddTaskScreen(initialDate: widget.date),
+              ),
+            );
+          },
+          child: Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white, shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF5A8B9E).withValues(alpha: 0.1), width: 1),
+              boxShadow: [BoxShadow(color: const Color(0xFF5A8B9E).withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+            ),
+            child: const Icon(Icons.add_rounded, color: Color(0xFF5A8B9E), size: 28),
+          ),
+        ),
       ],
     );
   }
@@ -156,10 +254,9 @@ class ExpandableTaskCard extends StatefulWidget {
 class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
   bool _isExpanded = false;
 
-  // Nuova Logica Colori: Usa la funzione del Fridge Keeping per l'azzurro, o un grigio scuro se completato
   Color _getDynamicColor() {
     bool isAllDone = widget.task.subTasks.every((st) => st.isCompleted);
-    return isAllDone ? const Color(0xFF7A898D) : getStatusColor('safe'); // <-- Usa la TUA funzione per l'azzurro esatto
+    return isAllDone ? const Color(0xFF7A898D) : getStatusColor('safe');
   }
 
   @override
@@ -175,15 +272,13 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
           // --- SFONDO BIANCO ESPANSO CON I SUB-TASKS ---
           if (_isExpanded)
             Container(
-              margin: const EdgeInsets.only(top: 25), // Lascia spazio alla pillola colorata
+              margin: const EdgeInsets.only(top: 25), 
               padding: const EdgeInsets.only(top: 70, bottom: 16, left: 16, right: 16),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8), // Bianco traslucido morbidissimo
+                color: Colors.white.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: Colors.white, width: 1.5),
-                boxShadow: [
-                  BoxShadow(color: statusColor.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 10))
-                ]
+                boxShadow: [BoxShadow(color: statusColor.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 10))]
               ),
               child: Column(
                 children: widget.task.subTasks.map((subTask) => _buildSubTaskRow(subTask)).toList(),
@@ -197,24 +292,20 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
               borderRadius: BorderRadius.circular(30),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-                child: AnimatedContainer( // Sfuma il colore quando completi tutto!
+                child: AnimatedContainer( 
                   duration: const Duration(milliseconds: 300),
-                  height: 75, // Più alta per far respirare titolo e orario
+                  height: 75,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft, end: Alignment.bottomRight,
-                      colors: [
-                        statusColor.withValues(alpha: 0.15), // <-- Sfumatura leggera, come nel Fridge Keeping
-                        Colors.white.withValues(alpha: 0.6)  
-                      ]
+                      colors: [statusColor.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.6)]
                     ),
                     borderRadius: BorderRadius.circular(30),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.5),
                   ),
                   child: Row(
                     children: [
-                      // Icona tonda per richiamare lo stile del frigo, invece del pallino nero
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
@@ -230,18 +321,14 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // TITOLO TASK
                             Text(
                               widget.task.title,
                               style: GoogleFonts.poppins(
-                                fontSize: 16, 
-                                fontWeight: FontWeight.w700, 
-                                color: const Color(0xFF3D342C),
-                                decoration: isAllDone ? TextDecoration.lineThrough : TextDecoration.none, // Sbarra il titolo se finito
+                                fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C),
+                                decoration: isAllDone ? TextDecoration.lineThrough : TextDecoration.none, 
                               ),
                             ),
                             const SizedBox(height: 2),
-                            // NUOVO ORARIO: Pulito, integrato sotto il titolo
                             Row(
                               children: [
                                 Icon(Icons.access_time_rounded, size: 14, color: const Color(0xFF3D342C).withValues(alpha: 0.5)),
@@ -263,8 +350,7 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
                         ),
                         child: Icon(
                           _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, 
-                          color: statusColor, 
-                          size: 20
+                          color: statusColor, size: 20
                         ),
                       ),
                     ],
@@ -278,11 +364,8 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
     );
   }
 
-  // --- SINGOLO SUB-TASK (Lista Interna) ---
   Widget _buildSubTaskRow(SubTask subTask) {
     final isDone = subTask.isCompleted;
-    
-    // Aggiornati anche i colori dei check interni per usare lo stesso azzurro del frigo
     final boxColor = isDone ? getStatusColor('safe') : const Color(0xFFF28482);
     final iconData = isDone ? Icons.check : Icons.close;
 
@@ -294,8 +377,7 @@ class _ExpandableTaskCardState extends State<ExpandableTaskCard> {
           Text(
             subTask.title,
             style: GoogleFonts.poppins(
-              fontSize: 14, 
-              fontWeight: FontWeight.w600, 
+              fontSize: 14, fontWeight: FontWeight.w600, 
               color: isDone ? const Color(0xFF3D342C).withValues(alpha: 0.5) : const Color(0xFF3D342C),
               decoration: isDone ? TextDecoration.lineThrough : TextDecoration.none,
             ),
