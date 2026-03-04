@@ -56,11 +56,15 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
   }
 
   List<String> get _availableFloors {
-    final floors = <String>{'First Floor', 'Second Floor', 'Third Floor'};
+    final floors = <String>{};
     for (final room in _allRooms) {
-      floors.add(room.floor);
+      final floorName = room.floor.trim();
+      if (floorName.isNotEmpty) {
+        floors.add(floorName);
+      }
     }
-    return floors.toList();
+    final sortedFloors = floors.toList()..sort();
+    return sortedFloors;
   }
 
   // Filtra le stanze in base al piano selezionato
@@ -110,8 +114,9 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
         _allRooms
           ..clear()
           ..addAll(rooms);
-        if (!_availableFloors.contains(_selectedFloor)) {
-          _selectedFloor = _availableFloors.first;
+        final floors = _availableFloors;
+        if (floors.isNotEmpty && !floors.contains(_selectedFloor)) {
+          _selectedFloor = floors.first;
         }
       });
     } catch (error) {
@@ -121,10 +126,11 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
             'Home configuration table not available. Ask backend to add `home_configuration(household_id, floor, room)`.';
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -132,12 +138,21 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
     final householdId = AppContext.instance.householdId;
     if (householdId == null) return;
 
+    final floorName = _selectedFloor.trim().isEmpty
+        ? 'First Floor'
+        : _selectedFloor.trim();
+
     try {
       await Supabase.instance.client.from('home_configuration').insert({
         'household_id': householdId,
-        'floor': _selectedFloor,
+        'floor': floorName,
         'room': roomName,
       });
+      if (mounted) {
+        setState(() {
+          _selectedFloor = floorName;
+        });
+      }
       await _loadRooms();
       _showSuccessSnackBar('Room added');
     } catch (error) {

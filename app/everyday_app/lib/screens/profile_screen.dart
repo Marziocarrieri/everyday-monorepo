@@ -606,6 +606,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       letterSpacing: 2,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This code remains valid until a new one is generated.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
