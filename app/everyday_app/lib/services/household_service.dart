@@ -2,6 +2,7 @@ import '../models/household.dart';
 import '../repositories/household_repository.dart';
 import 'auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class HouseholdService {
   final HouseholdRepository _repo = HouseholdRepository();
@@ -59,5 +60,26 @@ class HouseholdService {
     if (user == null) return [];
 
     return await _repo.getHouseholdsForUser(user.id);
+  }
+
+  Future<HouseholdJoinResult> joinHouseholdByInviteCode({
+    required String inviteCode,
+    required String role,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      return await _repo.joinByInviteCode(
+        userId: user.id,
+        inviteCode: inviteCode.toUpperCase(),
+        role: role,
+      );
+    } catch (error) {
+      debugPrint('Error joining household by invite: $error');
+      rethrow;
+    }
   }
 }

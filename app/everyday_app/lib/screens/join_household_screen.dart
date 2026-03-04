@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/screens/welcome_screen.dart';
 import 'package:everyday_app/screens/household_onboarding_screen.dart';
 import 'package:everyday_app/services/auth_service.dart';
+import 'package:everyday_app/services/household_service.dart';
 import 'package:everyday_app/services/session_initializer.dart';
 
 class JoinHouseholdScreen extends StatefulWidget {
@@ -18,6 +18,7 @@ class JoinHouseholdScreen extends StatefulWidget {
 class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
   final TextEditingController _codeController = TextEditingController();
   final SessionInitializer _sessionInitializer = SessionInitializer();
+  final HouseholdService _householdService = HouseholdService();
 
   bool _isLoading = false;
   String? _error;
@@ -46,44 +47,13 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
     });
 
     try {
-      final normalizedCode = inviteCode.toUpperCase();
+      final joinResult = await _householdService.joinHouseholdByInviteCode(
+        inviteCode: inviteCode,
+        role: _selectedRole,
+      );
 
-      final inviteRow = await Supabase.instance.client
-          .from('household_invite')
-          .select('household_id')
-          .eq('invite_code', normalizedCode)
-          .maybeSingle();
-
-      if (inviteRow == null) {
-        throw Exception('Invalid invite code');
-      }
-
-      final inviteMap = Map<String, dynamic>.from(inviteRow);
-      final householdId = inviteMap['household_id'] as String?;
-      if (householdId == null) {
-        throw Exception('Invalid invite code');
-      }
-
-      final membershipRow = await Supabase.instance.client
-          .from('household_member')
-          .insert({
-            'user_id': currentUser.id,
-            'household_id': householdId,
-            'role': _selectedRole,
-          })
-          .select('id, household_id')
-          .single();
-
-      final membershipMap = Map<String, dynamic>.from(membershipRow);
-      final membershipId = membershipMap['id'] as String?;
-      final joinedHouseholdId = membershipMap['household_id'] as String?;
-
-      if (membershipId == null || joinedHouseholdId == null) {
-        throw Exception('Membership creation failed');
-      }
-
-      AppContext.instance.setMembership(membershipId);
-      AppContext.instance.setActiveHousehold(joinedHouseholdId);
+      AppContext.instance.setMembership(joinResult.membershipId);
+      AppContext.instance.setActiveHousehold(joinResult.householdId);
       await AppContext.instance.reloadMemberContext();
 
       final state = await _sessionInitializer.initialize();
@@ -102,6 +72,7 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
         MaterialPageRoute(builder: (_) => const HouseholdOnboardingScreen()),
       );
     } catch (error) {
+      debugPrint('Error joining household: $error');
       if (!mounted) return;
       setState(() {
         _error = error.toString();

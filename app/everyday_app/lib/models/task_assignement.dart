@@ -5,6 +5,7 @@ class TaskAssignment {
   final String taskId;
   final String memberId;
   final String status; // 'TODO', 'DONE', 'SKIPPED'
+  final String? note;
   final DateTime? completedAt;
   final HouseholdMember? member; // Dettagli di chi lo deve fare
 
@@ -13,6 +14,7 @@ class TaskAssignment {
     required this.taskId,
     required this.memberId,
     required this.status,
+    this.note,
     this.completedAt,
     this.member,
   });
@@ -23,6 +25,7 @@ class TaskAssignment {
       taskId: json['task_id'],
       memberId: json['member_id'],
       status: json['status'] ?? 'TODO',
+      note: json['note'] as String?,
       
       // La data di completamento è opzionale
       //completedAt: json['completed_at'] != null 

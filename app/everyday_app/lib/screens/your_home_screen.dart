@@ -1,17 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/app_context.dart';
+import '../models/household_floor.dart';
+import '../services/home_configuration_service.dart';
 
 // --- MODELLO DATI PER LA STANZA ---
 class RoomItem {
   final String id;
   final String name;
   final String floor;
+  final String floorId;
+  final String? roomType;
 
-  RoomItem({required this.id, required this.name, required this.floor});
+  RoomItem({
+    required this.id,
+    required this.name,
+    required this.floor,
+    required this.floorId,
+    this.roomType,
+  });
 }
 
 class YourHomeScreen extends StatefulWidget {
@@ -23,12 +32,47 @@ class YourHomeScreen extends StatefulWidget {
 
 class _YourHomeScreenState extends State<YourHomeScreen> {
   // Stato: Piano selezionato e Modalità Modifica
-  String _selectedFloor = 'First Floor';
+  String _selectedFloor = '';
+  String? _selectedFloorId;
   bool _isEditMode = false;
   bool _isLoading = true;
   String? _error;
 
   final List<RoomItem> _allRooms = [];
+  final HomeConfigurationService _homeConfigurationService =
+      HomeConfigurationService();
+  List<HouseholdFloor> _floors = const [];
+  static const List<String> _roomTypes = [
+    'kitchen',
+    'bathroom',
+    'bedroom',
+    'living_room',
+    'garage',
+    'garden',
+    'other',
+  ];
+
+  String _formatRoomTypeLabel(String rawType) {
+    final normalized = rawType.trim().replaceAll('_', ' ');
+    if (normalized.isEmpty) return rawType;
+
+    return normalized
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .map(
+          (word) =>
+              '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
+
+  String _roomDisplayLabel(RoomItem room) {
+    final roomType = room.roomType;
+    if (roomType == null || roomType.trim().isEmpty) {
+      return room.name;
+    }
+    return '${room.name} (${_formatRoomTypeLabel(roomType)})';
+  }
 
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
@@ -47,7 +91,7 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRooms();
+    _loadHomeConfiguration();
   }
 
   @override
@@ -56,23 +100,19 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
   }
 
   List<String> get _availableFloors {
-    final floors = <String>{};
-    for (final room in _allRooms) {
-      final floorName = room.floor.trim();
-      if (floorName.isNotEmpty) {
-        floors.add(floorName);
-      }
-    }
-    final sortedFloors = floors.toList()..sort();
-    return sortedFloors;
+    return _floors.map((floor) => floor.name).toList();
   }
 
   // Filtra le stanze in base al piano selezionato
   List<RoomItem> get _currentFloorRooms {
-    return _allRooms.where((room) => room.floor == _selectedFloor).toList();
+    final selectedFloorId = _selectedFloorId;
+    if (selectedFloorId == null) return const [];
+    return _allRooms
+        .where((room) => room.floorId == selectedFloorId)
+        .toList();
   }
 
-  Future<void> _loadRooms() async {
+  Future<void> _loadHomeConfiguration() async {
     final householdId = AppContext.instance.householdId;
     if (householdId == null) {
       if (!mounted) return;
@@ -91,39 +131,61 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
     }
 
     try {
-      final response = await Supabase.instance.client
-          .from('home_configuration')
-          .select('id, floor, room')
-          .eq('household_id', householdId)
-          .order('created_at', ascending: true);
+      final floors = await _homeConfigurationService.loadFloors(householdId);
 
-      final rooms = (response as List)
-          .map((row) => Map<String, dynamic>.from(row as Map))
-          .map(
-            (json) => RoomItem(
-              id: (json['id'] as String?) ?? '',
-              name: (json['room'] as String?) ?? '',
-              floor: (json['floor'] as String?) ?? 'First Floor',
-            ),
-          )
-          .where((room) => room.id.isNotEmpty && room.name.isNotEmpty)
-          .toList();
+      if (!mounted) return;
+      if (floors.isEmpty) {
+        setState(() {
+          _floors = const [];
+          _allRooms.clear();
+          _selectedFloor = '';
+          _selectedFloorId = null;
+        });
+        return;
+      }
+
+      HouseholdFloor selectedFloor = floors.first;
+      final currentSelectedFloorId = _selectedFloorId;
+      if (currentSelectedFloorId != null) {
+        for (final floor in floors) {
+          if (floor.id == currentSelectedFloorId) {
+            selectedFloor = floor;
+            break;
+          }
+        }
+      }
+
+      final rooms = await _homeConfigurationService.loadRooms(
+        householdId: householdId,
+        floorId: selectedFloor.id,
+      );
 
       if (!mounted) return;
       setState(() {
+        _floors = floors;
+        _selectedFloor = selectedFloor.name;
+        _selectedFloorId = selectedFloor.id;
         _allRooms
           ..clear()
-          ..addAll(rooms);
-        final floors = _availableFloors;
-        if (floors.isNotEmpty && !floors.contains(_selectedFloor)) {
-          _selectedFloor = floors.first;
-        }
+          ..addAll(
+            rooms
+                .map(
+                  (room) => RoomItem(
+                    id: room.id,
+                    name: room.name,
+                    floor: selectedFloor.name,
+                    floorId: selectedFloor.id,
+                    roomType: room.roomType,
+                  ),
+                )
+                .toList(),
+          );
       });
     } catch (error) {
+      debugPrint('Error loading home configuration: $error');
       if (!mounted) return;
       setState(() {
-        _error =
-            'Home configuration table not available. Ask backend to add `home_configuration(household_id, floor, room)`.';
+        _error = 'Unable to load home configuration';
       });
     } finally {
       if (mounted) {
@@ -134,28 +196,32 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
     }
   }
 
-  Future<void> _addRoom(String roomName) async {
+  Future<void> _addRoom(String roomName, {String? roomType}) async {
     final householdId = AppContext.instance.householdId;
     if (householdId == null) return;
-
-    final floorName = _selectedFloor.trim().isEmpty
-        ? 'First Floor'
-        : _selectedFloor.trim();
+    final floorId = _selectedFloorId;
+    if (floorId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No floor available for this household yet'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     try {
-      await Supabase.instance.client.from('home_configuration').insert({
-        'household_id': householdId,
-        'floor': floorName,
-        'room': roomName,
-      });
-      if (mounted) {
-        setState(() {
-          _selectedFloor = floorName;
-        });
-      }
-      await _loadRooms();
+      await _homeConfigurationService.addRoom(
+        householdId: householdId,
+        floorId: floorId,
+        name: roomName,
+        roomType: roomType,
+      );
+      await _loadHomeConfiguration();
       _showSuccessSnackBar('Room added');
     } catch (error) {
+      debugPrint('Error adding room: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -163,15 +229,40 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
     }
   }
 
+  Future<void> _addFloor(String floorName) async {
+    final householdId = AppContext.instance.householdId;
+    if (householdId == null) return;
+
+    try {
+      await _homeConfigurationService.addFloor(
+        householdId: householdId,
+        name: floorName,
+        floorOrder: _floors.length,
+      );
+      await _loadHomeConfiguration();
+      _showSuccessSnackBar('Floor added');
+    } catch (error) {
+      debugPrint('Error adding floor: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  Future<void> _openAddFloorFlow() async {
+    final floorName = await _showAddFloorModal(context);
+    if (floorName == null || floorName.trim().isEmpty) return;
+    await _addFloor(floorName.trim());
+  }
+
   Future<void> _removeRoom(String id) async {
     try {
-      await Supabase.instance.client
-          .from('home_configuration')
-          .delete()
-          .eq('id', id);
-      await _loadRooms();
+      await _homeConfigurationService.removeRoom(id);
+      await _loadHomeConfiguration();
       _showSuccessSnackBar('Room deleted');
     } catch (error) {
+      debugPrint('Error deleting room: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -194,80 +285,85 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
               child: _buildHeader(context),
             ),
 
-            // PIANO SELEZIONATO E TASTO EDIT
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Tasto Edit (per mostrare/nascondere i meno rossi)
-                  GestureDetector(
-                    onTap: () => setState(() => _isEditMode = !_isEditMode),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _isEditMode
-                            ? const Color(0xFFE76F51).withValues(alpha: 0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _isEditMode
-                              ? const Color(0xFFE76F51).withValues(alpha: 0.5)
-                              : Colors.transparent,
-                        ),
-                      ),
-                      child: Text(
-                        _isEditMode ? 'Done' : 'Edit Rooms',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: _isEditMode
-                              ? const Color(0xFFE76F51)
-                              : const Color(0xFF5A8B9E),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Pillola del Piano Selezionato
-                  GestureDetector(
-                    onTap: () => _showFloorSelectorModal(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D342C).withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
+            if (!_isLoading) ...[
+              if (_floors.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            _selectedFloor,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF3D342C),
+                          GestureDetector(
+                            onTap: () => setState(() => _isEditMode = !_isEditMode),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _isEditMode
+                                    ? const Color(0xFFE76F51).withValues(alpha: 0.1)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: _isEditMode
+                                      ? const Color(0xFFE76F51).withValues(alpha: 0.5)
+                                      : Colors.transparent,
+                                ),
+                              ),
+                              child: Text(
+                                _isEditMode ? 'Done' : 'Edit Rooms',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: _isEditMode
+                                      ? const Color(0xFFE76F51)
+                                      : const Color(0xFF5A8B9E),
+                                ),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: Color(0xFF3D342C),
-                            size: 18,
+                          GestureDetector(
+                            onTap: () => _showFloorSelectorModal(context),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3D342C).withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    _selectedFloor,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF3D342C),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: Color(0xFF3D342C),
+                                    size: 18,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+                ),
+              const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 12),
 
             if (_error != null)
               Padding(
@@ -279,7 +375,11 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : GridView.builder(
+                    : (_selectedFloorId == null
+                        ? _buildNoFloorsState()
+                        : _currentFloorRooms.isEmpty
+                        ? _buildNoRoomsState()
+                        : GridView.builder(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24.0,
                         vertical: 10.0,
@@ -301,7 +401,7 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
                         final room = _currentFloorRooms[index];
                         return _buildRoomCard(room);
                       },
-                    ),
+                    )),
             ),
           ],
         ),
@@ -414,7 +514,12 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           transform: Matrix4.identity()
-            ..scale(isHovered ? 1.05 : 1.0), // Si ingrandisce
+            ..scaleByDouble(
+              isHovered ? 1.05 : 1.0,
+              isHovered ? 1.05 : 1.0,
+              1.0,
+              1.0,
+            ), // Si ingrandisce
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
             child: BackdropFilter(
@@ -446,7 +551,7 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12.0),
                     child: Text(
-                      room.name,
+                      _roomDisplayLabel(room),
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
@@ -494,9 +599,9 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
   Widget _buildAddRoomCard() {
     return GestureDetector(
       onTap: () async {
-        final roomName = await _showAddRoomModal(context);
-        if (roomName == null || roomName.trim().isEmpty) return;
-        await _addRoom(roomName.trim());
+        final newRoom = await _showAddRoomModal(context);
+        if (newRoom == null || newRoom.name.trim().isEmpty) return;
+        await _addRoom(newRoom.name.trim(), roomType: newRoom.roomType);
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
@@ -546,6 +651,16 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
   void _showFloorSelectorModal(BuildContext context) {
     final floors = _availableFloors;
 
+    if (floors.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No floors available yet'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -593,6 +708,38 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
                   isLast,
                 );
               }),
+              const SizedBox(height: 6),
+              Container(
+                height: 1,
+                color: const Color(0xFF3D342C).withValues(alpha: 0.08),
+              ),
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _openAddFloorFlow();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.add_rounded,
+                        color: Color(0xFF5A8B9E),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '+ Add floor',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF5A8B9E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         );
@@ -609,7 +756,16 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
   ) {
     return GestureDetector(
       onTap: () {
-        setState(() => _selectedFloor = floorName);
+        for (final floor in _floors) {
+          if (floor.name == floorName) {
+            setState(() {
+              _selectedFloor = floor.name;
+              _selectedFloorId = floor.id;
+            });
+            break;
+          }
+        }
+        _loadHomeConfiguration();
         Navigator.pop(context); // Chiude il modal dopo la selezione
       },
       child: Container(
@@ -656,10 +812,11 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
   // ==========================================
   // MODAL: AGGIUNGI NUOVA STANZA
   // ==========================================
-  Future<String?> _showAddRoomModal(BuildContext context) {
+  Future<_NewRoomData?> _showAddRoomModal(BuildContext context) {
     final roomNameController = TextEditingController();
+    String? selectedRoomType;
 
-    return showModalBottomSheet<String>(
+    return showModalBottomSheet<_NewRoomData>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -689,10 +846,12 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
                   width: 1.5,
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                child: StatefulBuilder(
+                  builder: (context, setModalState) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                   Center(
                     child: Container(
                       width: 40,
@@ -762,12 +921,72 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
                   ),
                   const SizedBox(height: 30),
 
+                  Text(
+                    'Room type (optional)',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF3D342C).withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    height: 55,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF5A8B9E).withValues(alpha: 0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedRoomType,
+                        isExpanded: true,
+                        hint: Text(
+                          'Select a type',
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFF3D342C).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        items: _roomTypes
+                            .map(
+                              (type) => DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(
+                                  type,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: const Color(0xFF3D342C),
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setModalState(() {
+                            selectedRoomType = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+
                   // Bottone Aggiungi
                   GestureDetector(
                     onTap: () {
                       final roomName = roomNameController.text.trim();
                       if (roomName.isNotEmpty) {
-                        Navigator.pop(context, roomName);
+                        Navigator.pop(
+                          context,
+                          _NewRoomData(
+                            name: roomName,
+                            roomType: selectedRoomType,
+                          ),
+                        );
                       }
                     },
                     child: Container(
@@ -801,6 +1020,104 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
                     ),
                   ),
                 ],
+                    );
+                  },
+                ),
+              ),
+            ),
+            );
+      },
+    );
+  }
+
+  Widget _buildNoFloorsState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'No floors available',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF3D342C).withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _openAddFloorFlow,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('+ Add your first floor'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _showAddFloorModal(BuildContext context) {
+    final floorNameController = TextEditingController();
+
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+            child: Container(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Add a new floor',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF5A8B9E),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: floorNameController,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. Ground Floor',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final floorName = floorNameController.text.trim();
+                        if (floorName.isEmpty) return;
+                        Navigator.pop(context, floorName);
+                      },
+                      child: const Text('Add floor'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -808,4 +1125,45 @@ class _YourHomeScreenState extends State<YourHomeScreen> {
       },
     );
   }
+
+  Widget _buildNoRoomsState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'No rooms yet',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF3D342C),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () async {
+                final newRoom = await _showAddRoomModal(context);
+                if (newRoom == null || newRoom.name.trim().isEmpty) return;
+                await _addRoom(
+                  newRoom.name.trim(),
+                  roomType: newRoom.roomType,
+                );
+              },
+              child: const Text('Add your first room'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NewRoomData {
+  final String name;
+  final String? roomType;
+
+  const _NewRoomData({required this.name, this.roomType});
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; 
 import '../core/app_context.dart';
+import '../models/task_with_details.dart';
+import '../services/task_service.dart';
 import 'daily_task_screen.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -14,6 +16,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final TaskService _taskService = TaskService();
+  bool _isLoadingAssignedTasks = true;
+  List<TaskWithDetails> _assignedTasks = const [];
 
   @override
   void initState() {
@@ -21,6 +26,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
     debugPrint("USER: ${AppContext.instance.userId}");
     debugPrint("HOUSEHOLD: ${AppContext.instance.householdId}");
+    _loadAssignedTasks();
+  }
+
+  Future<void> _loadAssignedTasks() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingAssignedTasks = true;
+    });
+
+    try {
+      final tasks = await _taskService.getTasksAssignedToCurrentMember();
+      if (!mounted) return;
+      setState(() {
+        _assignedTasks = tasks;
+      });
+    } catch (error) {
+      debugPrint('Error loading personal dashboard tasks: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingAssignedTasks = false;
+        });
+      }
+    }
+  }
+
+  bool _isSameDay(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
   }
   
   @override
@@ -98,16 +133,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- CARD PREMIUM ---
   Widget _buildDailyTaskCard() {
+    final today = DateTime.now();
+    final todaysTasks = _assignedTasks
+        .where((task) => _isSameDay(task.task.taskDate, today))
+        .toList();
+
+    final totalTasks = todaysTasks.length;
+    final membershipId = AppContext.instance.membershipId;
+    final completedTasks = todaysTasks
+        .where(
+        (task) {
+        final ownAssignment = task.assignments
+          .where((assignment) => assignment.memberId == membershipId)
+          .toList();
+        final assignmentDone = ownAssignment.isNotEmpty &&
+          ownAssignment.first.status.toUpperCase() == 'DONE';
+        final subtasksDone = task.subtasks.isNotEmpty &&
+          task.subtasks.every((subtask) => subtask.isDone);
+        return assignmentDone || subtasksDone;
+        },
+        )
+        .length;
+    final completion = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
+
+    final subtitle = _isLoadingAssignedTasks
+        ? 'Loading your assignments...'
+        : totalTasks == 0
+      ? "You're free today ✨"
+            : '$totalTasks assigned task${totalTasks == 1 ? '' : 's'}';
+
     return GestureDetector(
       // --- ECCO IL COLLEGAMENTO MAGICO ---
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             // Togli "const" e passagli la data di oggi!
             builder: (context) => DailyTaskScreen(date: DateTime.now()), 
           ),
         );
+        await _loadAssignedTasks();
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),
@@ -141,6 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -173,16 +239,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 54),
-                          child: Text(
-                            '24/02/2026', 
-                            style: GoogleFonts.poppins(
-                              color: const Color(0xFF3D342C).withValues(alpha: 0.6), 
-                              fontSize: 14, 
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.5,
-                            )
+                        Flexible(
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 54),
+                            child: Text(
+                              subtitle,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF3D342C).withValues(alpha: 0.6),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -206,29 +276,40 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   flex: 2,
                   child: Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 80, height: 80,
-                          child: CircularProgressIndicator(
-                            value: 0.75, 
-                            strokeWidth: 6,
-                            strokeCap: StrokeCap.round,
-                            backgroundColor: Colors.white.withValues(alpha: 0.5),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF4A261)),
-                          ),
-                        ),
-                        Text(
-                          '75%', 
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w700, 
-                            color: const Color(0xFFF4A261), 
-                            fontSize: 18
+                    child: totalTasks == 0
+                        ? Text(
+                            'No tasks assigned today',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF3D342C).withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
                           )
-                        ),
-                      ],
-                    ),
+                        : Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox(
+                                width: 80,
+                                height: 80,
+                                child: CircularProgressIndicator(
+                                  value: completion,
+                                  strokeWidth: 6,
+                                  strokeCap: StrokeCap.round,
+                                  backgroundColor: Colors.white.withValues(alpha: 0.5),
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF4A261)),
+                                ),
+                              ),
+                              Text(
+                                '${(completion * 100).round()}%',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFF4A261),
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
               ],
@@ -370,10 +451,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             focusedDay = focused;
                           });
 
+                          final rootNavigator = Navigator.of(context);
+
                           Future.delayed(const Duration(milliseconds: 250), () {
-                            Navigator.pop(context); // Chiude Popup
-                            Navigator.push(
-                              context,
+                            if (!rootNavigator.mounted) return;
+                            rootNavigator.pop(); // Chiude Popup
+                            rootNavigator.push(
                               MaterialPageRoute(
                                 builder: (context) => DailyTaskScreen(date: selected),
                               ),

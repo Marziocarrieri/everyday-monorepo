@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import '../models/household_room.dart';
+import '../models/task_with_details.dart';
+import '../services/task_service.dart';
 import '../utils/status_color_utils.dart'; // IMPORTA LA TUA MAGICA FUNZIONE COLORI
 
 // ==========================================
@@ -9,10 +12,18 @@ import '../utils/status_color_utils.dart'; // IMPORTA LA TUA MAGICA FUNZIONE COL
 // ==========================================
 class AddTaskScreen extends StatefulWidget {
   final Set<String>? assignedMemberIds;
+  final bool personalOnly;
+  final TaskWithDetails? initialTask;
   // --- NOVITÀ: Riceviamo la data dalla schermata precedente ---
   final DateTime? initialDate;
 
-  const AddTaskScreen({super.key, this.assignedMemberIds, this.initialDate});
+  const AddTaskScreen({
+    super.key,
+    this.assignedMemberIds,
+    this.initialDate,
+    this.personalOnly = false,
+    this.initialTask,
+  });
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
@@ -27,6 +38,17 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     'Personal Care': ['Beauty Appointment', 'Mental Health Check'],
   };
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialTask != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _openTaskSheet(initialTitle: widget.initialTask!.task.title);
+      });
+    }
+  }
+
   void _openTaskSheet({String? initialTitle}) {
     showModalBottomSheet(
       context: context,
@@ -35,6 +57,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       builder: (context) => AddTaskSheet(
         initialTitle: initialTitle,
         assignedMemberIds: widget.assignedMemberIds,
+        personalOnly: widget.personalOnly,
+        initialTask: widget.initialTask,
         // --- NOVITÀ: Passiamo la data al Bottom Sheet! ---
         initialDate: widget.initialDate, 
       ),
@@ -146,7 +170,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C))
                           ),
                           const SizedBox(height: 12),
-                          ...entry.value.map((taskName) => _buildSuggestionPill(taskName, colorSafeAzzurro)).toList(),
+                          ...entry.value.map((taskName) => _buildSuggestionPill(taskName, colorSafeAzzurro)),
                         ],
                       ),
                     );
@@ -215,10 +239,19 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 class AddTaskSheet extends StatefulWidget {
   final String? initialTitle;
   final Set<String>? assignedMemberIds; 
+  final bool personalOnly;
+  final TaskWithDetails? initialTask;
   // --- NOVITÀ: Il BottomSheet ora accetta la data iniziale! ---
   final DateTime? initialDate; 
 
-  const AddTaskSheet({super.key, this.initialTitle, this.assignedMemberIds, this.initialDate});
+  const AddTaskSheet({
+    super.key,
+    this.initialTitle,
+    this.assignedMemberIds,
+    this.initialDate,
+    this.personalOnly = false,
+    this.initialTask,
+  });
 
   @override
   State<AddTaskSheet> createState() => _AddTaskSheetState();
@@ -226,11 +259,19 @@ class AddTaskSheet extends StatefulWidget {
 
 class _AddTaskSheetState extends State<AddTaskSheet> {
   late final TextEditingController _titleController;
-  final List<TextEditingController> _subTaskControllers = [TextEditingController()];
+  final List<_ChecklistDraft> _checklistItems = [_ChecklistDraft()];
+  final TaskService _taskService = TaskService();
   
   DateTime? _selectedDate;
   DateTime? _startTime;
   DateTime? _endTime;
+  List<HouseholdRoom> _rooms = const [];
+  bool _isLoadingRooms = false;
+  bool _isLoadingAccess = false;
+  bool _isSaving = false;
+  String? _selectedRoomId;
+  TaskCreationAccess? _creationAccess;
+  final Set<String> _selectedMemberIds = <String>{};
 
   final Color colorOrange = const Color(0xFFF4A261);
   final Color colorRed = const Color(0xFFF28482);
@@ -238,20 +279,226 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.initialTitle ?? '');
+    final initialTask = widget.initialTask;
+    _titleController = TextEditingController(
+      text: initialTask?.task.title ?? widget.initialTitle ?? '',
+    );
     // --- NOVITÀ: Preimpostiamo la data scelta dal calendario se esiste ---
-    _selectedDate = widget.initialDate; 
+    _selectedDate = initialTask?.task.taskDate ?? widget.initialDate;
+
+    if (initialTask != null) {
+      _selectedRoomId = initialTask.task.roomId;
+      _startTime = _parseTaskTime(initialTask.task.timeFrom);
+      _endTime = _parseTaskTime(initialTask.task.timeTo);
+
+      _checklistItems.clear();
+      if (initialTask.subtasks.isEmpty) {
+        _checklistItems.add(_ChecklistDraft());
+      } else {
+        for (final subtask in initialTask.subtasks) {
+          _checklistItems.add(
+            _ChecklistDraft(
+              text: subtask.title,
+            ),
+          );
+        }
+      }
+    }
+
+    _loadRooms();
+    _loadCreationAccess();
+  }
+
+  DateTime? _parseTaskTime(String? timeValue) {
+    if (timeValue == null || timeValue.isEmpty) return null;
+    final chunks = timeValue.split(':');
+    if (chunks.length < 2) return null;
+
+    final hour = int.tryParse(chunks[0]);
+    final minute = int.tryParse(chunks[1]);
+    if (hour == null || minute == null) return null;
+
+    final baseDate = _selectedDate ?? DateTime.now();
+    return DateTime(baseDate.year, baseDate.month, baseDate.day, hour, minute);
+  }
+
+  Future<void> _loadRooms() async {
+    setState(() {
+      _isLoadingRooms = true;
+    });
+
+    try {
+      final rooms = await _taskService.getAvailableRooms();
+      if (!mounted) return;
+
+      setState(() {
+        _rooms = rooms;
+        if (_selectedRoomId != null &&
+            _rooms.every((room) => room.id != _selectedRoomId)) {
+          _selectedRoomId = null;
+        }
+      });
+    } catch (error) {
+      debugPrint('Error loading task rooms: $error');
+      if (!mounted) return;
+      setState(() {
+        _rooms = const [];
+        _selectedRoomId = null;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingRooms = false;
+        });
+      }
+    }
   }
 
   void _addSubTask() {
-    setState(() => _subTaskControllers.add(TextEditingController()));
+    setState(() => _checklistItems.add(_ChecklistDraft()));
   }
 
   void _removeSubTask(int index) {
     setState(() {
-      _subTaskControllers[index].dispose();
-      _subTaskControllers.removeAt(index);
+      _checklistItems[index].controller.dispose();
+      _checklistItems.removeAt(index);
     });
+  }
+
+  Future<void> _loadCreationAccess() async {
+    setState(() {
+      _isLoadingAccess = true;
+    });
+
+    final access = await _taskService.getTaskCreationAccess();
+    if (!mounted) return;
+
+    setState(() {
+      _creationAccess = access;
+      _selectedMemberIds.clear();
+
+      if (access.canAssignMultiple) {
+        final initialSet = widget.assignedMemberIds;
+        if (initialSet != null && initialSet.isNotEmpty) {
+          for (final member in access.assignableMembers) {
+            if (initialSet.contains(member.id)) {
+              _selectedMemberIds.add(member.id);
+            }
+          }
+        }
+      } else if (access.assignableMembers.isNotEmpty) {
+        _selectedMemberIds.add(access.assignableMembers.first.id);
+      }
+
+      if (widget.personalOnly && access.assignableMembers.isNotEmpty) {
+        _selectedMemberIds
+          ..clear()
+          ..add(access.assignableMembers.first.id);
+      }
+
+      _isLoadingAccess = false;
+    });
+  }
+
+  Future<void> _submitTask() async {
+    final access = _creationAccess;
+    if (access == null || !access.canCreate) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You are not allowed to create tasks'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Task name is required'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final targetDate = _selectedDate ?? DateTime.now();
+
+    final checklistTitles = _checklistItems
+        .map((item) => item.controller.text.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+
+    final memberIds = widget.personalOnly
+      ? const <String>[]
+      : access.canAssignMultiple
+        ? _selectedMemberIds.toList()
+        : access.assignableMembers.map((member) => member.id).toList();
+
+    if (!widget.personalOnly && memberIds.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select at least one assignee'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final editingTask = widget.initialTask;
+      if (editingTask == null) {
+        await _taskService.createTaskWithDetails(
+          title: title,
+          date: targetDate,
+          timeFrom: _startTime != null ? TimeOfDay.fromDateTime(_startTime!) : null,
+          timeTo: _endTime != null ? TimeOfDay.fromDateTime(_endTime!) : null,
+          visibility: 'ALL',
+          roomId: _selectedRoomId,
+          assignedMemberIds: memberIds,
+          checklistTitles: checklistTitles,
+          personalOnly: widget.personalOnly,
+        );
+      } else {
+        await _taskService.updateTaskWithDetails(
+          taskId: editingTask.task.id,
+          title: title,
+          date: targetDate,
+          timeFrom: _startTime != null ? TimeOfDay.fromDateTime(_startTime!) : null,
+          timeTo: _endTime != null ? TimeOfDay.fromDateTime(_endTime!) : null,
+          visibility: editingTask.task.visibility,
+          roomId: _selectedRoomId,
+          checklistTitles: checklistTitles,
+        );
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      Navigator.pop(context, true);
+    } catch (error) {
+      debugPrint('Error creating task: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   void _showIOSPicker({required Widget child, required VoidCallback onConfirm}) {
@@ -298,7 +545,13 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     DateTime tempTime = isStart ? (_startTime ?? DateTime.now()) : (_endTime ?? DateTime.now().add(const Duration(hours: 1)));
     _showIOSPicker(
       child: CupertinoDatePicker(initialDateTime: tempTime, mode: CupertinoDatePickerMode.time, onDateTimeChanged: (newTime) => tempTime = newTime),
-      onConfirm: () => setState(() { if (isStart) _startTime = tempTime; else _endTime = tempTime; }),
+      onConfirm: () => setState(() {
+        if (isStart) {
+          _startTime = tempTime;
+        } else {
+          _endTime = tempTime;
+        }
+      }),
     );
   }
 
@@ -307,13 +560,17 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   @override
   void dispose() {
     _titleController.dispose();
-    for (var c in _subTaskControllers) { c.dispose(); }
+    for (final item in _checklistItems) {
+      item.controller.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final Color colorSafeAzzurro = getStatusColor('safe');
+    final selectedRoomExists =
+        _selectedRoomId != null && _rooms.any((room) => room.id == _selectedRoomId);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
@@ -343,7 +600,38 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   ),
                 ),
 
-              Text('Task Details', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: colorSafeAzzurro)),
+              if (_isLoadingAccess)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: LinearProgressIndicator(minHeight: 2),
+                )
+              else if (_creationAccess != null && !_creationAccess!.canCreate)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Personnel members cannot create tasks.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFE76F51),
+                    ),
+                  ),
+                ),
+
+              Text(
+                widget.initialTask == null ? 'Task Details' : 'Edit Task',
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: colorSafeAzzurro,
+                ),
+              ),
               const SizedBox(height: 24),
               
               Expanded(
@@ -354,6 +642,139 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                     children: [
                       _buildGlassTextField(controller: _titleController, hint: 'Task Name', color: colorSafeAzzurro, isTitle: true),
                       const SizedBox(height: 20),
+
+                      Container(
+                        height: 56,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedRoomExists ? _selectedRoomId : null,
+                                  isExpanded: true,
+                                  hint: Text(
+                                    'Room (optional)',
+                                    style: GoogleFonts.poppins(
+                                      color: const Color(0xFF3D342C).withValues(alpha: 0.45),
+                                    ),
+                                  ),
+                                  items: [
+                                    DropdownMenuItem<String>(
+                                      value: '',
+                                      child: Text(
+                                        'Room: None',
+                                        style: GoogleFonts.poppins(
+                                          color: const Color(0xFF3D342C).withValues(alpha: 0.75),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    ..._rooms.map(
+                                      (room) => DropdownMenuItem<String>(
+                                        value: room.id,
+                                        child: Text(
+                                          room.name,
+                                          style: GoogleFonts.poppins(
+                                            color: const Color(0xFF3D342C),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedRoomId =
+                                          (value == null || value.isEmpty)
+                                              ? null
+                                              : value;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                            if (_isLoadingRooms)
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      if (!widget.personalOnly && !_isLoadingAccess && _creationAccess != null)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Assignees',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF3D342C),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (_creationAccess!.canAssignMultiple)
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _creationAccess!.assignableMembers
+                                    .map(
+                                      (member) => FilterChip(
+                                        selected: _selectedMemberIds.contains(member.id),
+                                        label: Text(
+                                          member.profile?.name ?? member.id.substring(0, 6),
+                                        ),
+                                        onSelected: (selected) {
+                                          setState(() {
+                                            if (selected) {
+                                              _selectedMemberIds.add(member.id);
+                                            } else {
+                                              _selectedMemberIds.remove(member.id);
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    )
+                                    .toList(),
+                              )
+                            else
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorSafeAzzurro.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _creationAccess!.assignableMembers.isEmpty
+                                      ? 'No assignable member found'
+                                      : 'Assigned to ${_creationAccess!.assignableMembers.first.profile?.name ?? 'self'}',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF3D342C),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
                       
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
@@ -371,12 +792,18 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                       ),
                       const SizedBox(height: 24),
                       
-                      ..._subTaskControllers.asMap().entries.map((entry) {
+                      ..._checklistItems.asMap().entries.map((entry) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Row(
                             children: [
-                              Expanded(child: _buildGlassTextField(controller: entry.value, hint: 'Sub-task detail...', color: colorSafeAzzurro)),
+                              Expanded(
+                                child: _buildGlassTextField(
+                                  controller: entry.value.controller,
+                                  hint: 'Sub-task detail...',
+                                  color: colorSafeAzzurro,
+                                ),
+                              ),
                               const SizedBox(width: 12),
                               GestureDetector(
                                 onTap: () => _removeSubTask(entry.key),
@@ -401,10 +828,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               ),
               
               GestureDetector(
-                onTap: () {
-                  Navigator.pop(context); // Chiude il Bottom Sheet
-                  Navigator.pop(context); // Chiude la AddTaskScreen
-                },
+                onTap: _isSaving ? null : _submitTask,
                 child: Container(
                   width: 70, height: 70, 
                   decoration: BoxDecoration(
@@ -412,7 +836,16 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                     boxShadow: [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8))], 
                     border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2)
                   ), 
-                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 36)
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check_rounded, color: Colors.white, size: 36)
                 ),
               ),
               const SizedBox(height: 10),
@@ -463,4 +896,11 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       ),
     );
   }
+}
+
+class _ChecklistDraft {
+  final TextEditingController controller;
+
+  _ChecklistDraft({String text = ''})
+      : controller = TextEditingController(text: text);
 }

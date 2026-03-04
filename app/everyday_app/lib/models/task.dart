@@ -1,6 +1,7 @@
 class Task {
   final String id;
   final String householdId;
+  final String? roomId;
   final String title;
   final String? description;
   final DateTime taskDate;
@@ -13,6 +14,7 @@ class Task {
   Task({
     required this.id,
     required this.householdId,
+    this.roomId,
     required this.title,
     this.description,
     required this.taskDate,
@@ -26,6 +28,7 @@ class Task {
     return Task(
       id: json['id'],
       householdId: json['household_id'],
+      roomId: json['room_id'],
       title: json['title'],
       description: json['description'],
       taskDate: DateTime.parse(json['task_date']),

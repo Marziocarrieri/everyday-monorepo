@@ -3,6 +3,16 @@ import '../models/household.dart';
 import '../models/household_member.dart'; 
 import 'supabase_client.dart';
 
+class HouseholdJoinResult {
+  final String membershipId;
+  final String householdId;
+
+  const HouseholdJoinResult({
+    required this.membershipId,
+    required this.householdId,
+  });
+}
+
 class HouseholdRepository {
 
   // Crea una nuova casa
@@ -54,5 +64,50 @@ class HouseholdRepository {
       debugPrint('Errore recupero membri: $e');
       return [];
     }
+  }
+
+  Future<HouseholdJoinResult> joinByInviteCode({
+    required String userId,
+    required String inviteCode,
+    required String role,
+  }) async {
+    final inviteRow = await supabase
+        .from('household_invite')
+        .select('household_id')
+        .eq('invite_code', inviteCode)
+        .maybeSingle();
+
+    if (inviteRow == null) {
+      throw Exception('Invalid invite code');
+    }
+
+    final inviteMap = Map<String, dynamic>.from(inviteRow);
+    final householdId = inviteMap['household_id'] as String?;
+    if (householdId == null || householdId.isEmpty) {
+      throw Exception('Invalid invite code');
+    }
+
+    final membershipRow = await supabase
+        .from('household_member')
+        .insert({
+          'user_id': userId,
+          'household_id': householdId,
+          'role': role,
+        })
+        .select('id, household_id')
+        .single();
+
+    final membershipMap = Map<String, dynamic>.from(membershipRow);
+    final membershipId = membershipMap['id'] as String?;
+    final joinedHouseholdId = membershipMap['household_id'] as String?;
+
+    if (membershipId == null || joinedHouseholdId == null) {
+      throw Exception('Membership creation failed');
+    }
+
+    return HouseholdJoinResult(
+      membershipId: membershipId,
+      householdId: joinedHouseholdId,
+    );
   }
 }

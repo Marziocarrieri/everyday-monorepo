@@ -1,3 +1,4 @@
+// TODO: legacy household flow – candidate for removal
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

@@ -1,3 +1,4 @@
+// TODO: legacy household flow – candidate for removal
 import '../../../models/household.dart';
 import '../../../repositories/supabase_client.dart';
 import '../../../services/household_service.dart';
