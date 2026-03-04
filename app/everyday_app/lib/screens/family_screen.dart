@@ -3,7 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'pets_screen.dart';
 import 'add_task_screen.dart';
-import 'member_activities_screen.dart'; 
+import '../repositories/family_repository.dart';
+import '../core/app_context.dart';
+import '../models/household_member.dart';
+import 'member_activities_screen.dart';
 
 class FamilyScreen extends StatefulWidget {
   const FamilyScreen({super.key});
@@ -13,7 +16,55 @@ class FamilyScreen extends StatefulWidget {
 }
 
 class _FamilyScreenState extends State<FamilyScreen> {
-  
+  final FamilyRepository _memberRepository = FamilyRepository();
+  List<HouseholdMember> _members = [];
+  bool _isLoading = false;
+  String? _error;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMembers();
+  }
+
+  Future<void> _loadMembers() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // Fetches the current active household ID from your AppContext
+      final householdId = AppContext.instance.requireHouseholdId();
+      
+      final members = await _memberRepository.getMembers(householdId);
+
+      if (!mounted) return;
+      
+      setState(() {
+        _members = members;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      
+      setState(() {
+        _error = error.toString();
+      });
+      debugPrint('UI Error loading members: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+
+
   void _openMemberSelectionSheet() {
     showModalBottomSheet(
       context: context,
@@ -66,35 +117,32 @@ class _FamilyScreenState extends State<FamilyScreen> {
               const SizedBox(height: 30),
 
               // LISTA CARD PREMIUM (MODIFICATA PER IL CLICK)
+
               Expanded(
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    _buildPremiumFamilyCard(
-                      id: '1', 
-                      name: 'Enrico Cirillo', 
-                      status: 'At home', 
-                      initial: 'E', 
-                      color: const Color(0xFFF4A261)
-                    ),
-                    const SizedBox(height: 20),
-                    _buildPremiumFamilyCard(
-                      id: '2', 
-                      name: 'Leone Cirillo', 
-                      status: 'Not at home', 
-                      initial: 'L', 
-                      color: const Color(0xFF5A8B9E)
-                    ),
-                    const SizedBox(height: 20),
-                    _buildPremiumFamilyCard(
-                      id: '3', 
-                      name: 'Lara Vigorelli', 
-                      status: 'Not at home', 
-                      initial: 'L', 
-                      color: const Color(0xFFF4A261)
-                    ),
-                  ],
-                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator()) // Show loader while fetching
+                    : _error != null
+                        ? Center(child: Text('Error: $_error')) // Show error if it fails
+                        : _members.isEmpty
+                            ? const Center(child: Text('No members found')) // Show empty state
+                            : ListView.builder(
+                                physics: const BouncingScrollPhysics(),
+                                itemCount: _members.length,
+                                itemBuilder: (context, index) {
+                                  final member = _members[index];
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 20.0),
+                                    child: _buildPremiumFamilyCard(
+                                      id: member.id,
+                                      name: member.profile?.name ?? 'Unknown',
+                                      initial: (member.profile?.name ?? '?').isNotEmpty ? (member.profile?.name ?? '?')[0].toUpperCase() : '?',
+                                      color: const Color(0xFFF4A261)
+                                      
+                                    ),
+                                  );
+                                },
+                              ),
               ),
             ],
           ),
@@ -127,7 +175,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
   Widget _buildPremiumFamilyCard({
     required String id, 
     required String name, 
-    required String status, 
+    //required String status, 
     required String initial, 
     required Color color
   }) {
@@ -184,7 +232,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                             children: [
                               Text(name, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
                               const SizedBox(height: 2),
-                              Text(status, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 0.3)),
+                              //Text(status, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 0.3)),
                             ],
                           ),
                         ),
