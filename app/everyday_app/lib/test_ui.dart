@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'screens/your_home_screen.dart'; // Colleghiamo la tua schermata
+import 'screens/CO-HOST/cohost_main_layout.dart'; // Colleghiamo la tua schermata
 
 // Questa è  "porta di servizio"
 void main() {
   runApp(
     const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: YourHomeScreen(), // Mostra subito il tuo capolavoro
+      home: CohostMainLayout(), // Mostra subito il tuo capolavoro
     ),
   );
 }
