@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/app_context.dart';
-import '../../../../screens/login_screen.dart';
-import '../../../../screens/main_layout.dart';
+import 'package:everyday_app/features/legacy/screens/login_screen.dart';
+import 'package:everyday_app/features/legacy/screens/main_layout.dart';
 import '../../data/household_service.dart';
 
 class CreateHouseholdScreen extends StatefulWidget {

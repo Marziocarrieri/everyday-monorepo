@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../screens/login_screen.dart';
+import 'package:everyday_app/features/legacy/screens/login_screen.dart';
 
 class JoinHouseholdScreen extends StatefulWidget {
   const JoinHouseholdScreen({super.key});

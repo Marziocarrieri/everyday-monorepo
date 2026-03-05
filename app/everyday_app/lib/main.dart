@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'screens/login2_screen.dart';
-import 'screens/main_layout.dart';
-import 'screens/welcome_screen.dart';
+import 'package:everyday_app/features/legacy/screens/login2_screen.dart';
+import 'package:everyday_app/features/legacy/screens/main_layout.dart';
+import 'package:everyday_app/features/legacy/screens/welcome_screen.dart';
 import 'services/session_initializer.dart';
 
 Future<void> main() async {

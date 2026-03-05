@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/CO-HOST/cohost_main_layout.dart'; // Colleghiamo la tua schermata
+import 'package:everyday_app/features/legacy/screens/CO-HOST/cohost_main_layout.dart'; // Colleghiamo la tua schermata
 
 // Questa è  "porta di servizio"
 void main() {
