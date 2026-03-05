@@ -25,10 +25,10 @@ class _PetsScreenState extends State<PetsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadMembers();
+    _loadPets();
   }
 
-  Future<void> _loadMembers() async {
+  Future<void> _loadPets() async {
     if (!mounted) return;
     
     setState(() {
@@ -131,8 +131,7 @@ class _PetsScreenState extends State<PetsScreen> {
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 20.0),
                                     child: _buildInvertedPetCard(
-                                      pet.name,
-                                      pet.species ?? 'Unknown Species',
+                                      pet,
                                       const Color(0xFFF4A261),
                                     ),
                                   );
@@ -159,13 +158,13 @@ class _PetsScreenState extends State<PetsScreen> {
     );
   }
 
-  Widget _buildInvertedPetCard(String name, String species, Color pawColor) {
+  Widget _buildInvertedPetCard(Pet pet, Color pawColor) {
     return GestureDetector(
       onTap: () {
         final themeColor = pawColor == const Color(0xFF3D342C) ? const Color(0xFF5A8B9E) : pawColor;
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => PetActivitiesScreen(petName: name, petColor: themeColor)),
+          MaterialPageRoute(builder: (context) => PetActivitiesScreen(petId: pet.id, petColor: themeColor)),
         );
       },
       child: ClipRRect(
@@ -202,9 +201,9 @@ class _PetsScreenState extends State<PetsScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(name, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
+                              Text(pet.name, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
                               const SizedBox(height: 2),
-                              Text(species, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: Colors.white.withValues(alpha: 0.7), fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.3)),
+                              Text(pet.species ?? 'Unknown species', overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: Colors.white.withValues(alpha: 0.7), fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.3)),
                             ],
                           ),
                         ),

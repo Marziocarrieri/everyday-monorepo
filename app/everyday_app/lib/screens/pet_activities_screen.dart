@@ -2,30 +2,66 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import '../repositories/pets_activities_repository.dart';
+import '../models/pet_activity.dart';
+
+
 
 class PetActivitiesScreen extends StatefulWidget {
-  final String petName;
+  final String petId;
   final Color petColor; // Useremo questo come colore di Sfondo!
 
-  const PetActivitiesScreen({super.key, required this.petName, required this.petColor});
+  const PetActivitiesScreen({super.key, required this.petId, required this.petColor});
 
   @override
   State<PetActivitiesScreen> createState() => _PetActivitiesScreenState();
 }
 
 class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
-  final List<Map<String, dynamic>> _activities = [
-    {
-      'date': 'Monday 27/11',
-      'time': '08:00 AM - 09:00 AM',
-      'title': 'Take her to the vet',
-    },
-    {
-      'date': 'Tuesday 28/11',
-      'time': '06:45 PM - 08:45 PM',
-      'title': 'Park walk and training',
+  List<PetActivity> _activities = [];
+
+  final PetActivitiesRepository _activityRepository = PetActivitiesRepository();
+  bool _isLoading = false;
+  String? _error;
+
+
+    @override
+  void initState() {
+    super.initState();
+    _loadActivities();
+  }
+
+  Future<void> _loadActivities() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final activities = await _activityRepository.getActivities(widget.petId);
+
+      if (!mounted) return;
+      
+      setState(() {
+        _activities = activities;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      
+      setState(() {
+        _error = error.toString();
+      });
+      debugPrint('UI Error loading members: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-  ];
+  }
 
   void _openAddActivitySheet() {
     showModalBottomSheet(
@@ -65,8 +101,6 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            
-            // --- LISTA ATTIVITÀ INVERTITA (Vetro Bianco) ---
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 40.0),
@@ -74,8 +108,8 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
                 itemCount: _activities.length,
                 itemBuilder: (context, index) {
                   return ExpandableInvertedDateCard(
-                    data: _activities[index],
-                    color: widget.petColor, // Passiamo il colore per i dettagli interni
+                    activity: _activities[index], // Changed 'data' to 'activity'
+                    color: widget.petColor, 
                   );
                 },
               ),
@@ -100,103 +134,151 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   }
 }
 
-// --- WIDGET CARD FISARMONICA (Vetro Bianco su Sfondo Colorato) ---
-class ExpandableInvertedDateCard extends StatefulWidget {
-  final Map<String, dynamic> data;
-  final Color color;
-  const ExpandableInvertedDateCard({super.key, required this.data, required this.color});
 
-  @override
-  State<ExpandableInvertedDateCard> createState() => _ExpandableInvertedDateCardState();
-}
+  class ExpandableInvertedDateCard extends StatefulWidget {
+    // 1. Changed 'data' from Map to PetActivity
+    final PetActivity activity; 
+    final Color color;
+    
+    const ExpandableInvertedDateCard({
+      super.key, 
+      required this.activity, // Updated parameter name
+      required this.color,
+    });
 
-class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard> {
-  bool _isExpanded = false;
+    @override
+    State<ExpandableInvertedDateCard> createState() => _ExpandableInvertedDateCardState();
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // ESPANSIONE BIANCA TRASLUCIDA
-          if (_isExpanded)
-            Container(
-              margin: const EdgeInsets.only(top: 25),
-              padding: const EdgeInsets.only(top: 70, bottom: 20, left: 20, right: 20),
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2), // Vetro più denso per leggerezza
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.data['time'],
-                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.8)),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.data['title'],
-                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
+  class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard> {
+    bool _isExpanded = false;
 
-          // PILLOLA PRINCIPALE IN VETRO BIANCO
-          GestureDetector(
-            onTap: () => setState(() => _isExpanded = !_isExpanded),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  height: 75,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.white.withValues(alpha: 0.25), Colors.white.withValues(alpha: 0.05)]
+    @override
+    Widget build(BuildContext context) {
+      // 2. Helper to format the Date (e.g., "27/11")
+      final String dateStr = widget.activity.date != null 
+          ? "${widget.activity.date!.day}/${widget.activity.date!.month}" 
+          : "No Date";
+
+      // 3. Helper to format the Time (e.g., "08:00 AM")
+      final String timeStr = widget.activity.time != null 
+          ? widget.activity.time!.format(context) 
+          : "No Time";
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 24.0),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // ESPANSIONE BIANCA TRASLUCIDA
+            if (_isExpanded)
+              Container(
+                margin: const EdgeInsets.only(top: 25),
+                padding: const EdgeInsets.only(top: 70, bottom: 20, left: 20, right: 20),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      timeStr, // Using formatted time
+                      style: GoogleFonts.poppins(
+                        fontSize: 13, 
+                        fontWeight: FontWeight.w600, 
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))]
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle,
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.activity.description ?? 'No Title', // Using class property
+                      style: GoogleFonts.poppins(
+                        fontSize: 18, 
+                        fontWeight: FontWeight.w700, 
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // PILLOLA PRINCIPALE IN VETRO BIANCO
+            GestureDetector(
+              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: 75,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.25), 
+                          Colors.white.withValues(alpha: 0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05), 
+                          blurRadius: 20, 
+                          offset: const Offset(0, 10),
                         ),
-                        child: Icon(Icons.calendar_today_rounded, color: widget.color, size: 20), // Icona del colore del cucciolo!
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          widget.data['date'],
-                          style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Colors.white, 
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.calendar_today_rounded, color: widget.color, size: 20),
                         ),
-                      ),
-                      Icon(
-                        _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, 
-                        color: Colors.white, size: 28
-                      ),
-                    ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            dateStr, // Using formatted date
+                            style: GoogleFonts.poppins(
+                              fontSize: 17, 
+                              fontWeight: FontWeight.w700, 
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          _isExpanded 
+                              ? Icons.keyboard_arrow_up_rounded 
+                              : Icons.keyboard_arrow_down_rounded, 
+                          color: Colors.white, 
+                          size: 28,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    }
   }
-}
+
+
+
+
+
+
+
 
 // --- BOTTOM SHEET PER AGGIUNGERE L'ATTIVITÀ (Bianco Puro per contrastare) ---
 class AddPetActivitySheet extends StatefulWidget {
