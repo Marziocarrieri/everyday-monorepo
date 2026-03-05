@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'cohost_diet_screen.dart';
+import 'cohost_your_home_screen.dart';
 
 class CohostProfileScreen extends StatefulWidget {
   const CohostProfileScreen({super.key});
@@ -267,7 +269,10 @@ class _CohostProfileScreenState extends State<CohostProfileScreen> {
                 icon: Icons.fastfood_outlined,
                 text: 'Your Diet',
                 onTap: () {
-                  _showSuccessSnackBar("Simulazione: Apre Diet Screen");
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CohostDietScreen()),
+                  );
                 },
               ),
               const SizedBox(height: 24),
@@ -275,7 +280,10 @@ class _CohostProfileScreenState extends State<CohostProfileScreen> {
                 icon: Icons.receipt_long_rounded,
                 text: 'Your Home',
                 onTap: () {
-                  _showSuccessSnackBar("Simulazione: Apre Your Home Screen");
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CohostYourHomeScreen()),
+                  );
                 },
               ),
               const SizedBox(height: 24),

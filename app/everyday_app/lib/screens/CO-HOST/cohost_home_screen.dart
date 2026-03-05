@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; 
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart'; // Aggiunto per poter formattare la data sulla card
+import 'cohost_daily_task_screen.dart';
+import 'cohost_family_screen.dart';
 
 class CohostHomeScreen extends StatefulWidget {
   const CohostHomeScreen({super.key});
@@ -11,7 +14,9 @@ class CohostHomeScreen extends StatefulWidget {
 }
 
 class _CohostHomeScreenState extends State<CohostHomeScreen> {
-  
+  // Variabile per tenere traccia del giorno selezionato dal popup
+  DateTime _selectedDate = DateTime.now();
+
   // ==========================================
   // BUILD PRINCIPALE DELLO SCHERMO
   // ==========================================
@@ -41,7 +46,7 @@ class _CohostHomeScreenState extends State<CohostHomeScreen> {
                 children: [
                   _buildDailyTaskCard(), 
                   const SizedBox(height: 24),
-                  _buildFamilyCard(), // <-- LA NUOVA CARD!
+                  _buildFamilyCard(),
                   const SizedBox(height: 40), // Spazio extra in fondo per respirare
                 ],
               ),
@@ -105,7 +110,15 @@ class _CohostHomeScreenState extends State<CohostHomeScreen> {
   // ==========================================
   Widget _buildDailyTaskCard() {
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        // Usa la data selezionata invece di DateTime.now()
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CohostDailyTaskScreen(date: _selectedDate),
+          ),
+        );
+      },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),
         child: BackdropFilter(
@@ -173,7 +186,10 @@ class _CohostHomeScreenState extends State<CohostHomeScreen> {
                         Padding(
                           padding: const EdgeInsets.only(left: 54),
                           child: Text(
-                            'Oggi',
+                            // Se la data è oggi scrive "Oggi", altrimenti mostra il giorno scelto dal calendario
+                            _selectedDate.day == DateTime.now().day && _selectedDate.month == DateTime.now().month 
+                                ? 'Oggi' 
+                                : DateFormat('dd MMM').format(_selectedDate),
                             style: GoogleFonts.poppins(
                               color: const Color(0xFF3D342C).withValues(alpha: 0.6), 
                               fontSize: 14, 
@@ -237,13 +253,14 @@ class _CohostHomeScreenState extends State<CohostHomeScreen> {
   }
 
   // ==========================================
-  // SEZIONE 3: CARD FAMILY (Nuova da Figma)
+  // SEZIONE 3: CARD FAMILY
   // ==========================================
   Widget _buildFamilyCard() {
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Apre la gestione Family")),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CohostFamilyScreen()),
         );
       },
       child: ClipRRect(
@@ -353,8 +370,8 @@ class _CohostHomeScreenState extends State<CohostHomeScreen> {
   // SEZIONE 5: POPUP DEL CALENDARIO
   // ==========================================
   void _showCalendarPopup(BuildContext context) {
-    DateTime focusedDay = DateTime.now();
-    DateTime? selectedDay = DateTime.now();
+    DateTime focusedDay = _selectedDate; // Usa la data correntemente selezionata
+    DateTime? selectedDay = _selectedDate;
 
     final Color colorAzzurro = const Color(0xFF5A8B9E); 
     final Color colorOrange = const Color(0xFFF4A261); 
@@ -430,13 +447,28 @@ class _CohostHomeScreenState extends State<CohostHomeScreen> {
                           markersMaxCount: 1,
                         ),
                         
+                        // MAGIA: QUANDO CLICCHI UN GIORNO DEL CALENDARIO
                         onDaySelected: (selected, focused) {
                           setDialogState(() {
                             selectedDay = selected;
                             focusedDay = focused;
                           });
                           Future.delayed(const Duration(milliseconds: 250), () {
-                            if (context.mounted) Navigator.pop(context);
+                            if (context.mounted) {
+                              Navigator.pop(context); // Chiude il popup
+                              
+                              setState(() {
+                                _selectedDate = selected; // Cambia la data sulla Card "Daily Task"
+                              });
+
+                              // Apre direttamente la pagina dei Task per il giorno selezionato
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CohostDailyTaskScreen(date: selected),
+                                ),
+                              );
+                            }
                           });
                         },
                       ),
