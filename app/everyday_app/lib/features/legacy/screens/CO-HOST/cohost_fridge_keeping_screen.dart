@@ -77,11 +77,6 @@ class _CohostFridgeKeepingScreenState extends State<CohostFridgeKeepingScreen> {
     super.dispose();
   }
 
-  // Helper Colore
-  Color getStatusColor() {
-    return const Color(0xFF5A8B9E); // Azzurro default per il design
-  }
-
   String formatDate(DateTime? date) => shared_utils.formatDate(date);
 
   @override

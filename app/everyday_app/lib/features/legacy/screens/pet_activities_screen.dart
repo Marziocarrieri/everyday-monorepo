@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
-import '../repositories/pets_activities_repository.dart';
-import '../models/pet_activity.dart';
+import 'package:everyday_app/repositories/pets_activities_repository.dart'; 
+import 'package:everyday_app/models/pet_activity.dart'; 
 
 
 import 'package:everyday_app/shared/utils/date_utils.dart';
