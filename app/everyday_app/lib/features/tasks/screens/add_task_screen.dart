@@ -6,7 +6,7 @@ import '../models/task_with_details.dart';
 import '../services/task_service.dart';
 import '../../../models/household_room.dart';
 import '../../../shared/utils/date_utils.dart';
-import '../../../shared/utils/status_color_utils.dart'; // IMPORTA LA TUA MAGICA FUNZIONE COLORI
+import '../../../shared/utils/status_color_utils.dart';
 
 // ==========================================
 // 1. SCHERMATA PRINCIPALE (LIBRERIA TASK)
@@ -15,7 +15,6 @@ class AddTaskScreen extends StatefulWidget {
   final Set<String>? assignedMemberIds;
   final bool personalOnly;
   final TaskWithDetails? initialTask;
-  // --- NOVITÀ: Riceviamo la data dalla schermata precedente ---
   final DateTime? initialDate;
 
   const AddTaskScreen({
@@ -60,8 +59,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         assignedMemberIds: widget.assignedMemberIds,
         personalOnly: widget.personalOnly,
         initialTask: widget.initialTask,
-        // --- NOVITÀ: Passiamo la data al Bottom Sheet! ---
-        initialDate: widget.initialDate, 
+        initialDate: widget.initialDate,
       ),
     );
   }
@@ -90,24 +88,32 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      width: 48, height: 48,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        color: Colors.white, shape: BoxShape.circle,
+                        color: Colors.white,
+                        shape: BoxShape.circle,
                         border: Border.all(color: colorSafeAzzurro.withValues(alpha: 0.1), width: 1),
-                        boxShadow: [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+                        boxShadow: [
+                          BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))
+                        ],
                       ),
                       child: Icon(Icons.arrow_back_ios_new_rounded, color: colorSafeAzzurro, size: 20),
                     ),
                   ),
                   Text('Add a Task', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: colorSafeAzzurro)),
                   GestureDetector(
-                    onTap: () => _openTaskSheet(), 
+                    onTap: () => _openTaskSheet(),
                     child: Container(
-                      width: 48, height: 48,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        color: Colors.white, shape: BoxShape.circle,
+                        color: Colors.white,
+                        shape: BoxShape.circle,
                         border: Border.all(color: colorSafeAzzurro.withValues(alpha: 0.1), width: 1),
-                        boxShadow: [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+                        boxShadow: [
+                          BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))
+                        ],
                       ),
                       child: Icon(Icons.auto_awesome_rounded, color: colorSafeAzzurro, size: 24),
                     ),
@@ -115,7 +121,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 ],
               ),
             ),
-            
+
             // --- BARRA DI RICERCA GLASS BIANCA ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -124,12 +130,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
                   child: Container(
-                    height: 55, padding: const EdgeInsets.symmetric(horizontal: 20),
+                    height: 55,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.6), 
-                      borderRadius: BorderRadius.circular(24), 
+                      color: Colors.white.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 5))]
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 5))
+                      ],
                     ),
                     child: Row(
                       children: [
@@ -137,9 +146,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           child: TextField(
                             controller: _searchController,
                             decoration: InputDecoration(
-                              hintText: 'Search templates...', 
-                              hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.4), fontSize: 15), 
-                              border: InputBorder.none
+                              hintText: 'Search templates...',
+                              hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.4), fontSize: 15),
+                              border: InputBorder.none,
                             ),
                             style: GoogleFonts.poppins(color: const Color(0xFF3D342C)),
                           ),
@@ -166,10 +175,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            entry.key, 
-                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C))
-                          ),
+                          Text(entry.key,
+                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C))),
                           const SizedBox(height: 12),
                           ...entry.value.map((taskName) => _buildSuggestionPill(taskName, colorSafeAzzurro)),
                         ],
@@ -185,7 +192,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  // --- PILLOLA DEL SUGGERIMENTO CON ICONCINA ---
   Widget _buildSuggestionPill(String taskName, Color colorSafeAzzurro) {
     return GestureDetector(
       onTap: () => _openTaskSheet(initialTitle: taskName),
@@ -200,29 +206,32 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [colorSafeAzzurro.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.4)]
-                ),
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [colorSafeAzzurro.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.4)]),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-                boxShadow: [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5))]
+                boxShadow: [
+                  BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5))
+                ],
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white, shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))]
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))
+                      ],
                     ),
                     child: Icon(Icons.check_circle_outline_rounded, color: colorSafeAzzurro, size: 20),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
-                    child: Text(
-                      taskName, 
-                      style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C))
-                    ),
+                    child: Text(taskName,
+                        style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C))),
                   ),
                 ],
               ),
@@ -235,15 +244,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 }
 
 // ==========================================
-// 2. BOTTOM SHEET (IL POPUP PER AGGIUNGERE IL TASK)
+// 2. BOTTOM SHEET AGGIORNATO (DESIGN PREMIUM)
 // ==========================================
 class AddTaskSheet extends StatefulWidget {
   final String? initialTitle;
-  final Set<String>? assignedMemberIds; 
+  final Set<String>? assignedMemberIds;
   final bool personalOnly;
   final TaskWithDetails? initialTask;
-  // --- NOVITÀ: Il BottomSheet ora accetta la data iniziale! ---
-  final DateTime? initialDate; 
+  final DateTime? initialDate;
 
   const AddTaskSheet({
     super.key,
@@ -262,7 +270,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   late final TextEditingController _titleController;
   final List<_ChecklistDraft> _checklistItems = [_ChecklistDraft()];
   final TaskService _taskService = TaskService();
-  
+
   DateTime? _selectedDate;
   DateTime? _startTime;
   DateTime? _endTime;
@@ -284,7 +292,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     _titleController = TextEditingController(
       text: initialTask?.task.title ?? widget.initialTitle ?? '',
     );
-    // --- NOVITÀ: Preimpostiamo la data scelta dal calendario se esiste ---
     _selectedDate = initialTask?.task.taskDate ?? widget.initialDate;
 
     if (initialTask != null) {
@@ -308,6 +315,24 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
     _loadRooms();
     _loadCreationAccess();
+  }
+
+  // --- Premium SnackBar Helper ---
+  void _showPremiumSnackBar(String message, {bool isError = true}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? colorRed : getStatusColor('safe'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   DateTime? _parseTaskTime(String? timeValue) {
@@ -334,8 +359,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
       setState(() {
         _rooms = rooms;
-        if (_selectedRoomId != null &&
-            _rooms.every((room) => room.id != _selectedRoomId)) {
+        if (_selectedRoomId != null && _rooms.every((room) => room.id != _selectedRoomId)) {
           _selectedRoomId = null;
         }
       });
@@ -404,25 +428,13 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   Future<void> _submitTask() async {
     final access = _creationAccess;
     if (access == null || !access.canCreate) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You are not allowed to create tasks'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showPremiumSnackBar('You are not allowed to create tasks');
       return;
     }
 
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Task name is required'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showPremiumSnackBar('Task name is required');
       return;
     }
 
@@ -434,19 +446,13 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         .toList();
 
     final memberIds = widget.personalOnly
-      ? const <String>[]
-      : access.canAssignMultiple
-        ? _selectedMemberIds.toList()
-        : access.assignableMembers.map((member) => member.id).toList();
+        ? const <String>[]
+        : access.canAssignMultiple
+            ? _selectedMemberIds.toList()
+            : access.assignableMembers.map((member) => member.id).toList();
 
     if (!widget.personalOnly && memberIds.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select at least one assignee'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showPremiumSnackBar('Select at least one assignee');
       return;
     }
 
@@ -486,13 +492,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       Navigator.pop(context, true);
     } catch (error) {
       debugPrint('Error creating task: $error');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showPremiumSnackBar(error.toString());
     } finally {
       if (mounted) {
         setState(() {
@@ -502,15 +502,20 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     }
   }
 
+  // --- Picker Customizzati Date/Time ---
   void _showIOSPicker({required Widget child, required VoidCallback onConfirm}) {
     showCupertinoModalPopup(
       context: context,
       builder: (BuildContext context) => Container(
-        height: 280, padding: const EdgeInsets.only(top: 6.0),
+        height: 280,
+        padding: const EdgeInsets.only(top: 6.0),
         margin: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         decoration: BoxDecoration(
-          color: Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5))],
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5))
+          ],
         ),
         child: SafeArea(
           top: false,
@@ -521,8 +526,17 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    CupertinoButton(child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16)), onPressed: () => Navigator.of(context).pop()),
-                    CupertinoButton(child: Text('Done', style: GoogleFonts.poppins(color: colorOrange, fontWeight: FontWeight.bold, fontSize: 16)), onPressed: () { onConfirm(); Navigator.of(context).pop(); })
+                    CupertinoButton(
+                      child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16)),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      child: Text('Done', style: GoogleFonts.poppins(color: colorOrange, fontWeight: FontWeight.w700, fontSize: 16)),
+                      onPressed: () {
+                        onConfirm();
+                        Navigator.of(context).pop();
+                      },
+                    )
                   ],
                 ),
               ),
@@ -537,7 +551,11 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   void _selectDate() {
     DateTime tempDate = _selectedDate ?? DateTime.now();
     _showIOSPicker(
-      child: CupertinoDatePicker(initialDateTime: tempDate, mode: CupertinoDatePickerMode.date, onDateTimeChanged: (newDate) => tempDate = newDate),
+      child: CupertinoDatePicker(
+        initialDateTime: tempDate,
+        mode: CupertinoDatePickerMode.date,
+        onDateTimeChanged: (newDate) => tempDate = newDate,
+      ),
       onConfirm: () => setState(() => _selectedDate = tempDate),
     );
   }
@@ -545,7 +563,11 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   void _selectTime(bool isStart) {
     DateTime tempTime = isStart ? (_startTime ?? DateTime.now()) : (_endTime ?? DateTime.now().add(const Duration(hours: 1)));
     _showIOSPicker(
-      child: CupertinoDatePicker(initialDateTime: tempTime, mode: CupertinoDatePickerMode.time, onDateTimeChanged: (newTime) => tempTime = newTime),
+      child: CupertinoDatePicker(
+        initialDateTime: tempTime,
+        mode: CupertinoDatePickerMode.time,
+        onDateTimeChanged: (newTime) => tempTime = newTime,
+      ),
       onConfirm: () => setState(() {
         if (isStart) {
           _startTime = tempTime;
@@ -553,6 +575,74 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
           _endTime = tempTime;
         }
       }),
+    );
+  }
+
+  // --- POPUP STANZE PERSONALIZZATO ---
+  void _showRoomPickerModal(Color color) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Dialog(
+            backgroundColor: Colors.white.withValues(alpha: 0.95),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32), side: const BorderSide(color: Colors.white, width: 2)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Select Room', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C))),
+                  const SizedBox(height: 16),
+                  Divider(color: color.withValues(alpha: 0.2)),
+                  
+                  ListTile(
+                    title: Text(
+                      'None',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        color: _selectedRoomId == null ? color : const Color(0xFF3D342C).withValues(alpha: 0.5),
+                        fontWeight: _selectedRoomId == null ? FontWeight.w800 : FontWeight.w600,
+                        fontSize: 18,
+                      ),
+                    ),
+                    onTap: () {
+                      setState(() => _selectedRoomId = null);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  Divider(color: color.withValues(alpha: 0.1)),
+                  
+                  ..._rooms.map((room) {
+                    final isSelected = room.id == _selectedRoomId;
+                    return Column(
+                      children: [
+                        ListTile(
+                          title: Text(
+                            room.name,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: isSelected ? color : const Color(0xFF3D342C),
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                              fontSize: 18,
+                            ),
+                          ),
+                          onTap: () {
+                            setState(() => _selectedRoomId = room.id);
+                            Navigator.pop(context);
+                          },
+                        ),
+                        Divider(color: color.withValues(alpha: 0.1)),
+                      ],
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 
@@ -570,23 +660,22 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   @override
   Widget build(BuildContext context) {
     final Color colorSafeAzzurro = getStatusColor('safe');
-    final selectedRoomExists =
-        _selectedRoomId != null && _rooms.any((room) => room.id == _selectedRoomId);
+    final selectedRoomExists = _selectedRoomId != null && _rooms.any((room) => room.id == _selectedRoomId);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+        filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0), 
         child: Container(
           constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.90),
           padding: EdgeInsets.only(left: 24, right: 24, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.85), border: Border.all(color: Colors.white, width: 1.5)),
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.95), border: Border.all(color: Colors.white, width: 1.5)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 50, height: 5, decoration: BoxDecoration(color: const Color(0xFF3D342C).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10))),
+              Container(width: 50, height: 5, decoration: BoxDecoration(color: colorSafeAzzurro.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10))),
               const SizedBox(height: 24),
-              
+
               if (widget.assignedMemberIds != null && widget.assignedMemberIds!.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -602,39 +691,52 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 ),
 
               if (_isLoadingAccess)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: LinearProgressIndicator(minHeight: 2),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      minHeight: 4,
+                      backgroundColor: colorSafeAzzurro.withValues(alpha: 0.2),
+                      valueColor: AlwaysStoppedAnimation<Color>(colorSafeAzzurro),
+                    ),
+                  ),
                 )
               else if (_creationAccess != null && !_creationAccess!.canCreate)
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    color: colorRed.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colorRed.withValues(alpha: 0.3), width: 1),
                   ),
-                  child: Text(
-                    'Personnel members cannot create tasks.',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFE76F51),
-                    ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_outline_rounded, color: colorRed, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Personnel members cannot create tasks.',
+                          style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: colorRed),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
               Text(
                 widget.initialTask == null ? 'Task Details' : 'Edit Task',
                 style: GoogleFonts.poppins(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
                   color: colorSafeAzzurro,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -644,75 +746,9 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                       _buildGlassTextField(controller: _titleController, hint: 'Task Name', color: colorSafeAzzurro, isTitle: true),
                       const SizedBox(height: 20),
 
-                      Container(
-                        height: 56,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: selectedRoomExists ? _selectedRoomId : null,
-                                  isExpanded: true,
-                                  hint: Text(
-                                    'Room (optional)',
-                                    style: GoogleFonts.poppins(
-                                      color: const Color(0xFF3D342C).withValues(alpha: 0.45),
-                                    ),
-                                  ),
-                                  items: [
-                                    DropdownMenuItem<String>(
-                                      value: '',
-                                      child: Text(
-                                        'Room: None',
-                                        style: GoogleFonts.poppins(
-                                          color: const Color(0xFF3D342C).withValues(alpha: 0.75),
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    ..._rooms.map(
-                                      (room) => DropdownMenuItem<String>(
-                                        value: room.id,
-                                        child: Text(
-                                          room.name,
-                                          style: GoogleFonts.poppins(
-                                            color: const Color(0xFF3D342C),
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedRoomId =
-                                          (value == null || value.isEmpty)
-                                              ? null
-                                              : value;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                            if (_isLoadingRooms)
-                              const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
+                      // STANZA
+                      _buildRoomSelector(colorSafeAzzurro, selectedRoomExists),
+                      const SizedBox(height: 24),
 
                       if (!widget.personalOnly && !_isLoadingAccess && _creationAccess != null)
                         Column(
@@ -720,65 +756,80 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                           children: [
                             Text(
                               'Assignees',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF3D342C),
-                              ),
+                              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 12),
                             if (_creationAccess!.canAssignMultiple)
                               Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: _creationAccess!.assignableMembers
-                                    .map(
-                                      (member) => FilterChip(
-                                        selected: _selectedMemberIds.contains(member.id),
-                                        label: Text(
-                                          member.profile?.name ?? member.id.substring(0, 6),
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: _creationAccess!.assignableMembers.map((member) {
+                                  final isSelected = _selectedMemberIds.contains(member.id);
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        if (isSelected) {
+                                          _selectedMemberIds.remove(member.id);
+                                        } else {
+                                          _selectedMemberIds.add(member.id);
+                                        }
+                                      });
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? colorSafeAzzurro : Colors.white,
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: isSelected ? colorSafeAzzurro : colorSafeAzzurro.withValues(alpha: 0.3),
+                                          width: 1.5,
                                         ),
-                                        onSelected: (selected) {
-                                          setState(() {
-                                            if (selected) {
-                                              _selectedMemberIds.add(member.id);
-                                            } else {
-                                              _selectedMemberIds.remove(member.id);
-                                            }
-                                          });
-                                        },
+                                        boxShadow: isSelected ? [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
                                       ),
-                                    )
-                                    .toList(),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (isSelected) ...[
+                                            const Icon(Icons.check_rounded, color: Colors.white, size: 16),
+                                            const SizedBox(width: 6),
+                                          ],
+                                          Text(
+                                            member.profile?.name ?? member.id.substring(0, 6),
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: isSelected ? Colors.white : const Color(0xFF3D342C),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                               )
                             else
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                 decoration: BoxDecoration(
                                   color: colorSafeAzzurro.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
                                   _creationAccess!.assignableMembers.isEmpty
                                       ? 'No assignable member found'
                                       : 'Assigned to ${_creationAccess!.assignableMembers.first.profile?.name ?? 'self'}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF3D342C),
-                                  ),
+                                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C)),
                                 ),
                               ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 24),
                           ],
                         ),
-                      
+
                       SingleChildScrollView(
-                        scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
                         child: Row(
                           children: [
                             _buildActionPill(icon: Icons.calendar_today_rounded, text: _selectedDate != null ? _formatDate(_selectedDate!) : 'Set Date', color: colorOrange, onTap: _selectDate),
@@ -786,12 +837,13 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                             _buildActionPill(icon: Icons.access_time_rounded, text: _startTime != null ? TimeOfDay.fromDateTime(_startTime!).format(context) : 'Start Time', color: colorOrange, onTap: () => _selectTime(true)),
                             const SizedBox(width: 10),
                             _buildActionPill(icon: Icons.access_time_filled_rounded, text: _endTime != null ? TimeOfDay.fromDateTime(_endTime!).format(context) : 'End Time', color: colorOrange, onTap: () => _selectTime(false)),
-                            const SizedBox(width: 10),
-                            _buildActionPill(icon: Icons.add_rounded, text: 'Sub-task', color: colorSafeAzzurro, onTap: _addSubTask),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 30),
+
+                      Text('Sub-tasks', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C))),
+                      const SizedBox(height: 12),
                       
                       ..._checklistItems.asMap().entries.map((entry) {
                         return Padding(
@@ -809,44 +861,56 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                               GestureDetector(
                                 onTap: () => _removeSubTask(entry.key),
                                 child: Container(
-                                  width: 44, height: 44, 
+                                  width: 46,
+                                  height: 46,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.6), 
-                                    borderRadius: BorderRadius.circular(16), 
-                                    border: Border.all(color: colorRed.withValues(alpha: 0.5), width: 1.5)
-                                  ), 
-                                  child: Icon(Icons.remove, color: colorRed)
+                                    color: colorRed.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: colorRed.withValues(alpha: 0.3), width: 1.5),
+                                  ),
+                                  child: Icon(Icons.remove_rounded, color: colorRed, size: 24),
                                 ),
                               ),
                             ],
                           ),
                         );
                       }),
+
+                      // PILLOLA "+ SUB-TASK" CENTRATA
+                      Align(
+                        alignment: Alignment.center,
+                        child: _buildActionPill(
+                          icon: Icons.add_rounded, 
+                          text: 'Sub-task', 
+                          color: colorSafeAzzurro, 
+                          onTap: _addSubTask
+                        ),
+                      ),
                       const SizedBox(height: 40),
                     ],
                   ),
                 ),
               ),
-              
-              GestureDetector(
-                onTap: _isSaving ? null : _submitTask,
-                child: Container(
-                  width: 70, height: 70, 
-                  decoration: BoxDecoration(
-                    color: colorSafeAzzurro, shape: BoxShape.circle, 
-                    boxShadow: [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8))], 
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2)
-                  ), 
+
+              // BOTTONE SALVATAGGIO
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _submitTask,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: colorSafeAzzurro,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shadowColor: colorSafeAzzurro.withValues(alpha: 0.4),
+                  ),
                   child: _isSaving
                       ? const SizedBox(
-                          width: 26,
-                          height: 26,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
                         )
-                      : const Icon(Icons.check_rounded, color: Colors.white, size: 36)
+                      : Text('Save Task', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
                 ),
               ),
               const SizedBox(height: 10),
@@ -859,18 +923,64 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
   Widget _buildGlassTextField({required TextEditingController controller, required String hint, required Color color, bool isTitle = false}) {
     return Container(
-      height: isTitle ? 60 : 50, padding: const EdgeInsets.symmetric(horizontal: 20),
+      height: isTitle ? 65 : 55,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: isTitle ? color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.6), 
-        borderRadius: BorderRadius.circular(isTitle ? 20 : 16), 
-        border: Border.all(color: isTitle ? color.withValues(alpha: 0.5) : Colors.white, width: 1.5), 
-        boxShadow: isTitle ? [BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))] : []
+        color: isTitle ? color.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(isTitle ? 24 : 16),
+        border: Border.all(color: isTitle ? color.withValues(alpha: 0.4) : color.withValues(alpha: 0.2), width: 1.5),
+        boxShadow: isTitle ? [BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))] : [],
       ),
       child: Center(
         child: TextField(
-          controller: controller, 
-          style: GoogleFonts.poppins(fontSize: isTitle ? 18 : 15, fontWeight: isTitle ? FontWeight.w700 : FontWeight.w500, color: const Color(0xFF3D342C)),
+          controller: controller,
+          style: GoogleFonts.poppins(fontSize: isTitle ? 20 : 16, fontWeight: isTitle ? FontWeight.w800 : FontWeight.w600, color: const Color(0xFF3D342C)),
           decoration: InputDecoration(border: InputBorder.none, hintText: hint, hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.4))),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoomSelector(Color color, bool roomExists) {
+    String displayText = 'Room (optional)';
+    if (roomExists && _selectedRoomId != null) {
+      final foundRoom = _rooms.firstWhere((r) => r.id == _selectedRoomId);
+      displayText = foundRoom.name;
+    }
+
+    return GestureDetector(
+      onTap: () => _showRoomPickerModal(color),
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.meeting_room_outlined, color: color, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                displayText,
+                style: GoogleFonts.poppins(
+                  color: roomExists ? const Color(0xFF3D342C) : const Color(0xFF3D342C).withValues(alpha: 0.5),
+                  fontWeight: roomExists ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            if (_isLoadingRooms)
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(color)),
+              )
+            else
+              Icon(Icons.keyboard_arrow_down_rounded, color: color),
+          ],
         ),
       ),
     );
@@ -882,17 +992,18 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(20), 
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5), 
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))]
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
+          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min, 
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 18), 
-            const SizedBox(width: 8), 
-            Text(text, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: color))
-          ]
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 8),
+            Text(text, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: color)),
+          ],
         ),
       ),
     );
@@ -902,6 +1013,5 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 class _ChecklistDraft {
   final TextEditingController controller;
 
-  _ChecklistDraft({String text = ''})
-      : controller = TextEditingController(text: text);
+  _ChecklistDraft({String text = ''}) : controller = TextEditingController(text: text);
 }

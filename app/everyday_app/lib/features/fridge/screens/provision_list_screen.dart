@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/models/shopping_item.dart';
 import 'package:everyday_app/repositories/shopping_repository.dart';
+import 'package:everyday_app/shared/utils/status_color_utils.dart'; // Importato per la coerenza dei colori
 
 class ProvisionListScreen extends StatefulWidget {
   const ProvisionListScreen({super.key});
@@ -25,8 +26,13 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
         behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF5A8B9E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -75,18 +81,35 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Delete this item?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: AlertDialog(
+            backgroundColor: Colors.white.withValues(alpha: 0.9),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Colors.white, width: 1.5)),
+            title: Text(
+              'Delete Item?',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
             ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Delete'),
+            content: Text(
+              'Are you sure you want to remove "${item.name}" from your list?',
+              style: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.7)),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text('Cancel', style: GoogleFonts.poppins(color: const Color(0xFF5A8B9E), fontWeight: FontWeight.w600)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF28482),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('Delete', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -99,9 +122,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
       _showSuccessSnackBar('Item deleted');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
       await _loadItems();
     }
   }
@@ -155,14 +176,22 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
               const SizedBox(height: 30),
 
               if (_error != null) ...[
-                Text(_error!, style: const TextStyle(color: Colors.red)),
-                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: const Color(0xFFF28482).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFF28482).withValues(alpha: 0.3))),
+                  child: Text(_error!, style: GoogleFonts.poppins(color: const Color(0xFFF28482), fontWeight: FontWeight.w500)),
+                ),
+                const SizedBox(height: 16),
               ],
 
               // LA LISTA IN VETRO
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(getStatusColor('safe')),
+                        ),
+                      )
                     : _items.isEmpty
                     ? _buildEmptyState()
                     : _buildGlassList(),
@@ -179,6 +208,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
   // ==========================================
 
   Widget _buildHeader(BuildContext context) {
+    final themeColor = getStatusColor('safe');
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -221,7 +251,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
           ),
         ),
 
-        // Tasto Aggiungi
+        // Tasto Aggiungi (Aggiornato al colore di tema)
         GestureDetector(
           onTap: _openAddModal,
           child: Container(
@@ -231,20 +261,20 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
               color: Colors.white,
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFF5A8B9E).withValues(alpha: 0.3),
+                color: themeColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF5A8B9E).withValues(alpha: 0.15),
+                  color: themeColor.withValues(alpha: 0.15),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.add_rounded,
-              color: Color(0xFF5A8B9E),
+              color: themeColor,
               size: 28,
             ),
           ),
@@ -265,7 +295,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
           direction: DismissDirection.endToStart,
           background: Container(
             decoration: BoxDecoration(
-              color: Colors.red,
+              color: const Color(0xFFF28482),
               borderRadius: BorderRadius.circular(20),
             ),
             alignment: Alignment.centerRight,
@@ -290,6 +320,8 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
   }
 
   Widget _buildListItem(ShoppingItem item) {
+    final themeColor = getStatusColor('safe');
+    
     return GestureDetector(
       onTap: () => _openDetailModal(item),
       child: ClipRRect(
@@ -302,25 +334,26 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF5A8B9E).withValues(alpha: 0.05),
-                  Colors.white.withValues(alpha: 0.4),
+                  themeColor.withValues(alpha: 0.15),
+                  Colors.white.withValues(alpha: 0.6),
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
-                width: 1,
+                color: Colors.white.withValues(alpha: 0.8),
+                width: 1.5,
               ),
             ),
             child: Row(
               children: [
-                // Pallino stile Figma
+                // Pallino Vuoto stile Checkbox
                 Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF3D342C),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     shape: BoxShape.circle,
+                    border: Border.all(color: themeColor.withValues(alpha: 0.5), width: 2),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -334,27 +367,31 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF3D342C),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
 
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5A8B9E).withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'x${item.quantity}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF5A8B9E),
+                // Badge Quantità
+                if (item.quantity > 1)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Qty: ${item.quantity}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: themeColor,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -364,6 +401,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
   }
 
   Widget _buildEmptyState() {
+    final themeColor = getStatusColor('safe');
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -371,13 +409,13 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
           Icon(
             Icons.shopping_bag_outlined,
             size: 60,
-            color: const Color(0xFF5A8B9E).withValues(alpha: 0.3),
+            color: themeColor.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
             'Your list is empty.',
             style: GoogleFonts.poppins(
-              color: const Color(0xFF5A8B9E).withValues(alpha: 0.6),
+              color: const Color(0xFF3D342C).withValues(alpha: 0.5),
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -388,6 +426,9 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
   }
 }
 
+// ==========================================
+// MODAL: ADD PROVISION
+// ==========================================
 class _AddProvisionSheet extends StatefulWidget {
   const _AddProvisionSheet({
     required this.shoppingRepository,
@@ -403,7 +444,8 @@ class _AddProvisionSheet extends StatefulWidget {
 
 class _AddProvisionSheetState extends State<_AddProvisionSheet> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController(text: '1');
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -417,10 +459,10 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
     if (name.isEmpty) return;
 
     final parsedQuantity = int.tryParse(_quantityController.text.trim());
-    final quantity = parsedQuantity == null || parsedQuantity <= 0
-        ? 1
-        : parsedQuantity;
+    final quantity = parsedQuantity == null || parsedQuantity <= 0 ? 1 : parsedQuantity;
 
+    setState(() => _isSaving = true);
+    
     await widget.shoppingRepository.addItem(
       widget.householdId,
       name,
@@ -433,107 +475,107 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = getStatusColor('safe');
+    final textColor = const Color(0xFF3D342C);
+
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+        filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
         child: Container(
-          height: MediaQuery.of(context).size.height * 0.75,
+          height: MediaQuery.of(context).size.height * 0.70,
           padding: EdgeInsets.only(
-            left: 30,
-            right: 30,
-            top: 30,
+            left: 24,
+            right: 24,
+            top: 20,
             bottom: MediaQuery.of(context).viewInsets.bottom + 30,
           ),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF7CB9E8).withValues(alpha: 0.15),
-                Colors.white.withValues(alpha: 0.8),
-              ],
-            ),
+            color: Colors.white.withValues(alpha: 0.95), // Luminoso
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white,
               width: 1.5,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              Center(
-                child: Container(
-                  width: 50,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 30),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7CB9E8).withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 30),
+                      decoration: BoxDecoration(
+                        color: themeColor.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              Text(
-                'Add a Provision',
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF7CB9E8),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 30),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    children: [
-                      _buildModalTextField(
-                        'Name',
-                        true,
-                        false,
-                        _nameController,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildModalTextField(
-                        'Quantity [optional]',
-                        false,
-                        true,
-                        _quantityController,
-                      ),
-                      const SizedBox(height: 40),
-                      GestureDetector(
-                        onTap: _save,
-                        child: Container(
-                          width: 70,
-                          height: 70,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF7CB9E8), Color(0xFF5A8B9E)],
-                            ),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF7CB9E8,
-                                ).withValues(alpha: 0.4),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
+                  Text(
+                    'Add a Provision',
+                    style: GoogleFonts.poppins(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: textColor,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        children: [
+                          _buildPremiumTextField(
+                            'Name',
+                            true,
+                            false,
+                            _nameController,
+                            themeColor,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildPremiumTextField(
+                            'Quantity',
+                            false,
+                            true,
+                            _quantityController,
+                            themeColor,
+                          ),
+                          const SizedBox(height: 40),
+                          
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _save,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                backgroundColor: themeColor,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                               ),
-                            ],
+                              child: Text(
+                                'Add Item', 
+                                style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+                              ),
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.check_rounded,
-                            color: Colors.white,
-                            size: 40,
-                          ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
+                  ),
+                ],
+              ),
+              if (_isSaving)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    child: Center(
+                      child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(themeColor)),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -541,77 +583,55 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
     );
   }
 
-  Widget _buildModalTextField(
+  Widget _buildPremiumTextField(
     String label,
     bool isRequired,
     bool isNumber,
     TextEditingController controller,
+    Color accentColor,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: Color(0xFF3D342C),
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF3D342C),
-              ),
-            ),
-            if (isRequired)
-              Text(
-                ' *',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFFF28482),
-                ),
-              ),
-          ],
+    final displayLabel = isRequired ? '$label *' : label;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1.5),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        style: GoogleFonts.poppins(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF3D342C),
         ),
-        const SizedBox(height: 10),
-        Container(
-          height: 55,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: const Color(0xFF7CB9E8).withValues(alpha: 0.3),
-              width: 1.5,
-            ),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          labelText: displayLabel,
+          labelStyle: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isRequired 
+                ? const Color(0xFFF28482) 
+                : const Color(0xFF3D342C).withValues(alpha: 0.6),
           ),
-          child: Center(
-            child: TextField(
-              controller: controller,
-              keyboardType: isNumber
-                  ? TextInputType.number
-                  : TextInputType.text,
-              decoration: const InputDecoration(border: InputBorder.none),
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF3D342C),
-              ),
-            ),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          hintText: 'Tap to type...',
+          hintStyle: GoogleFonts.poppins(
+            color: const Color(0xFF3D342C).withValues(alpha: 0.3),
+            fontSize: 16,
           ),
         ),
-      ],
+      ),
     );
   }
 }
 
+// ==========================================
+// MODAL: EDIT PROVISION
+// ==========================================
 class _ProvisionDetailSheet extends StatefulWidget {
   const _ProvisionDetailSheet({
     required this.item,
@@ -629,6 +649,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
   bool _isEditing = false;
   late final TextEditingController _nameController;
   late final TextEditingController _quantityController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -653,6 +674,8 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     final quantity = int.tryParse(_quantityController.text.trim());
     if (quantity == null || quantity <= 0) return;
 
+    setState(() => _isSaving = true);
+
     final updated = ShoppingItem(
       id: widget.item.id,
       householdId: widget.item.householdId,
@@ -668,112 +691,131 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = getStatusColor('safe');
+    final textColor = const Color(0xFF3D342C);
+
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+        filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
         child: Container(
-          padding: const EdgeInsets.all(30),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFF4A261).withValues(alpha: 0.15),
-                Colors.white.withValues(alpha: 0.7),
-              ],
-            ),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.8),
-              width: 1.5,
-            ),
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 20, 
+            bottom: MediaQuery.of(context).viewInsets.bottom + 40
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.95),
+            border: Border.all(color: Colors.white, width: 1.5),
+          ),
+          child: Stack(
             children: [
-              Center(
-                child: Container(
-                  width: 50,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 30),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4A261).withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              Row(
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _isEditing
-                        ? TextField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'Name',
-                            ),
-                            style: GoogleFonts.poppins(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFFF4A261),
-                              letterSpacing: -0.5,
-                            ),
-                          )
-                        : Text(
-                            widget.item.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.poppins(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFFF4A261),
-                              letterSpacing: -0.5,
-                            ),
-                          ),
+                  Center(
+                    child: Container(
+                      width: 40, height: 5, margin: const EdgeInsets.only(bottom: 30),
+                      decoration: BoxDecoration(color: themeColor.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
-                  if (!_isEditing)
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _isEditing = true;
-                        });
-                      },
-                      icon: const Icon(Icons.edit, color: Color(0xFFF4A261)),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 30),
-              if (!_isEditing) ...[
-                _buildModalDetailRow(
-                  'Quantity',
-                  widget.item.quantity.toString(),
-                ),
-                _buildModalDivider(),
-                _buildModalDetailRow('Status', widget.item.status),
-              ] else ...[
-                _buildEditField('Quantity', _quantityController),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () {
-                        setState(() {
-                          _isEditing = false;
-                          _nameController.text = widget.item.name;
-                          _quantityController.text = widget.item.quantity
-                              .toString();
-                        });
-                      },
-                      child: const Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                      onPressed: _saveEdit,
-                      child: const Text('Save'),
+
+                  Row(
+                    children: [
+                      Container(
+                        width: 60, height: 60,
+                        decoration: BoxDecoration(
+                          color: themeColor.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: themeColor.withValues(alpha: 0.3), width: 2),
+                        ),
+                        child: Icon(Icons.shopping_cart_outlined, color: themeColor, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _isEditing
+                            ? TextField(
+                                controller: _nameController,
+                                style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.w800, color: textColor, letterSpacing: -0.5),
+                                decoration: const InputDecoration(border: InputBorder.none, isDense: true, hintText: 'Name'),
+                              )
+                            : Text(
+                                widget.item.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.w800, color: textColor, letterSpacing: -0.5),
+                              ),
+                      ),
+                      if (!_isEditing)
+                        GestureDetector(
+                          onTap: () => setState(() => _isEditing = true),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white, shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
+                            child: Icon(Icons.edit_rounded, color: themeColor, size: 20),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+
+                  if (!_isEditing) ...[
+                    // VIEW MODE: Dashboard Card
+                    _buildDashCard('Quantity', widget.item.quantity.toString(), Icons.tag_rounded, themeColor),
+                    const SizedBox(height: 20),
+                  ] else ...[
+                    // EDIT MODE
+                    _buildPremiumTextField('Quantity', _quantityController, themeColor),
+                    const SizedBox(height: 40),
+                    
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              setState(() {
+                                _isEditing = false;
+                                _nameController.text = widget.item.name;
+                                _quantityController.text = widget.item.quantity.toString();
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: BorderSide(color: themeColor.withValues(alpha: 0.5), width: 2),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            ),
+                            child: Text('Cancel', style: GoogleFonts.poppins(color: const Color(0xFF5A8B9E), fontWeight: FontWeight.w700, fontSize: 16)),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _saveEdit,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: themeColor,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            ),
+                            child: Text('Save', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
+                ],
+              ),
+
+              if (_isSaving)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    child: Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(themeColor))),
+                  ),
                 ),
-              ],
             ],
           ),
         ),
@@ -781,49 +823,38 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     );
   }
 
-  Widget _buildModalDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+  Widget _buildDashCard(String title, String value, IconData icon, Color accentColor) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: accentColor.withValues(alpha: 0.15), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: accentColor.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5))
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF4A261),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 10),
+              Icon(icon, size: 18, color: accentColor),
+              const SizedBox(width: 8),
               Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF3D342C).withValues(alpha: 0.7),
-                ),
+                title, 
+                style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.5)),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white, width: 1),
-            ),
-            child: Text(
-              value,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF3D342C),
-              ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 22, 
+              fontWeight: FontWeight.w700, 
+              color: const Color(0xFF3D342C),
             ),
           ),
         ],
@@ -831,70 +862,27 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     );
   }
 
-  Widget _buildModalDivider() {
+  Widget _buildPremiumTextField(String label, TextEditingController controller, Color accentColor) {
     return Container(
-      height: 1,
-      margin: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.0),
-            Colors.white.withValues(alpha: 0.8),
-            Colors.white.withValues(alpha: 0.0),
-          ],
+        color: accentColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1.5),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          labelText: label,
+          labelStyle: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.6)),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          hintText: 'Tap to enter...',
+          hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.3), fontSize: 16),
         ),
       ),
-    );
-  }
-
-  Widget _buildEditField(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF4A261),
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF3D342C).withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          height: 55,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white, width: 1),
-          ),
-          child: Center(
-            child: TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(border: InputBorder.none),
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF3D342C),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
