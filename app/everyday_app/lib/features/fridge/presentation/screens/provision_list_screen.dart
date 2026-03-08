@@ -2,14 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
-<<<<<<< HEAD:app/everyday_app/lib/features/fridge/screens/provision_list_screen.dart
-import 'package:everyday_app/models/shopping_item.dart';
-import 'package:everyday_app/repositories/shopping_repository.dart';
-import 'package:everyday_app/shared/utils/status_color_utils.dart'; // Importato per la coerenza dei colori
-=======
 import 'package:everyday_app/features/fridge/data/models/shopping_item.dart';
 import 'package:everyday_app/features/fridge/data/repositories/shopping_repository.dart';
->>>>>>> b80b79c (Architecture refactor):app/everyday_app/lib/features/fridge/presentation/screens/provision_list_screen.dart
+import 'package:everyday_app/shared/utils/status_color_utils.dart'; // Importato per la coerenza dei colori
 
 class ProvisionListScreen extends StatefulWidget {
   const ProvisionListScreen({super.key});

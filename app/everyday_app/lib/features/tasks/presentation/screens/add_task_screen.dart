@@ -2,19 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
-<<<<<<< HEAD:app/everyday_app/lib/features/tasks/screens/add_task_screen.dart
-import '../models/task_with_details.dart';
-import '../services/task_service.dart';
-import '../../../models/household_room.dart';
-import '../../../shared/utils/date_utils.dart';
-import '../../../shared/utils/status_color_utils.dart';
-=======
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
 import 'package:everyday_app/features/household/data/models/household_room.dart';
 import '../../../../shared/utils/date_utils.dart';
-import '../../../../shared/utils/status_color_utils.dart'; // IMPORTA LA TUA MAGICA FUNZIONE COLORI
->>>>>>> b80b79c (Architecture refactor):app/everyday_app/lib/features/tasks/presentation/screens/add_task_screen.dart
+import '../../../../shared/utils/status_color_utils.dart';
 
 // ==========================================
 // 1. SCHERMATA PRINCIPALE (LIBRERIA TASK)
