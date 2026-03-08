@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:everyday_app/features/legacy/screens/login2_screen.dart';
-import 'package:everyday_app/features/legacy/screens/main_layout.dart';
-import 'package:everyday_app/features/legacy/screens/welcome_screen.dart';
-import 'services/session_initializer.dart';
+import 'package:everyday_app/core/app_route_names.dart';
+import 'package:everyday_app/core/app_router.dart';
+import 'package:everyday_app/legacy_app/screens/login2_screen.dart';
+import 'package:everyday_app/legacy_app/screens/welcome_screen.dart';
+import 'shared/services/session_initializer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Everyday',
       theme: ThemeData(primarySwatch: Colors.blue),
+      onGenerateRoute: AppRouter.onGenerateRoute,
       home: const AppEntryGate(),
     );
   }
@@ -59,7 +61,7 @@ class _AppEntryGateState extends State<AppEntryGate> {
       return const WelcomeScreen();
     }
 
-    return const MainLayout();
+    return const _RouteRedirectScreen(routeName: AppRouteNames.roleShell);
   }
 
   @override
@@ -93,6 +95,38 @@ class SupabaseMissingApp extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RouteRedirectScreen extends StatefulWidget {
+  final String routeName;
+
+  const _RouteRedirectScreen({required this.routeName});
+
+  @override
+  State<_RouteRedirectScreen> createState() => _RouteRedirectScreenState();
+}
+
+class _RouteRedirectScreenState extends State<_RouteRedirectScreen> {
+  bool _didRedirect = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didRedirect) return;
+
+    _didRedirect = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(widget.routeName);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }

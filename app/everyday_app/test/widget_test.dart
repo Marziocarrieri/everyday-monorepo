@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 
-import 'package:everyday_app/features/legacy/screens/login_screen.dart';
+import 'package:everyday_app/legacy_app/screens/login_screen.dart';
 
 void main() {
   testWidgets('LoginScreen shows form fields and buttons', (WidgetTester tester) async {

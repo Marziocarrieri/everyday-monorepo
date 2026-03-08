@@ -2,8 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 
-import '../models/household.dart';
-import '../models/user.dart';
+import '../features/household/data/models/household.dart';
+import '../shared/models/user.dart';
 
 class ActiveMembership {
   final String id;

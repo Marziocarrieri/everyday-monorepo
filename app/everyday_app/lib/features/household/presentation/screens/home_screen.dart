@@ -1,9 +1,9 @@
 // TODO: legacy household flow – candidate for removal
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:everyday_app/shared/services/auth_service.dart';
 
 import '../../../../core/app_context.dart';
-import 'package:everyday_app/features/legacy/screens/login_screen.dart';
+import '../../../../core/app_route_names.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,11 +21,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      await Supabase.instance.client.auth.signOut();
+      await AuthService().signOut();
 
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRouteNames.login2,
         (route) => false,
       );
     } catch (error) {
