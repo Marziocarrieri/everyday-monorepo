@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/features/fridge/data/models/shopping_item.dart';
-import 'package:everyday_app/features/fridge/data/repositories/shopping_repository.dart';
+import 'package:everyday_app/features/fridge/domain/services/shopping_service.dart';
+import 'package:everyday_app/features/fridge/presentation/providers/fridge_providers.dart';
 import 'package:everyday_app/shared/utils/status_color_utils.dart'; // Importato per la coerenza dei colori
 
-class ProvisionListScreen extends StatefulWidget {
+class ProvisionListScreen extends ConsumerStatefulWidget {
   const ProvisionListScreen({super.key});
 
   @override
-  State<ProvisionListScreen> createState() => _ProvisionListScreenState();
+  ConsumerState<ProvisionListScreen> createState() => _ProvisionListScreenState();
 }
 
-class _ProvisionListScreenState extends State<ProvisionListScreen> {
-  final ShoppingRepository _shoppingRepository = ShoppingRepository();
+class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
   List<ShoppingItem> _items = [];
   bool _isLoading = true;
   String? _error;
@@ -52,8 +53,9 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
     });
 
     try {
+      final shoppingService = ref.read(shoppingServiceProvider);
       final householdId = AppContext.instance.requireHouseholdId();
-      final items = await _shoppingRepository.getList(householdId);
+      final items = await shoppingService.getList(householdId);
 
       if (!mounted) return;
       setState(() {
@@ -115,9 +117,9 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
     );
   }
 
-  Future<void> _deleteItem(String id) async {
+  Future<void> _deleteItem(String id, ShoppingService shoppingService) async {
     try {
-      await _shoppingRepository.deleteItem(id);
+      await shoppingService.deleteItem(id);
       await _loadItems();
       _showSuccessSnackBar('Item deleted');
     } catch (error) {
@@ -127,14 +129,14 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
     }
   }
 
-  Future<void> _openAddModal() async {
+  Future<void> _openAddModal(ShoppingService shoppingService) async {
     final householdId = AppContext.instance.requireHouseholdId();
     final changed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _AddProvisionSheet(
-        shoppingRepository: _shoppingRepository,
+        shoppingService: shoppingService,
         householdId: householdId,
       ),
     );
@@ -145,14 +147,14 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
     }
   }
 
-  Future<void> _openDetailModal(ShoppingItem item) async {
+  Future<void> _openDetailModal(ShoppingItem item, ShoppingService shoppingService) async {
     final changed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _ProvisionDetailSheet(
         item: item,
-        shoppingRepository: _shoppingRepository,
+        shoppingService: shoppingService,
       ),
     );
 
@@ -164,6 +166,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final shoppingService = ref.watch(shoppingServiceProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -172,7 +175,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(context),
+              _buildHeader(context, shoppingService),
               const SizedBox(height: 30),
 
               if (_error != null) ...[
@@ -194,7 +197,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
                       )
                     : _items.isEmpty
                     ? _buildEmptyState()
-                    : _buildGlassList(),
+                    : _buildGlassList(shoppingService),
               ),
             ],
           ),
@@ -207,7 +210,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
   // WIDGET PRINCIPALI
   // ==========================================
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, ShoppingService shoppingService) {
     final themeColor = getStatusColor('safe');
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -253,7 +256,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
 
         // Tasto Aggiungi (Aggiornato al colore di tema)
         GestureDetector(
-          onTap: _openAddModal,
+          onTap: () => _openAddModal(shoppingService),
           child: Container(
             width: 48,
             height: 48,
@@ -283,7 +286,7 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
     );
   }
 
-  Widget _buildGlassList() {
+  Widget _buildGlassList(ShoppingService shoppingService) {
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
       itemCount: _items.length,
@@ -311,19 +314,19 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
             return shouldDelete ?? false;
           },
           onDismissed: (direction) async {
-            await _deleteItem(item.id);
+            await _deleteItem(item.id, shoppingService);
           },
-          child: _buildListItem(item),
+          child: _buildListItem(item, shoppingService),
         );
       },
     );
   }
 
-  Widget _buildListItem(ShoppingItem item) {
+  Widget _buildListItem(ShoppingItem item, ShoppingService shoppingService) {
     final themeColor = getStatusColor('safe');
     
     return GestureDetector(
-      onTap: () => _openDetailModal(item),
+      onTap: () => _openDetailModal(item, shoppingService),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
@@ -431,11 +434,11 @@ class _ProvisionListScreenState extends State<ProvisionListScreen> {
 // ==========================================
 class _AddProvisionSheet extends StatefulWidget {
   const _AddProvisionSheet({
-    required this.shoppingRepository,
+    required this.shoppingService,
     required this.householdId,
   });
 
-  final ShoppingRepository shoppingRepository;
+  final ShoppingService shoppingService;
   final String householdId;
 
   @override
@@ -463,7 +466,7 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
 
     setState(() => _isSaving = true);
     
-    await widget.shoppingRepository.addItem(
+    await widget.shoppingService.addItem(
       widget.householdId,
       name,
       quantity: quantity,
@@ -635,11 +638,11 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
 class _ProvisionDetailSheet extends StatefulWidget {
   const _ProvisionDetailSheet({
     required this.item,
-    required this.shoppingRepository,
+    required this.shoppingService,
   });
 
   final ShoppingItem item;
-  final ShoppingRepository shoppingRepository;
+  final ShoppingService shoppingService;
 
   @override
   State<_ProvisionDetailSheet> createState() => _ProvisionDetailSheetState();
@@ -684,7 +687,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
       status: widget.item.status,
     );
 
-    await widget.shoppingRepository.updateItem(updated);
+    await widget.shoppingService.updateItem(updated);
     if (!mounted) return;
     Navigator.pop(context, true);
   }

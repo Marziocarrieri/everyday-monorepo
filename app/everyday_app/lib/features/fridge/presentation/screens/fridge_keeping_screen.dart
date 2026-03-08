@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/features/fridge/data/models/area_type.dart';
 import 'package:everyday_app/features/fridge/data/models/fridge_item.dart';
-import 'package:everyday_app/features/fridge/data/repositories/fridge_repository.dart';
+import 'package:everyday_app/features/fridge/domain/services/pantry_service.dart';
+import 'package:everyday_app/features/fridge/presentation/providers/fridge_providers.dart';
 import 'package:everyday_app/shared/utils/date_utils.dart';
 import 'package:everyday_app/shared/utils/status_color_utils.dart';
 
-class FridgeKeepingScreen extends StatefulWidget {
+class FridgeKeepingScreen extends ConsumerStatefulWidget {
   const FridgeKeepingScreen({super.key});
 
   @override
-  State<FridgeKeepingScreen> createState() => _FridgeKeepingScreenState();
+  ConsumerState<FridgeKeepingScreen> createState() => _FridgeKeepingScreenState();
 }
 
-class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
+class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   AreaType _selectedCategory = AreaType.pantry;
   DateTime? selectedDate;
   final TextEditingController nameController = TextEditingController();
@@ -24,7 +26,6 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   final TextEditingController weightController = TextEditingController();
   final TextEditingController dateTextController = TextEditingController();
   bool _isListView = true;
-  final FridgeRepository _fridgeRepository = FridgeRepository();
   List<FridgeItem> _items = [];
   bool _isLoading = true;
   String? _error;
@@ -60,8 +61,9 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     });
 
     try {
+      final pantryService = ref.read(pantryServiceProvider);
       final householdId = AppContext.instance.requireHouseholdId();
-      final items = await _fridgeRepository.getItems(
+      final items = await pantryService.getItems(
         householdId,
         _selectedCategory,
       );
@@ -101,8 +103,9 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     final parsedWeight = int.tryParse(weightController.text.trim());
 
     try {
+      final pantryService = ref.read(pantryServiceProvider);
       final householdId = AppContext.instance.requireHouseholdId();
-      await _fridgeRepository.addItem(
+      await pantryService.addItem(
         householdId: householdId,
         name: trimmedName,
         area: _selectedCategory,
@@ -159,7 +162,8 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
 
   Future<void> _deleteItem(FridgeItem item) async {
     try {
-      await _fridgeRepository.deleteItem(item.id);
+      final pantryService = ref.read(pantryServiceProvider);
+      await pantryService.deleteItem(item.id);
       await _loadItems();
       _showSuccessSnackBar('Item deleted');
     } catch (error) {
@@ -171,6 +175,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pantryService = ref.watch(pantryServiceProvider);
     final currentItems = _items;
     final themeColor = getStatusColor('safe');
 
@@ -211,8 +216,8 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
                         ),
                       )
                     : _isListView
-                    ? _buildGlassList(currentItems)
-                    : _buildSmallGlassGrid(currentItems),
+                    ? _buildGlassList(currentItems, pantryService)
+                    : _buildSmallGlassGrid(currentItems, pantryService),
               ),
             ],
           ),
@@ -407,7 +412,7 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
   // LISTE ED ELEMENTI
   // ==========================================
 
-  Widget _buildGlassList(List<FridgeItem> items) {
+  Widget _buildGlassList(List<FridgeItem> items, PantryService pantryService) {
     if (items.isEmpty) return _buildEmptyState();
     return ListView.separated(
       physics: const BouncingScrollPhysics(), itemCount: items.length, separatorBuilder: (context, index) => const SizedBox(height: 16),
@@ -422,16 +427,16 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
           ),
           confirmDismiss: (direction) async => await _confirmDelete(item) ?? false,
           onDismissed: (direction) async => await _deleteItem(item),
-          child: _buildListItem(item),
+          child: _buildListItem(item, pantryService),
         );
       },
     );
   }
 
-  Widget _buildListItem(FridgeItem item) {
+  Widget _buildListItem(FridgeItem item, PantryService pantryService) {
     Color iconColor = getStatusColor('safe');
     return GestureDetector(
-      onTap: () => _showItemDetailModal(item),
+      onTap: () => _showItemDetailModal(item, pantryService),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
@@ -460,20 +465,20 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     );
   }
 
-  Widget _buildSmallGlassGrid(List<FridgeItem> items) {
+  Widget _buildSmallGlassGrid(List<FridgeItem> items, PantryService pantryService) {
     if (items.isEmpty) return _buildEmptyState();
     return GridView.builder(
       physics: const BouncingScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 0.80),
       itemCount: items.length,
-      itemBuilder: (context, index) => _buildSmallGridCard(items[index]),
+      itemBuilder: (context, index) => _buildSmallGridCard(items[index], pantryService),
     );
   }
 
-  Widget _buildSmallGridCard(FridgeItem item) {
+  Widget _buildSmallGridCard(FridgeItem item, PantryService pantryService) {
     Color iconColor = getStatusColor('safe');
     return GestureDetector(
-      onTap: () => _showItemDetailModal(item),
+      onTap: () => _showItemDetailModal(item, pantryService),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
@@ -508,10 +513,10 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
     );
   }
 
-  Future<void> _showItemDetailModal(FridgeItem item) async {
+  Future<void> _showItemDetailModal(FridgeItem item, PantryService pantryService) async {
     final result = await showModalBottomSheet<bool>(
       context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
-      builder: (_) => FridgeItemDetailSheet(item: item, fridgeRepository: _fridgeRepository),
+      builder: (_) => FridgeItemDetailSheet(item: item, pantryService: pantryService),
     );
     if (result == true && mounted) {
       await _loadItems();
@@ -693,9 +698,9 @@ class _FridgeKeepingScreenState extends State<FridgeKeepingScreen> {
 // COMPONENTE: POPUP DETTAGLIO/MODIFICA (RESTYLING PREMIUM "CUTE")
 // ==========================================
 class FridgeItemDetailSheet extends StatefulWidget {
-  const FridgeItemDetailSheet({super.key, required this.item, required this.fridgeRepository});
+  const FridgeItemDetailSheet({super.key, required this.item, required this.pantryService});
   final FridgeItem item;
-  final FridgeRepository fridgeRepository;
+  final PantryService pantryService;
 
   @override
   State<FridgeItemDetailSheet> createState() => _FridgeItemDetailSheetState();
@@ -765,7 +770,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     );
 
     setState(() => _isSaving = true);
-    await widget.fridgeRepository.updateItem(updatedItem);
+    await widget.pantryService.updateItem(updatedItem);
     if (!mounted) return;
     Navigator.of(context).pop(true);
   }

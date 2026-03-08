@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
-import 'package:everyday_app/shared/services/auth_service.dart';
 import 'package:everyday_app/features/household/domain/services/household_service.dart';
+import 'package:everyday_app/shared/services/auth_service.dart';
+import 'package:everyday_app/features/household/presentation/providers/household_providers.dart';
 import 'package:everyday_app/shared/services/session_initializer.dart';
 
-class JoinHouseholdScreen extends StatefulWidget {
+class JoinHouseholdScreen extends ConsumerStatefulWidget {
   const JoinHouseholdScreen({super.key});
 
   @override
-  State<JoinHouseholdScreen> createState() => _JoinHouseholdScreenState();
+  ConsumerState<JoinHouseholdScreen> createState() => _JoinHouseholdScreenState();
 }
 
-class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
+class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
   final TextEditingController _codeController = TextEditingController();
   final SessionInitializer _sessionInitializer = SessionInitializer();
-  final HouseholdService _householdService = HouseholdService();
 
   bool _isLoading = false;
   String? _error;
   String _selectedRole = 'PERSONNEL';
 
-  Future<void> _joinHousehold() async {
+  Future<void> _joinHousehold(HouseholdService householdService) async {
     final inviteCode = _codeController.text.trim();
     if (inviteCode.isEmpty) {
       setState(() {
@@ -47,7 +48,7 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
     });
 
     try {
-      final joinResult = await _householdService.joinHouseholdByInviteCode(
+      final joinResult = await householdService.joinHouseholdByInviteCode(
         inviteCode: inviteCode,
         role: _selectedRole,
       );
@@ -94,6 +95,8 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final householdService = ref.watch(householdServiceProvider);
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -197,7 +200,7 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
 
                       // BOTTONE CONFERMA
                       _buildPrimaryButton('Join', () {
-                        _joinHousehold();
+                        _joinHousehold(householdService);
                       }),
                       if (_error != null) ...[
                         const SizedBox(height: 16),

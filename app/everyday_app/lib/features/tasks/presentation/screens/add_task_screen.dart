@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
@@ -7,6 +8,7 @@ import '../../domain/services/task_service.dart';
 import 'package:everyday_app/features/household/data/models/household_room.dart';
 import '../../../../shared/utils/date_utils.dart';
 import '../../../../shared/utils/status_color_utils.dart';
+import '../providers/task_providers.dart';
 
 // ==========================================
 // 1. SCHERMATA PRINCIPALE (LIBRERIA TASK)
@@ -246,7 +248,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 // ==========================================
 // 2. BOTTOM SHEET AGGIORNATO (DESIGN PREMIUM)
 // ==========================================
-class AddTaskSheet extends StatefulWidget {
+class AddTaskSheet extends ConsumerStatefulWidget {
   final String? initialTitle;
   final Set<String>? assignedMemberIds;
   final bool personalOnly;
@@ -263,13 +265,13 @@ class AddTaskSheet extends StatefulWidget {
   });
 
   @override
-  State<AddTaskSheet> createState() => _AddTaskSheetState();
+  ConsumerState<AddTaskSheet> createState() => _AddTaskSheetState();
 }
 
-class _AddTaskSheetState extends State<AddTaskSheet> {
+class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   late final TextEditingController _titleController;
   final List<_ChecklistDraft> _checklistItems = [_ChecklistDraft()];
-  final TaskService _taskService = TaskService();
+  TaskService get _taskService => ref.read(taskServiceProvider);
 
   DateTime? _selectedDate;
   DateTime? _startTime;

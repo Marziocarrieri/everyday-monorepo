@@ -23,11 +23,21 @@ class TaskCreationAccess {
 }
 
 class TaskService {
-  final TaskRepository _repo = TaskRepository();
-  final AuthService _auth = AuthService();
-  final HouseholdRepository _householdRepository = HouseholdRepository();
-  final HomeConfigurationRepository _homeConfigurationRepository =
-      HomeConfigurationRepository();
+  final TaskRepository _repo;
+  final AuthService _auth;
+  final HouseholdRepository _householdRepository;
+  final HomeConfigurationRepository _homeConfigurationRepository;
+
+  TaskService({
+    TaskRepository? taskRepository,
+    AuthService? authService,
+    HouseholdRepository? householdRepository,
+    HomeConfigurationRepository? homeConfigurationRepository,
+  }) : _repo = taskRepository ?? TaskRepository(),
+       _auth = authService ?? AuthService(),
+       _householdRepository = householdRepository ?? HouseholdRepository(),
+       _homeConfigurationRepository =
+           homeConfigurationRepository ?? HomeConfigurationRepository();
 
   // creazione nuovo task
   Future<void> createTask({

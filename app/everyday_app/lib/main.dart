@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
@@ -22,7 +23,7 @@ Future<void> main() async {
     anonKey: anonKey,
   );
 
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {

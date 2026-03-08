@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:everyday_app/features/household/data/models/household.dart';
 import 'package:everyday_app/features/household/domain/services/household_service.dart';
+import 'package:everyday_app/features/household/presentation/providers/household_providers.dart';
 
-class HouseholdListScreen extends StatefulWidget {
+class HouseholdListScreen extends ConsumerStatefulWidget {
   const HouseholdListScreen({super.key});
 
   @override
-  State<HouseholdListScreen> createState() => _HouseholdListScreenState();
+  ConsumerState<HouseholdListScreen> createState() => _HouseholdListScreenState();
 }
 
-class _HouseholdListScreenState extends State<HouseholdListScreen> {
-  final HouseholdService _householdService = HouseholdService();
+class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
 
   bool _isLoading = true;
   List<Household> _households = [];
@@ -21,13 +22,16 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
     _loadHouseholds();
   }
 
-  Future<void> _loadHouseholds() async {
+  Future<void> _loadHouseholds([HouseholdService? householdService]) async {
+    final HouseholdService service =
+        householdService ?? ref.read(householdServiceProvider);
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final households = await _householdService.getMyHouseholds();
+      final households = await service.getMyHouseholds();
       if (!mounted) return;
 
       setState(() {
@@ -46,7 +50,10 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
     }
   }
 
-  Future<void> _onCreateHouseholdPressed() async {
+  Future<void> _onCreateHouseholdPressed([HouseholdService? householdService]) async {
+    final HouseholdService service =
+        householdService ?? ref.read(householdServiceProvider);
+
     final controller = TextEditingController();
 
     final name = await showDialog<String>(
@@ -82,7 +89,7 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
     }
 
     try {
-      await _householdService.createHousehold(name);
+      await service.createHousehold(name);
       await _loadHouseholds();
     } catch (e) {
       if (!mounted) return;
@@ -94,6 +101,8 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final householdService = ref.watch(householdServiceProvider);
+
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text("Households")),
@@ -111,7 +120,7 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
               const Text("No household found"),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: _onCreateHouseholdPressed,
+                onPressed: () => _onCreateHouseholdPressed(householdService),
                 child: const Text('Create household'),
               ),
             ],
@@ -123,7 +132,7 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text("Households")),
       body: RefreshIndicator(
-        onRefresh: _loadHouseholds,
+        onRefresh: () => _loadHouseholds(householdService),
         child: ListView.builder(
           itemCount: _households.length,
           itemBuilder: (context, index) {
@@ -135,7 +144,7 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _onCreateHouseholdPressed,
+        onPressed: () => _onCreateHouseholdPressed(householdService),
         child: const Icon(Icons.add),
       ),
     );

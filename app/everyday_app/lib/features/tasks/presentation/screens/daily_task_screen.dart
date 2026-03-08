@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:everyday_app/core/app_route_names.dart';
@@ -8,19 +9,20 @@ import '../../data/models/subtask.dart';
 import '../../data/models/task_assignement.dart';
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
+import '../providers/task_providers.dart';
 import '../widgets/task_card.dart';
 
-class DailyTaskScreen extends StatefulWidget {
+class DailyTaskScreen extends ConsumerStatefulWidget {
   final DateTime date;
 
   const DailyTaskScreen({super.key, required this.date});
 
   @override
-  State<DailyTaskScreen> createState() => _DailyTaskScreenState();
+  ConsumerState<DailyTaskScreen> createState() => _DailyTaskScreenState();
 }
 
-class _DailyTaskScreenState extends State<DailyTaskScreen> {
-  final TaskService _taskService = TaskService();
+class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
+  TaskService get _taskService => ref.read(taskServiceProvider);
 
   bool _isLoading = true;
   String? _error;
@@ -244,6 +246,7 @@ class _DailyTaskScreenState extends State<DailyTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(taskServiceProvider);
     final formattedDate = DateFormat('dd MMM, yyyy').format(widget.date);
 
     return Scaffold(

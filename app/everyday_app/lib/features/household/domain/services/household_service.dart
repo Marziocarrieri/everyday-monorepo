@@ -3,10 +3,17 @@ import '../../data/repositories/household_repository.dart';
 import '../../../../shared/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:everyday_app/features/personnel/data/models/household_member.dart';
 
 class HouseholdService {
-  final HouseholdRepository _repo = HouseholdRepository();
-  final AuthService _auth = AuthService();
+  final HouseholdRepository _repo;
+  final AuthService _auth;
+
+  HouseholdService({
+    HouseholdRepository? householdRepository,
+    AuthService? authService,
+  }) : _repo = householdRepository ?? HouseholdRepository(),
+       _auth = authService ?? AuthService();
 
   Future<void> addMember({
     required String householdId,
@@ -60,6 +67,10 @@ class HouseholdService {
     if (user == null) return [];
 
     return await _repo.getHouseholdsForUser(user.id);
+  }
+
+  Future<List<HouseholdMember>> getMembers(String householdId) async {
+    return await _repo.getMembers(householdId);
   }
 
   Future<HouseholdJoinResult> joinHouseholdByInviteCode({
