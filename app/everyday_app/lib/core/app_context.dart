@@ -80,25 +80,27 @@ class AppContext extends ChangeNotifier {
       return;
     }
 
-    final row = await Supabase.instance.client
+    final rows = await Supabase.instance.client
         .from('household_member')
         .select('id, household_id, role, nickname, avatar_url')
         .eq('user_id', currentUserId)
         .eq('household_id', currentHouseholdId)
-        .maybeSingle();
+        .order('created_at', ascending: true)
+        .limit(1);
 
     if (currentUserId != userId || currentHouseholdId != householdId) {
       return;
     }
 
-    if (row == null) {
+    final memberships = List<Map<String, dynamic>>.from(rows);
+    if (memberships.isEmpty) {
       membershipId = null;
       activeMembership = null;
       notifyListeners();
       return;
     }
 
-    final mapped = Map<String, dynamic>.from(row);
+    final mapped = Map<String, dynamic>.from(memberships.first);
     membershipId = mapped['id'] as String?;
     activeMembership = ActiveMembership.fromMap(mapped);
     notifyListeners();

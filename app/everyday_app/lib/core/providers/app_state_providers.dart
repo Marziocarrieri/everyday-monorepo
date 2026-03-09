@@ -15,7 +15,9 @@ final currentUserProvider = Provider<User?>((ref) {
 final currentHouseholdProvider = FutureProvider<Household?>((ref) async {
   final appContext = ref.watch(appContextProvider);
   final selectedHousehold = appContext.household;
-  if (selectedHousehold != null) {
+  final selectedHouseholdId = appContext.householdId;
+  if (selectedHousehold != null &&
+      (selectedHouseholdId == null || selectedHousehold.id == selectedHouseholdId)) {
     return selectedHousehold;
   }
 
@@ -25,7 +27,6 @@ final currentHouseholdProvider = FutureProvider<Household?>((ref) async {
     return null;
   }
 
-  final selectedHouseholdId = appContext.householdId;
   if (selectedHouseholdId == null) {
     return households.first;
   }

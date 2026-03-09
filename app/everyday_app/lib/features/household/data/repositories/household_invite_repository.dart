@@ -20,16 +20,26 @@ class HouseholdInviteRepository {
     }
 
     final mapped = Map<String, dynamic>.from(existing);
-    return mapped['invite_code'] as String?;
+    final code = mapped['invite_code'] as String?;
+    if (code == null) {
+      return null;
+    }
+
+    return code.trim().toUpperCase();
   }
 
   Future<String> createInviteCode({
     required String householdId,
     required String inviteCode,
   }) async {
+    final normalizedInviteCode = inviteCode.trim().toUpperCase();
+
     final inserted = await supabase
         .from('household_invite')
-        .insert({'household_id': householdId, 'invite_code': inviteCode})
+        .insert({
+          'household_id': householdId,
+          'invite_code': normalizedInviteCode,
+        })
         .select('invite_code')
         .single();
 
@@ -39,6 +49,6 @@ class HouseholdInviteRepository {
       throw Exception('Invite code creation failed');
     }
 
-    return createdCode;
+    return createdCode.trim().toUpperCase();
   }
 }

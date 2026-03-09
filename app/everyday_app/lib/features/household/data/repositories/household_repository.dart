@@ -32,9 +32,20 @@ class HouseholdRepository {
         'household(*)' 
       ).eq('user_id', userId);
 
-      final List<Household> households = List<Map<String, dynamic>>.from(response)
-          .map((row) => Household.fromJson(row['household']))
-          .toList();
+      final seenHouseholdIds = <String>{};
+      final households = <Household>[];
+
+      for (final row in List<Map<String, dynamic>>.from(response)) {
+        final householdJson = row['household'];
+        if (householdJson is! Map<String, dynamic>) {
+          continue;
+        }
+
+        final household = Household.fromJson(householdJson);
+        if (seenHouseholdIds.add(household.id)) {
+          households.add(household);
+        }
+      }
 
       return households;
     } catch (e) {
@@ -71,20 +82,59 @@ class HouseholdRepository {
     required String inviteCode,
     required String role,
   }) async {
-    final inviteRow = await supabase
-        .from('household_invite')
-        .select('household_id')
-        .eq('invite_code', inviteCode)
-        .maybeSingle();
+    final normalizedInviteCode = inviteCode.trim().toUpperCase();
+    final normalizedRequestedRole = role.trim().toUpperCase();
 
-    if (inviteRow == null) {
-      throw Exception('Invalid invite code');
+    late final Map<String, dynamic> inviteMap;
+    try {
+      final inviteRow = await supabase
+          .from('household_invite')
+          .select('household_id, role')
+          .eq('invite_code', normalizedInviteCode)
+          .single();
+      inviteMap = Map<String, dynamic>.from(inviteRow);
+    } catch (error) {
+      final message = error.toString().toLowerCase();
+      if (message.contains('0 rows') || message.contains('no rows')) {
+        throw Exception('Invalid invite code');
+      }
+      rethrow;
     }
 
-    final inviteMap = Map<String, dynamic>.from(inviteRow);
     final householdId = inviteMap['household_id'] as String?;
     if (householdId == null || householdId.isEmpty) {
       throw Exception('Invalid invite code');
+    }
+
+    final inviteRole = (inviteMap['role'] as String?)?.trim().toUpperCase();
+    final effectiveRole =
+        (inviteRole != null && inviteRole.isNotEmpty)
+            ? inviteRole
+            : normalizedRequestedRole;
+
+    final existingMembershipRows = await supabase
+        .from('household_member')
+        .select('id, household_id')
+        .eq('user_id', userId)
+        .eq('household_id', householdId)
+        .order('created_at', ascending: true)
+        .limit(1);
+
+    final existingMembershipList =
+        List<Map<String, dynamic>>.from(existingMembershipRows);
+    if (existingMembershipList.isNotEmpty) {
+      final existingMembership = existingMembershipList.first;
+      final existingMembershipId = existingMembership['id'] as String?;
+      final existingHouseholdId = existingMembership['household_id'] as String?;
+
+      if (existingMembershipId == null || existingHouseholdId == null) {
+        throw Exception('Membership loading failed');
+      }
+
+      return HouseholdJoinResult(
+        membershipId: existingMembershipId,
+        householdId: existingHouseholdId,
+      );
     }
 
     final membershipRow = await supabase
@@ -92,7 +142,8 @@ class HouseholdRepository {
         .insert({
           'user_id': userId,
           'household_id': householdId,
-          'role': role,
+          'role': effectiveRole,
+          'is_personnel': effectiveRole == 'PERSONNEL',
         })
         .select('id, household_id')
         .single();

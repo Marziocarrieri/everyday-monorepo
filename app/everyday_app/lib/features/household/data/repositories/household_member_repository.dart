@@ -16,7 +16,21 @@ class HouseholdMemberRepository {
         .select('household_id, household(id, name)')
         .eq('user_id', userId);
 
-    return List<Map<String, dynamic>>.from(response);
+    final seenHouseholdIds = <String>{};
+    final uniqueRows = <Map<String, dynamic>>[];
+
+    for (final row in List<Map<String, dynamic>>.from(response)) {
+      final householdId = row['household_id'] as String?;
+      if (householdId == null || householdId.isEmpty) {
+        continue;
+      }
+
+      if (seenHouseholdIds.add(householdId)) {
+        uniqueRows.add(row);
+      }
+    }
+
+    return uniqueRows;
   }
 
   Future<void> deleteMembershipById(String membershipId) async {

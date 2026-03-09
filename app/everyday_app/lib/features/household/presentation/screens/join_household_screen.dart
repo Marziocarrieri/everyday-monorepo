@@ -5,6 +5,8 @@ import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
+import 'package:everyday_app/features/household/data/models/household.dart';
 import 'package:everyday_app/features/household/domain/services/household_service.dart';
 import 'package:everyday_app/shared/services/auth_service.dart';
 import 'package:everyday_app/features/household/presentation/providers/household_providers.dart';
@@ -53,9 +55,26 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
         role: _selectedRole,
       );
 
+      final households = await householdService.getMyHouseholds();
+      Household? joinedHousehold;
+      for (final household in households) {
+        if (household.id == joinResult.householdId) {
+          joinedHousehold = household;
+          break;
+        }
+      }
+
+      if (joinedHousehold == null) {
+        throw Exception('Joined household not found in your household list');
+      }
+
+      AppContext.instance.household = joinedHousehold;
       AppContext.instance.setMembership(joinResult.membershipId);
       AppContext.instance.setActiveHousehold(joinResult.householdId);
       await AppContext.instance.reloadMemberContext();
+
+      ref.invalidate(currentHouseholdProvider);
+      ref.invalidate(householdMembersProvider);
 
       final state = await _sessionInitializer.initialize();
 
