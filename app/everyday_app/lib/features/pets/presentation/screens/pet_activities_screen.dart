@@ -5,14 +5,12 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:everyday_app/features/pets/data/repositories/pets_activities_repository.dart'; 
 import 'package:everyday_app/features/pets/data/models/pet_activity.dart'; 
-
-
+import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/shared/utils/date_utils.dart';
 
 class PetActivitiesScreen extends StatefulWidget {
   final String petId;
   final Color petColor; // Useremo questo come colore di Sfondo!
-
   const PetActivitiesScreen({super.key, required this.petId, required this.petColor});
 
   @override
@@ -21,7 +19,6 @@ class PetActivitiesScreen extends StatefulWidget {
 
 class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   List<PetActivity> _activities = [];
-
   final PetActivitiesRepository _activityRepository = PetActivitiesRepository();
   bool _isLoading = false;
   String? _error;
@@ -65,13 +62,20 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
     }
   }
 
-  void _openAddActivitySheet() {
-    showModalBottomSheet(
+  void _openAddActivitySheet() async {
+    final result = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => AddPetActivitySheet(petColor: widget.petColor),
+      builder: (context) => AddPetActivitySheet(petColor: widget.petColor, petId: widget.petId,),
     );
+
+    if (result == true) {
+      debugPrint("Refresh della lista in corso...");
+      setState(() {
+        _loadActivities();
+      });
+    }
   }
 
   @override
@@ -278,14 +282,11 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
 
 
 
-
-
-
-
 // --- BOTTOM SHEET PER AGGIUNGERE L'ATTIVITÀ (Bianco Puro per contrastare) ---
 class AddPetActivitySheet extends StatefulWidget {
   final Color petColor;
-  const AddPetActivitySheet({super.key, required this.petColor});
+  final String petId;
+  const AddPetActivitySheet({super.key, required this.petColor, required this.petId});
 
   @override
   State<AddPetActivitySheet> createState() => _AddPetActivitySheetState();
@@ -407,7 +408,52 @@ class _AddPetActivitySheetState extends State<AddPetActivitySheet> {
               const SizedBox(height: 40),
               
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () async {
+                  final description = _taskController.text.trim();
+                  
+                  // 1. Validazione base
+                  if (description.isEmpty || _selectedDate == null || _startTime == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please fill in description, date and start time')),
+                    );
+                    return;
+                  }
+
+                  try {
+                    // 2. Recupero ID dal contesto o widget (adatta in base alla tua logica)
+                    final householdId = AppContext.instance.requireHouseholdId();
+                    final petId = widget.petId; // Assicurati che widget.petId esista
+
+                    // 3. Formattazione orari per PostgreSQL (HH:mm:ss)
+                    String formatTime(DateTime dt) {
+                      return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:00";
+                    }
+
+                    final repo = PetActivitiesRepository();
+                    
+                    await repo.insertActivity(
+                      houseHoldId: householdId,
+                      petId: petId,
+                      description: description,
+                      date: _selectedDate!,
+                      time: formatTime(_startTime!),
+                      endTime: _endTime != null ? formatTime(_endTime!) : null,
+                    );
+                  
+                    // 4. Chiudi e feedback
+                    if (context.mounted) {
+                      Navigator.pop(context, true);
+                    }
+                  } catch (e) {
+                    debugPrint('Errore durante l\'inserimento attività: $e');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error saving activity: $e')),
+                      );
+                    }
+                  }
+                },
+
                 child: Container(
                   width: 70, height: 70, 
                   decoration: BoxDecoration(color: widget.petColor, shape: BoxShape.circle, boxShadow: [BoxShadow(color: widget.petColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8))], border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2)), 

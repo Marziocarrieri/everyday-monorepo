@@ -68,13 +68,19 @@ class _PetsScreenState extends State<PetsScreen> {
 
 
   // Funzione per aprire il popup di aggiunta Pet
-  void _openAddPetSheet() {
-    showModalBottomSheet(
+  void _openAddPetSheet() async{
+    final result = await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => const AddPetSheet(),
     );
+    if (result == true) {
+      debugPrint("Refresh della lista in corso...");
+      setState(() {
+        _loadPets();
+      });
+    }
   }
 
   @override
@@ -317,7 +323,40 @@ class _AddPetSheetState extends State<AddPetSheet> {
 
               // BOTTONE CONFERMA
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () async {
+                  final name = _nameController.text.trim();
+                  
+                  // 1. Recuperiamo l'ID dal contesto (adatta questa riga alla tua implementazione)
+                  final householdId = AppContext.instance.requireHouseholdId();
+
+                  if (name.isEmpty) {
+                    // Feedback rapido se il nome manca
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a name for your pet')),
+                    );
+                    return;
+                  }
+
+                  try {
+                    // 2. Chiamata al Repository
+                    final petRepo = PetRepository();
+                    
+                    await petRepo.createPet(
+                      name: name,
+                      species: _selectedType,
+                      householdId: householdId,
+                    );
+
+                    // 3. Chiudiamo il foglio solo se il widget è ancora attivo
+                    if (context.mounted) {
+                      Navigator.pop(context, true);
+                    }
+                  } catch (e) {
+                    // Qui catturi errori di rete o le famose RLS policies
+                    debugPrint('Errore durante il salvataggio: $e');
+                  }
+                },
+
                 child: Container(
                   width: double.infinity,
                   height: 60,

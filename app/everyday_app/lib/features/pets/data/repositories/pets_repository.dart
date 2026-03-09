@@ -32,4 +32,24 @@ class PetRepository {
       rethrow; 
     }
   }
+
+  
+  Future<void> createPet({
+    required String name,
+    required String species,
+    required String householdId,
+  }) async {
+    try {
+      await supabase.from('pets').insert({
+        'name': name,
+        'species': species,
+        'household_id': householdId,
+        // 'owner_id': supabase.auth.currentUser?.id, // Opzionale
+      });
+      debugPrint('PET CREATED: $name');
+    } catch (e) {
+      debugPrint('Error creating pet: $e');
+      rethrow;
+    }
+  }
 }
