@@ -86,6 +86,7 @@ class HouseholdService {
     try {
       return await _repo.joinByInviteCode(
         userId: user.id,
+        userEmail: user.email,
         inviteCode: inviteCode.trim().toUpperCase(),
         role: role,
       );

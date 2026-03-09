@@ -36,10 +36,10 @@ class HouseholdInviteRepository {
 
     final inserted = await supabase
         .from('household_invite')
-        .insert({
+        .upsert({
           'household_id': householdId,
           'invite_code': normalizedInviteCode,
-        })
+        }, onConflict: 'household_id')
         .select('invite_code')
         .single();
 

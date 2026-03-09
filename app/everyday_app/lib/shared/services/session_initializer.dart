@@ -76,11 +76,15 @@ class SessionInitializer {
     }
 
     final currentActiveHouseholdId = AppContext.instance.householdId;
+    final persistedHouseholdId = await AppContext.instance
+        .getPersistedLastHouseholdId();
+    final preferredHouseholdId =
+        currentActiveHouseholdId ?? persistedHouseholdId;
 
     Map<String, dynamic>? selectedMembership;
-    if (currentActiveHouseholdId != null) {
+    if (preferredHouseholdId != null) {
       for (final membership in memberships) {
-        if (membership['household_id'] == currentActiveHouseholdId) {
+        if (membership['household_id'] == preferredHouseholdId) {
           selectedMembership = membership;
           break;
         }

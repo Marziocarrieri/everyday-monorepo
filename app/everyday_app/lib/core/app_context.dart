@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 import '../features/household/data/models/household.dart';
@@ -32,6 +33,8 @@ class ActiveMembership {
 }
 
 class AppContext extends ChangeNotifier {
+  static const String _lastHouseholdIdKey = 'last_household_id';
+
   static final AppContext instance = AppContext._internal();
   AppContext._internal();
 
@@ -57,8 +60,29 @@ class AppContext extends ChangeNotifier {
 
   void setActiveHousehold(String? householdId) {
     this.householdId = householdId;
+    unawaited(_persistLastSelectedHouseholdId(householdId));
     notifyListeners();
     unawaited(_syncMembershipForActiveHousehold());
+  }
+
+  Future<String?> getPersistedLastHouseholdId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedId = prefs.getString(_lastHouseholdIdKey);
+    if (storedId == null || storedId.isEmpty) {
+      return null;
+    }
+
+    return storedId;
+  }
+
+  Future<void> _persistLastSelectedHouseholdId(String? householdId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (householdId == null || householdId.isEmpty) {
+      await prefs.remove(_lastHouseholdIdKey);
+      return;
+    }
+
+    await prefs.setString(_lastHouseholdIdKey, householdId);
   }
 
   void setMembership(String? membershipId) {
@@ -125,6 +149,7 @@ class AppContext extends ChangeNotifier {
     this.household = household;
     userId = authUser.id;
     householdId = household?.id;
+    unawaited(_persistLastSelectedHouseholdId(householdId));
     this.membershipId = membershipId;
     activeMembership = null;
     notifyListeners();
@@ -165,6 +190,7 @@ class AppContext extends ChangeNotifier {
     household = null;
     userId = null;
     householdId = null;
+    unawaited(_persistLastSelectedHouseholdId(null));
     membershipId = null;
     activeMembership = null;
     notifyListeners();

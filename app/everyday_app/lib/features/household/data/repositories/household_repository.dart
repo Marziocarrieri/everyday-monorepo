@@ -14,6 +14,34 @@ class HouseholdJoinResult {
 }
 
 class HouseholdRepository {
+  Future<void> _ensureUserProfileExists({
+    required String userId,
+    required String? email,
+  }) async {
+    final existingProfile = await supabase
+        .from('users_profile')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (existingProfile != null) {
+      return;
+    }
+
+    try {
+      await supabase.from('users_profile').insert({
+        'id': userId,
+        'email': email,
+      });
+    } catch (error) {
+      // If another request inserted it concurrently, continue.
+      final message = error.toString().toLowerCase();
+      if (message.contains('duplicate key value')) {
+        return;
+      }
+      rethrow;
+    }
+  }
 
   // Crea una nuova casa
   Future<String> createHousehold(String name, String createdBy) async {
@@ -79,6 +107,7 @@ class HouseholdRepository {
 
   Future<HouseholdJoinResult> joinByInviteCode({
     required String userId,
+    required String? userEmail,
     required String inviteCode,
     required String role,
   }) async {
@@ -107,10 +136,17 @@ class HouseholdRepository {
     }
 
     final inviteRole = (inviteMap['role'] as String?)?.trim().toUpperCase();
-    final effectiveRole =
-        (inviteRole != null && inviteRole.isNotEmpty)
-            ? inviteRole
-            : normalizedRequestedRole;
+    if (inviteRole == null || inviteRole.isEmpty) {
+      throw Exception('Invite role is invalid');
+    }
+
+    if (inviteRole != normalizedRequestedRole) {
+      debugPrint(
+        'Invite role $inviteRole overrides UI-selected role $normalizedRequestedRole',
+      );
+    }
+
+    await _ensureUserProfileExists(userId: userId, email: userEmail);
 
     final existingMembershipRows = await supabase
         .from('household_member')
@@ -142,8 +178,8 @@ class HouseholdRepository {
         .insert({
           'user_id': userId,
           'household_id': householdId,
-          'role': effectiveRole,
-          'is_personnel': effectiveRole == 'PERSONNEL',
+          'role': inviteRole,
+          'is_personnel': inviteRole == 'PERSONNEL',
         })
         .select('id, household_id')
         .single();

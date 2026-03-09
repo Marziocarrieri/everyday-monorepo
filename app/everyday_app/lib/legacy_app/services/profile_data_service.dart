@@ -60,7 +60,8 @@ class ProfileDataService {
   }
 
   Future<void> deleteInviteCodesForHousehold(String householdId) async {
-    await _householdInviteRepository.deleteByHousehold(householdId);
+    // Regeneration now uses upsert on household_id, so pre-delete is unnecessary.
+    return;
   }
 
   Future<String?> getInviteCodeForHousehold(String householdId) async {
