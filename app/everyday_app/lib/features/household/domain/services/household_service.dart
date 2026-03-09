@@ -33,28 +33,29 @@ class HouseholdService {
   Future<Household> createHousehold(String name) async {
     final supabase = Supabase.instance.client;
 
-    final user = supabase.auth.currentUser;
-
-    if (user == null) {
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) {
       throw Exception('User not authenticated');
     }
 
-    final householdResponse = await supabase
+    final rawHouseholdResponse = await supabase
         .from('household')
         .insert({
           'name': name,
-          'created_by': user.id,
+          'created_by': currentUserId,
         })
         .select()
         .single();
 
-    final householdId = householdResponse['id'];
-
-    print('Creating membership with role HOST for user ${user.id}');
+    final householdResponse = Map<String, dynamic>.from(rawHouseholdResponse);
+    final householdId = householdResponse['id'] as String?;
+    if (householdId == null || householdId.isEmpty) {
+      throw Exception('Household creation failed: missing household id');
+    }
 
     await addMember(
       householdId: householdId,
-      userId: user.id,
+      userId: currentUserId,
       role: 'HOST',
     );
 
