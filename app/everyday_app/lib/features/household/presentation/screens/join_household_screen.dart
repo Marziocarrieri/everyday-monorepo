@@ -192,36 +192,48 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
                             width: 2,
                           ),
                         ),
-                        child: RadioGroup<String>(
-                          groupValue: _selectedRole,
-                          onChanged: (value) {
-                            if (_isLoading || value == null) return;
-                            setState(() {
-                              _selectedRole = value;
-                            });
-                          },
-                          child: const Column(
-                            children: [
-                              RadioListTile<String>(
-                                value: 'HOST',
-                                title: Text('Host'),
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                              ),
-                              RadioListTile<String>(
-                                value: 'CO_HOST',
-                                title: Text('Co-Host'),
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                              ),
-                              RadioListTile<String>(
-                                value: 'PERSONNEL',
-                                title: Text('Personnel'),
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                              ),
-                            ],
-                          ),
+                        child: Column(
+                          children: [
+                            RadioListTile<String>(
+                              value: 'HOST',
+                              groupValue: _selectedRole,
+                              onChanged: (value) {
+                                if (_isLoading || value == null) return;
+                                setState(() {
+                                  _selectedRole = value;
+                                });
+                              },
+                              title: const Text('Host'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                            ),
+                            RadioListTile<String>(
+                              value: 'CO_HOST',
+                              groupValue: _selectedRole,
+                              onChanged: (value) {
+                                if (_isLoading || value == null) return;
+                                setState(() {
+                                  _selectedRole = value;
+                                });
+                              },
+                              title: const Text('Co-Host'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                            ),
+                            RadioListTile<String>(
+                              value: 'PERSONNEL',
+                              groupValue: _selectedRole,
+                              onChanged: (value) {
+                                if (_isLoading || value == null) return;
+                                setState(() {
+                                  _selectedRole = value;
+                                });
+                              },
+                              title: const Text('Personnel'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                            ),
+                          ],
                         ),
                       ),
                       
