@@ -31,14 +31,13 @@ class MemberRepository {
             ? Map<String, dynamic>.from(rawProfile)
             : <String, dynamic>{};
 
-    final topNickname = normalizedRow['nickname'] as String?;
-    final profileNickname = profile['nickname'] as String?;
+    final membershipNickname = normalizedRow['nickname'] as String?;
     final profileName = profile['name'] as String?;
     final profileEmail = profile['email'] as String?;
 
     profile['id'] ??= normalizedRow['user_id'];
     profile['name'] = _resolveDisplayName(
-      nickname: topNickname ?? profileNickname,
+      nickname: membershipNickname,
       name: profileName,
       email: profileEmail,
     );
@@ -71,13 +70,19 @@ class MemberRepository {
       final response = await supabase
           .from('household_member')
           .select('''
-            *,
+            id,
+            user_id,
+            household_id,
+            role,
+            member_status,
+            nickname,
+            avatar_url,
+            is_personnel,
+            personnel_type,
             profile:users_profile(
               id,
               name,
-              nickname,
-              email,
-              avatar_url
+              email
             )
           ''')
           .eq('household_id', householdId)
