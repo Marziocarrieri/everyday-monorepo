@@ -12,6 +12,11 @@ final currentUserProvider = Provider<User?>((ref) {
   return appContext.currentUser ?? AuthService().currentUser;
 });
 
+final currentHouseholdIdProvider = Provider<String>((ref) {
+  final appContext = ref.watch(appContextProvider);
+  return appContext.requireHouseholdId();
+});
+
 final currentHouseholdProvider = FutureProvider<Household?>((ref) async {
   final appContext = ref.watch(appContextProvider);
   final selectedHousehold = appContext.household;

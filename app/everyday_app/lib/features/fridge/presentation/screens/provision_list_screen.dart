@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'package:everyday_app/core/app_context.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/fridge/data/models/shopping_item.dart';
 import 'package:everyday_app/features/fridge/domain/services/shopping_service.dart';
 import 'package:everyday_app/features/fridge/presentation/providers/fridge_providers.dart';
@@ -84,7 +84,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
   }
 
   Future<void> _openAddModal(ShoppingService shoppingService) async {
-    final householdId = AppContext.instance.requireHouseholdId();
+    final householdId = ref.read(currentHouseholdIdProvider);
     final changed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -119,7 +119,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
   @override
   Widget build(BuildContext context) {
     final shoppingService = ref.watch(shoppingServiceProvider);
-    final householdId = AppContext.instance.requireHouseholdId();
+    final householdId = ref.watch(currentHouseholdIdProvider);
     final itemsAsync = ref.watch(shoppingItemsStreamProvider(householdId));
 
     return Scaffold(

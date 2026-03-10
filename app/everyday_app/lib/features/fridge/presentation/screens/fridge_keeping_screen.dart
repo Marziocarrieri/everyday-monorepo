@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 
-import 'package:everyday_app/core/app_context.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/fridge/data/models/area_type.dart';
 import 'package:everyday_app/features/fridge/data/models/fridge_item.dart';
 import 'package:everyday_app/features/fridge/domain/services/pantry_service.dart';
@@ -62,7 +62,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 
     try {
       final pantryService = ref.read(pantryServiceProvider);
-      final householdId = AppContext.instance.requireHouseholdId();
+      final householdId = ref.read(currentHouseholdIdProvider);
       await pantryService.addItem(
         householdId: householdId,
         name: trimmedName,
@@ -132,7 +132,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   @override
   Widget build(BuildContext context) {
     final pantryService = ref.watch(pantryServiceProvider);
-    final householdId = AppContext.instance.requireHouseholdId();
+    final householdId = ref.watch(currentHouseholdIdProvider);
     final itemsAsync = ref.watch(pantryItemsStreamProvider(householdId));
     final themeColor = getStatusColor('safe');
 
