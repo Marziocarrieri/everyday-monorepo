@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/shared/repositories/avatar_storage_repository.dart';
 import 'package:everyday_app/features/household/data/repositories/household_admin_repository.dart';
 import 'package:everyday_app/features/household/data/repositories/household_invite_repository.dart';
@@ -71,10 +72,21 @@ class ProfileDataService {
   Future<String> createInviteCode({
     required String householdId,
     required String inviteCode,
+    String? role,
   }) async {
+    final normalizedRole =
+        (role ?? AppContext.instance.activeMembership?.role ?? '')
+            .trim()
+            .toUpperCase();
+
+    if (normalizedRole.isEmpty) {
+      throw Exception('Invite role missing');
+    }
+
     return _householdInviteRepository.createInviteCode(
       householdId: householdId,
       inviteCode: inviteCode,
+      role: normalizedRole,
     );
   }
 

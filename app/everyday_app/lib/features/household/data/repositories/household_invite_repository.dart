@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../../../shared/repositories/supabase_client.dart';
 
 class HouseholdInviteRepository {
@@ -31,14 +33,23 @@ class HouseholdInviteRepository {
   Future<String> createInviteCode({
     required String householdId,
     required String inviteCode,
+    required String role,
   }) async {
     final normalizedInviteCode = inviteCode.trim().toUpperCase();
+    final roleForInsert = role.trim().toUpperCase();
+
+    if (roleForInsert.isEmpty) {
+      throw Exception('Invite role missing');
+    }
+
+    debugPrint('CREATE INVITE ROLE: $roleForInsert');
 
     final inserted = await supabase
         .from('household_invite')
         .upsert({
           'household_id': householdId,
           'invite_code': normalizedInviteCode,
+          'role': roleForInsert,
         }, onConflict: 'household_id')
         .select('invite_code')
         .single();
