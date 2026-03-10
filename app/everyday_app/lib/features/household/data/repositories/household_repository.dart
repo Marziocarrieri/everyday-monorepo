@@ -14,6 +14,59 @@ class HouseholdJoinResult {
 }
 
 class HouseholdRepository {
+  String _resolveDisplayName({
+    String? nickname,
+    String? name,
+    String? email,
+  }) {
+    for (final candidate in [nickname, name, email]) {
+      final normalized = candidate?.trim();
+      if (normalized != null && normalized.isNotEmpty) {
+        return normalized;
+      }
+    }
+
+    return 'Unknown';
+  }
+
+  Map<String, dynamic> _normalizeMemberRow(Map<String, dynamic> row) {
+    final normalizedRow = Map<String, dynamic>.from(row);
+    final rawProfile = normalizedRow['profile'];
+
+    final profile = rawProfile is Map<String, dynamic>
+        ? Map<String, dynamic>.from(rawProfile)
+        : rawProfile is Map
+            ? Map<String, dynamic>.from(rawProfile)
+            : <String, dynamic>{};
+
+    final topNickname = normalizedRow['nickname'] as String?;
+    final profileNickname = profile['nickname'] as String?;
+    final profileName = profile['name'] as String?;
+    final profileEmail = profile['email'] as String?;
+
+    profile['id'] ??= normalizedRow['user_id'];
+    profile['name'] = _resolveDisplayName(
+      nickname: topNickname ?? profileNickname,
+      name: profileName,
+      email: profileEmail,
+    );
+
+    if (profileEmail != null && profileEmail.trim().isNotEmpty) {
+      profile['email'] = profileEmail;
+    }
+
+    final membershipAvatarUrl = normalizedRow['avatar_url'] as String?;
+    final profileAvatarUrl = profile['avatar_url'] as String?;
+    if ((profileAvatarUrl == null || profileAvatarUrl.trim().isEmpty) &&
+        membershipAvatarUrl != null &&
+        membershipAvatarUrl.trim().isNotEmpty) {
+      profile['avatar_url'] = membershipAvatarUrl;
+    }
+
+    normalizedRow['profile'] = profile;
+    return normalizedRow;
+  }
+
   Future<void> _ensureUserProfileExists({
     required String userId,
     required String? email,
@@ -91,12 +144,22 @@ class HouseholdRepository {
       // users_profile e prendi anche tutti i dati anagrafici (*)"
       final response = await supabase
           .from('household_member')
-          .select('*, users_profile(*)') 
+          .select('''
+            *,
+            profile:users_profile(
+              id,
+              name,
+              nickname,
+              email,
+              avatar_url
+            )
+          ''')
           .eq('household_id', householdId);
 
       // Usiamo lo stampino HouseholdMember.fromJson che sa gestire questa struttura complessa
       return (response as List)
-          .map((json) => HouseholdMember.fromJson(json))
+          .map((row) => _normalizeMemberRow(Map<String, dynamic>.from(row)))
+          .map(HouseholdMember.fromJson)
           .toList();
 
     } catch (e) {
@@ -112,7 +175,6 @@ class HouseholdRepository {
     required String role,
   }) async {
     final normalizedInviteCode = inviteCode.trim().toUpperCase();
-    final normalizedRequestedRole = role.trim().toUpperCase();
 
     late final Map<String, dynamic> inviteMap;
     try {
@@ -137,13 +199,7 @@ class HouseholdRepository {
 
     final inviteRole = (inviteMap['role'] as String?)?.trim().toUpperCase();
     if (inviteRole == null || inviteRole.isEmpty) {
-      throw Exception('Invite role is invalid');
-    }
-
-    if (inviteRole != normalizedRequestedRole) {
-      debugPrint(
-        'Invite role $inviteRole overrides UI-selected role $normalizedRequestedRole',
-      );
+      throw Exception('Invite role missing');
     }
 
     await _ensureUserProfileExists(userId: userId, email: userEmail);

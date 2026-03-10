@@ -6,6 +6,59 @@ import '../models/household_member.dart';
 import '../../../../shared/repositories/supabase_client.dart';
 
 class MemberRepository {
+  String _resolveDisplayName({
+    String? nickname,
+    String? name,
+    String? email,
+  }) {
+    for (final candidate in [nickname, name, email]) {
+      final normalized = candidate?.trim();
+      if (normalized != null && normalized.isNotEmpty) {
+        return normalized;
+      }
+    }
+
+    return 'Unknown';
+  }
+
+  Map<String, dynamic> _normalizeMemberRow(Map<String, dynamic> row) {
+    final normalizedRow = Map<String, dynamic>.from(row);
+    final rawProfile = normalizedRow['profile'];
+
+    final profile = rawProfile is Map<String, dynamic>
+        ? Map<String, dynamic>.from(rawProfile)
+        : rawProfile is Map
+            ? Map<String, dynamic>.from(rawProfile)
+            : <String, dynamic>{};
+
+    final topNickname = normalizedRow['nickname'] as String?;
+    final profileNickname = profile['nickname'] as String?;
+    final profileName = profile['name'] as String?;
+    final profileEmail = profile['email'] as String?;
+
+    profile['id'] ??= normalizedRow['user_id'];
+    profile['name'] = _resolveDisplayName(
+      nickname: topNickname ?? profileNickname,
+      name: profileName,
+      email: profileEmail,
+    );
+
+    if (profileEmail != null && profileEmail.trim().isNotEmpty) {
+      profile['email'] = profileEmail;
+    }
+
+    final membershipAvatarUrl = normalizedRow['avatar_url'] as String?;
+    final profileAvatarUrl = profile['avatar_url'] as String?;
+    if ((profileAvatarUrl == null || profileAvatarUrl.trim().isEmpty) &&
+        membershipAvatarUrl != null &&
+        membershipAvatarUrl.trim().isNotEmpty) {
+      profile['avatar_url'] = membershipAvatarUrl;
+    }
+
+    normalizedRow['profile'] = profile;
+    return normalizedRow;
+  }
+
   /// Fetches all members for a specific household ID.
   /// Maps the database response directly to the existing HouseholdMember model.
   Future<List<HouseholdMember>> getMembers(String householdId) async {
@@ -17,7 +70,16 @@ class MemberRepository {
       // member_status, is_personnel, personnel_type, created_at, nickname, avatar_url.
       final response = await supabase
           .from('household_member')
-          .select('*, profile:users_profile(*)')
+          .select('''
+            *,
+            profile:users_profile(
+              id,
+              name,
+              nickname,
+              email,
+              avatar_url
+            )
+          ''')
           .eq('household_id', householdId)
           .eq('role', 'PERSONNEL')
           .order('created_at', ascending: true);
@@ -32,7 +94,8 @@ class MemberRepository {
       // 3. Map the JSON to your HouseholdMember model. 
       // This works as long as your model's fromJson matches these column names.
       return data
-          .map((json) => HouseholdMember.fromJson(json))
+          .map(_normalizeMemberRow)
+          .map(HouseholdMember.fromJson)
           .toList();
           
     } catch (e) {

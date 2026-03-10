@@ -84,6 +84,8 @@ class HouseholdService {
     }
 
     try {
+      // `role` is preserved in API for compatibility, but repository logic
+      // always enforces invite.role as authoritative.
       return await _repo.joinByInviteCode(
         userId: user.id,
         userEmail: user.email,
