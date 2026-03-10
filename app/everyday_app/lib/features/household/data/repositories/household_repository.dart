@@ -70,9 +70,9 @@ class HouseholdRepository {
     required String userId,
     required String? email,
   }) async {
-    final resolvedEmail = email ?? supabase.auth.currentUser?.email;
-    final normalizedEmail = resolvedEmail?.trim();
-    debugPrint("ENSURE PROFILE EMAIL: input=$email resolved=$normalizedEmail");
+    debugPrint(
+      "ENSURE PROFILE EMAIL: input=$email auth=${supabase.auth.currentUser?.email}",
+    );
 
     final existingProfile = await supabase
         .from('users_profile')
@@ -84,11 +84,8 @@ class HouseholdRepository {
       return;
     }
 
-    await supabase.from('users_profile').upsert({
-      'id': userId,
-      'email': normalizedEmail,
-      'name': normalizedEmail,
-    });
+    debugPrint("USER PROFILE MISSING DURING JOIN");
+    throw Exception('User profile not found');
   }
 
   // Crea una nuova casa
@@ -212,6 +209,7 @@ class HouseholdRepository {
       throw Exception('Invalid invite code');
     }
 
+    debugPrint("JOIN SHOULD NOT CREATE PROFILE");
     await _ensureUserProfileExists(userId: userId, email: userEmail);
 
     final existingMembershipRows = await supabase
