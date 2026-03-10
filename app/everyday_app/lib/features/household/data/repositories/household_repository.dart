@@ -230,15 +230,22 @@ class HouseholdRepository {
     if (existingMembershipList.isNotEmpty) {
       final existingMembership = existingMembershipList.first;
       final existingMembershipId = existingMembership['id'] as String?;
-      final existingHouseholdId = existingMembership['household_id'] as String?;
 
-      if (existingMembershipId == null || existingHouseholdId == null) {
+      if (existingMembershipId == null) {
         throw Exception('Membership loading failed');
       }
 
+      await supabase
+          .from('household_member')
+          .update({
+            'role': normalizedSelectedRole,
+            'is_personnel': normalizedSelectedRole == 'PERSONNEL',
+          })
+          .eq('id', existingMembershipId);
+
       return HouseholdJoinResult(
         membershipId: existingMembershipId,
-        householdId: existingHouseholdId,
+        householdId: householdIdFromInvite,
       );
     }
 
