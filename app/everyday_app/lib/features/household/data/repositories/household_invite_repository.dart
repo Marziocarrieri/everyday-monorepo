@@ -35,6 +35,8 @@ class HouseholdInviteRepository {
     required String inviteCode,
     required String role,
   }) async {
+    debugPrint("INVITE ROLE FROM UI: $role");
+
     final normalizedInviteCode = inviteCode.trim().toUpperCase();
     final roleForInsert = role.trim().toUpperCase();
 

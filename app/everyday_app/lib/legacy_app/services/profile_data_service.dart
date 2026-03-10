@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:everyday_app/core/app_context.dart';
+import 'package:flutter/foundation.dart';
 import 'package:everyday_app/shared/repositories/avatar_storage_repository.dart';
 import 'package:everyday_app/features/household/data/repositories/household_admin_repository.dart';
 import 'package:everyday_app/features/household/data/repositories/household_invite_repository.dart';
@@ -74,6 +75,8 @@ class ProfileDataService {
     required String inviteCode,
     String? role,
   }) async {
+    debugPrint("INVITE ROLE FROM UI: $role");
+
     final normalizedRole =
         (role ?? AppContext.instance.activeMembership?.role ?? '')
             .trim()

@@ -177,8 +177,27 @@ class HouseholdRepository {
     required String userId,
     required String? userEmail,
     required String inviteCode,
-    required String role,
+    required String selectedRole,
   }) async {
+    debugPrint("ROLE SELECTED AT JOIN: $selectedRole");
+
+    final normalizedSelectedRole = selectedRole.trim().toUpperCase();
+    late final String role;
+    switch (normalizedSelectedRole) {
+      case 'HOST':
+        role = 'HOST';
+        break;
+      case 'COHOST':
+      case 'CO_HOST':
+        role = 'COHOST';
+        break;
+      case 'PERSONNEL':
+        role = 'PERSONNEL';
+        break;
+      default:
+        throw Exception('Invalid selected role');
+    }
+
     final normalizedInviteCode = inviteCode.trim().toUpperCase();
 
     late final Map<String, dynamic> inviteMap;
@@ -189,6 +208,7 @@ class HouseholdRepository {
           .eq('invite_code', normalizedInviteCode)
           .single();
       inviteMap = Map<String, dynamic>.from(inviteRow);
+      debugPrint("ROLE FROM INVITE: ${inviteMap['role']}");
     } catch (error) {
       final message = error.toString().toLowerCase();
       if (message.contains('0 rows') || message.contains('no rows')) {
@@ -197,14 +217,9 @@ class HouseholdRepository {
       rethrow;
     }
 
-    final householdId = inviteMap['household_id'] as String?;
-    if (householdId == null || householdId.isEmpty) {
+    final householdIdFromInvite = inviteMap['household_id'] as String?;
+    if (householdIdFromInvite == null || householdIdFromInvite.isEmpty) {
       throw Exception('Invalid invite code');
-    }
-
-    final inviteRole = (inviteMap['role'] as String?)?.trim().toUpperCase();
-    if (inviteRole == null || inviteRole.isEmpty) {
-      throw Exception('Invite role missing');
     }
 
     await _ensureUserProfileExists(userId: userId, email: userEmail);
@@ -213,7 +228,7 @@ class HouseholdRepository {
         .from('household_member')
         .select('id, household_id')
         .eq('user_id', userId)
-        .eq('household_id', householdId)
+        .eq('household_id', householdIdFromInvite)
         .order('created_at', ascending: true)
         .limit(1);
 
@@ -234,15 +249,16 @@ class HouseholdRepository {
       );
     }
 
-    final roleFromInvite = inviteRole;
-    final bool isPersonnel = roleFromInvite == 'PERSONNEL';
+    final bool isPersonnel = role == 'PERSONNEL';
+    debugPrint("ROLE WRITTEN TO MEMBERSHIP: $role");
 
     final membershipRow = await supabase
         .from('household_member')
         .insert({
           'user_id': userId,
-          'household_id': householdId,
-          'role': roleFromInvite,
+          'household_id': householdIdFromInvite,
+          'role': role,
+          'member_status': 'ACTIVE',
           'is_personnel': isPersonnel,
         })
         .select('id, household_id')

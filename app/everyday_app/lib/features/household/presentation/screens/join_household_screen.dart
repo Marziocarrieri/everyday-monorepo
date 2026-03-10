@@ -25,13 +25,21 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
 
   bool _isLoading = false;
   String? _error;
-  String _selectedRole = 'PERSONNEL';
+  String? _selectedRole;
 
   Future<void> _joinHousehold(HouseholdService householdService) async {
     final inviteCode = _codeController.text.trim();
     if (inviteCode.isEmpty) {
       setState(() {
         _error = 'Invite code is required';
+      });
+      return;
+    }
+
+    final selectedRole = _selectedRole;
+    if (selectedRole == null || selectedRole.trim().isEmpty) {
+      setState(() {
+        _error = 'Role is required';
       });
       return;
     }
@@ -52,7 +60,7 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
     try {
       final joinResult = await householdService.joinHouseholdByInviteCode(
         inviteCode: inviteCode,
-        role: _selectedRole,
+        selectedRole: selectedRole,
       );
 
       final households = await householdService.getMyHouseholds();
@@ -199,7 +207,7 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
                                 dense: true,
                               ),
                               RadioListTile<String>(
-                                value: 'COHOST',
+                                value: 'CO_HOST',
                                 title: Text('Co-Host'),
                                 contentPadding: EdgeInsets.zero,
                                 dense: true,

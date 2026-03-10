@@ -76,7 +76,7 @@ class HouseholdService {
 
   Future<HouseholdJoinResult> joinHouseholdByInviteCode({
     required String inviteCode,
-    required String role,
+    required String selectedRole,
   }) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -84,13 +84,11 @@ class HouseholdService {
     }
 
     try {
-      // `role` is preserved in API for compatibility, but repository logic
-      // always enforces invite.role as authoritative.
       return await _repo.joinByInviteCode(
         userId: user.id,
         userEmail: user.email,
         inviteCode: inviteCode.trim().toUpperCase(),
-        role: role,
+        selectedRole: selectedRole,
       );
     } catch (error) {
       debugPrint('Error joining household by invite: $error');
