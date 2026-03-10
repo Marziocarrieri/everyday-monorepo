@@ -80,19 +80,13 @@ class HouseholdRepository {
       return;
     }
 
-    try {
-      await supabase.from('users_profile').insert({
-        'id': userId,
-        'email': email,
-      });
-    } catch (error) {
-      // If another request inserted it concurrently, continue.
-      final message = error.toString().toLowerCase();
-      if (message.contains('duplicate key value')) {
-        return;
-      }
-      rethrow;
-    }
+    final normalizedEmail = email?.trim();
+
+    await supabase.from('users_profile').upsert({
+      'id': userId,
+      'email': normalizedEmail,
+      'name': normalizedEmail,
+    });
   }
 
   // Crea una nuova casa
