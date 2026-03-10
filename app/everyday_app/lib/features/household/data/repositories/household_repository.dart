@@ -179,23 +179,17 @@ class HouseholdRepository {
     required String inviteCode,
     required String selectedRole,
   }) async {
-    debugPrint("ROLE SELECTED AT JOIN: $selectedRole");
+    debugPrint("JOIN REPOSITORY RECEIVED ROLE: $selectedRole");
 
-    final normalizedSelectedRole = selectedRole.trim().toUpperCase();
-    late final String role;
-    switch (normalizedSelectedRole) {
-      case 'HOST':
-        role = 'HOST';
-        break;
-      case 'COHOST':
-      case 'CO_HOST':
-        role = 'COHOST';
-        break;
-      case 'PERSONNEL':
-        role = 'PERSONNEL';
-        break;
-      default:
-        throw Exception('Invalid selected role');
+    var normalizedSelectedRole = selectedRole.trim().toUpperCase();
+    if (normalizedSelectedRole == 'CO_HOST') {
+      // Keep DB role aligned with existing role resolver enum token.
+      normalizedSelectedRole = 'COHOST';
+    }
+
+    const allowedRoles = {'HOST', 'COHOST', 'PERSONNEL'};
+    if (!allowedRoles.contains(normalizedSelectedRole)) {
+      throw Exception('Invalid selected role');
     }
 
     final normalizedInviteCode = inviteCode.trim().toUpperCase();
@@ -204,11 +198,10 @@ class HouseholdRepository {
     try {
       final inviteRow = await supabase
           .from('household_invite')
-          .select('household_id, role')
+          .select('household_id')
           .eq('invite_code', normalizedInviteCode)
           .single();
       inviteMap = Map<String, dynamic>.from(inviteRow);
-      debugPrint("ROLE FROM INVITE: ${inviteMap['role']}");
     } catch (error) {
       final message = error.toString().toLowerCase();
       if (message.contains('0 rows') || message.contains('no rows')) {
@@ -249,15 +242,16 @@ class HouseholdRepository {
       );
     }
 
-    final bool isPersonnel = role == 'PERSONNEL';
-    debugPrint("ROLE WRITTEN TO MEMBERSHIP: $role");
+    final bool isPersonnel = normalizedSelectedRole == 'PERSONNEL';
+    debugPrint("ROLE WRITTEN TO MEMBERSHIP: $normalizedSelectedRole");
+    debugPrint("IS_PERSONNEL WRITTEN: ${normalizedSelectedRole == 'PERSONNEL'}");
 
     final membershipRow = await supabase
         .from('household_member')
         .insert({
           'user_id': userId,
           'household_id': householdIdFromInvite,
-          'role': role,
+          'role': normalizedSelectedRole,
           'member_status': 'ACTIVE',
           'is_personnel': isPersonnel,
         })

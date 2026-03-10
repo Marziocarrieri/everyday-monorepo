@@ -58,6 +58,8 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
     });
 
     try {
+      debugPrint("JOIN UI SELECTED ROLE: $selectedRole");
+
       final joinResult = await householdService.joinHouseholdByInviteCode(
         inviteCode: inviteCode,
         selectedRole: selectedRole,

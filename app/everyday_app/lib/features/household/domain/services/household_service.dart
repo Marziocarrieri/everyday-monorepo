@@ -84,6 +84,8 @@ class HouseholdService {
     }
 
     try {
+      debugPrint("JOIN SERVICE RECEIVED ROLE: $selectedRole");
+
       return await _repo.joinByInviteCode(
         userId: user.id,
         userEmail: user.email,
