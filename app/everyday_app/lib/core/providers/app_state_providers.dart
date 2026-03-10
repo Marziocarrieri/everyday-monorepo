@@ -49,3 +49,9 @@ final householdMembersProvider = FutureProvider<List<HouseholdMember>>((ref) asy
   final householdService = ref.watch(householdServiceProvider);
   return householdService.getMembers(currentHousehold.id);
 });
+
+final householdMembersStreamProvider =
+    StreamProvider.family<List<HouseholdMember>, String>((ref, householdId) {
+  final repository = ref.watch(householdMemberRepositoryProvider);
+  return repository.watchMembers(householdId);
+});

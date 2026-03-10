@@ -24,6 +24,18 @@ class FridgeRepository {
         .toList();
   }
 
+  Stream<List<FridgeItem>> watchPantryItems(String householdId) {
+    return supabase
+        .from('pantry_item')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .map(
+          (rows) => rows
+              .map((row) => FridgeItem.fromJson(Map<String, dynamic>.from(row)))
+              .toList(),
+        );
+  }
+
   Future<void> addItem({
     required String householdId,
     required String name,

@@ -26,9 +26,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   final TextEditingController weightController = TextEditingController();
   final TextEditingController dateTextController = TextEditingController();
   bool _isListView = true;
-  List<FridgeItem> _items = [];
-  bool _isLoading = true;
-  String? _error;
 
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
@@ -45,45 +42,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadItems();
-  }
-
-  Future<void> _loadItems() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final pantryService = ref.read(pantryServiceProvider);
-      final householdId = AppContext.instance.requireHouseholdId();
-      final items = await pantryService.getItems(
-        householdId,
-        _selectedCategory,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _items = items;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error.toString();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   @override
@@ -164,19 +122,18 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     try {
       final pantryService = ref.read(pantryServiceProvider);
       await pantryService.deleteItem(item.id);
-      await _loadItems();
       _showSuccessSnackBar('Item deleted');
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
-      await _loadItems();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final pantryService = ref.watch(pantryServiceProvider);
-    final currentItems = _items;
+    final householdId = AppContext.instance.requireHouseholdId();
+    final itemsAsync = ref.watch(pantryItemsStreamProvider(householdId));
     final themeColor = getStatusColor('safe');
 
     return Scaffold(
@@ -199,25 +156,42 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               ),
               const SizedBox(height: 20),
 
-              if (_error != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: const Color(0xFFF28482).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFF28482).withValues(alpha: 0.3))),
-                  child: Text(_error!, style: GoogleFonts.poppins(color: const Color(0xFFF28482), fontWeight: FontWeight.w500)),
-                ),
-                const SizedBox(height: 16),
-              ],
-
               Expanded(
-                child: _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                child: itemsAsync.when(
+                  loading: () => Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                    ),
+                  ),
+                  error: (error, _) => Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFF28482).withValues(alpha: 0.3),
                         ),
-                      )
-                    : _isListView
-                    ? _buildGlassList(currentItems, pantryService)
-                    : _buildSmallGlassGrid(currentItems, pantryService),
+                      ),
+                      child: Text(
+                        error.toString(),
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFFF28482),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  data: (items) {
+                    final filteredItems = items
+                        .where((item) => item.area == _selectedCategory)
+                        .toList();
+
+                    return _isListView
+                        ? _buildGlassList(filteredItems, pantryService)
+                        : _buildSmallGlassGrid(filteredItems, pantryService);
+                  },
+                ),
               ),
             ],
           ),
@@ -392,7 +366,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     return GestureDetector(
       onTap: () {
         setState(() => _selectedCategory = areaType);
-        _loadItems();
         Navigator.pop(context);
       },
       child: Row(
@@ -519,7 +492,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       builder: (_) => FridgeItemDetailSheet(item: item, pantryService: pantryService),
     );
     if (result == true && mounted) {
-      await _loadItems();
       _showSuccessSnackBar('Item updated');
     }
   }
@@ -635,7 +607,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
 
     if (changed == true && mounted) {
-      await _loadItems();
       _showSuccessSnackBar('Item added');
     }
   }

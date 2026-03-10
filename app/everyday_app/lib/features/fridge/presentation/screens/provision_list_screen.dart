@@ -16,10 +16,6 @@ class ProvisionListScreen extends ConsumerStatefulWidget {
 }
 
 class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
-  List<ShoppingItem> _items = [];
-  bool _isLoading = true;
-  String? _error;
-
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
 
@@ -37,46 +33,6 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadItems();
-  }
-
-  Future<void> _loadItems() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final shoppingService = ref.read(shoppingServiceProvider);
-      final householdId = AppContext.instance.requireHouseholdId();
-      final items = await shoppingService.getList(householdId);
-
-      if (!mounted) return;
-      setState(() {
-        _items = items;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error.toString();
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   Future<bool?> _confirmDelete(ShoppingItem item) {
@@ -120,12 +76,10 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
   Future<void> _deleteItem(String id, ShoppingService shoppingService) async {
     try {
       await shoppingService.deleteItem(id);
-      await _loadItems();
       _showSuccessSnackBar('Item deleted');
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
-      await _loadItems();
     }
   }
 
@@ -142,7 +96,6 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
 
     if (changed == true && mounted) {
-      await _loadItems();
       _showSuccessSnackBar('Item added');
     }
   }
@@ -159,7 +112,6 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
 
     if (changed == true && mounted) {
-      await _loadItems();
       _showSuccessSnackBar('Item updated');
     }
   }
@@ -167,6 +119,9 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
   @override
   Widget build(BuildContext context) {
     final shoppingService = ref.watch(shoppingServiceProvider);
+    final householdId = AppContext.instance.requireHouseholdId();
+    final itemsAsync = ref.watch(shoppingItemsStreamProvider(householdId));
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -178,26 +133,37 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
               _buildHeader(context, shoppingService),
               const SizedBox(height: 30),
 
-              if (_error != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: const Color(0xFFF28482).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFF28482).withValues(alpha: 0.3))),
-                  child: Text(_error!, style: GoogleFonts.poppins(color: const Color(0xFFF28482), fontWeight: FontWeight.w500)),
-                ),
-                const SizedBox(height: 16),
-              ],
-
               // LA LISTA IN VETRO
               Expanded(
-                child: _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(getStatusColor('safe')),
+                child: itemsAsync.when(
+                  loading: () => Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(getStatusColor('safe')),
+                    ),
+                  ),
+                  error: (error, _) => Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFF28482).withValues(alpha: 0.3),
                         ),
-                      )
-                    : _items.isEmpty
-                    ? _buildEmptyState()
-                    : _buildGlassList(shoppingService),
+                      ),
+                      child: Text(
+                        error.toString(),
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFFF28482),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  data: (items) => items.isEmpty
+                      ? _buildEmptyState()
+                      : _buildGlassList(items, shoppingService),
+                ),
               ),
             ],
           ),
@@ -286,13 +252,16 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
-  Widget _buildGlassList(ShoppingService shoppingService) {
+  Widget _buildGlassList(
+    List<ShoppingItem> items,
+    ShoppingService shoppingService,
+  ) {
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
-      itemCount: _items.length,
+      itemCount: items.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final item = _items[index];
+        final item = items[index];
         return Dismissible(
           key: ValueKey(item.id),
           direction: DismissDirection.endToStart,

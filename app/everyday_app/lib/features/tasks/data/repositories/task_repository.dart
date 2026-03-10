@@ -113,6 +113,62 @@ class TaskRepository {
         .toList();
   }
 
+  Stream<List<TaskWithDetails>> watchTasks(String householdId) {
+    return supabase
+        .from('tasks')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .asyncMap((rows) async {
+          final taskRows = List<Map<String, dynamic>>.from(rows);
+          if (taskRows.isEmpty) {
+            return <TaskWithDetails>[];
+          }
+
+          final taskIds = taskRows
+              .map((row) => row['id'])
+              .whereType<String>()
+              .toList();
+
+          if (taskIds.isEmpty) {
+            return <TaskWithDetails>[];
+          }
+
+          final subtasksResponse = await supabase
+              .from('subtask')
+              .select('*')
+              .inFilter('task_id', taskIds);
+
+          final assignmentsResponse = await supabase
+              .from('task_assignment')
+              .select('*, household_member(*, users_profile(*))')
+              .inFilter('task_id', taskIds);
+
+          final subtasksByTaskId = <String, List<Map<String, dynamic>>>{};
+          for (final row in List<Map<String, dynamic>>.from(subtasksResponse)) {
+            final taskId = row['task_id'] as String?;
+            if (taskId == null) continue;
+            subtasksByTaskId.putIfAbsent(taskId, () => <Map<String, dynamic>>[]).add(row);
+          }
+
+          final assignmentsByTaskId = <String, List<Map<String, dynamic>>>{};
+          for (final row in List<Map<String, dynamic>>.from(assignmentsResponse)) {
+            final taskId = row['task_id'] as String?;
+            if (taskId == null) continue;
+            assignmentsByTaskId.putIfAbsent(taskId, () => <Map<String, dynamic>>[]).add(row);
+          }
+
+          return taskRows.map((taskRow) {
+            final taskId = taskRow['id'] as String?;
+            final merged = Map<String, dynamic>.from(taskRow);
+            merged['subtask'] = taskId == null ? const [] : (subtasksByTaskId[taskId] ?? const []);
+            merged['task_assignment'] = taskId == null
+                ? const []
+                : (assignmentsByTaskId[taskId] ?? const []);
+            return TaskWithDetails.fromJson(merged);
+          }).toList();
+        });
+  }
+
   Future<void> assignTaskToMembers(String taskId, List<String> memberIds) async {
     if (memberIds.isEmpty) return;
 

@@ -3,11 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui'; // Aggiunto per l'effetto Glassmorphism
+import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
 
-import '../../data/models/subtask.dart';
-import '../../data/models/task_assignement.dart';
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
 import '../providers/task_providers.dart';
@@ -26,57 +25,34 @@ class DailyTaskScreen extends ConsumerStatefulWidget {
 class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
   TaskService get _taskService => ref.read(taskServiceProvider);
 
-  bool _isLoading = true;
-  String? _error;
-  List<TaskWithDetails> _tasks = const [];
-  Map<String, String> _roomNamesById = const {};
-
   final Color themeColor = const Color(0xFF5A8B9E); // Colore Premium Azzurro
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTasks();
-  }
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  Future<void> _loadTasks() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final personalTasks = await _taskService.getTasksAssignedToCurrentMember();
-      final rooms = await _taskService.getAvailableRooms();
-      final filtered = personalTasks
-          .where((task) => _isSameDay(task.task.taskDate, widget.date))
-          .toList();
-
-      if (!mounted) return;
-      setState(() {
-        _tasks = filtered;
-        _roomNamesById = {
-          for (final room in rooms) room.id: room.name,
-        };
-      });
-    } catch (error) {
-      debugPrint('Error loading daily tasks: $error');
-      if (!mounted) return;
-      setState(() {
-        _error = error.toString();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  List<TaskWithDetails> _filterTasksForDay(List<TaskWithDetails> tasks) {
+    final membershipId = AppContext.instance.membershipId;
+    if (membershipId == null) {
+      return const [];
     }
+
+    return tasks
+        .where((task) => _isSameDay(task.task.taskDate, widget.date))
+        .where(
+          (task) => task.assignments.any(
+            (assignment) => assignment.memberId == membershipId,
+          ),
+        )
+        .toList();
+  }
+
+  void _refreshTasksStream() {
+    final householdId = AppContext.instance.householdId;
+    if (householdId == null) {
+      return;
+    }
+    ref.invalidate(tasksStreamProvider(householdId));
   }
 
   Future<void> _toggleSubtask({
@@ -85,30 +61,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
   }) async {
     try {
       await _taskService.setSubtaskDone(subtaskId: subtaskId, isDone: isDone);
-      if (!mounted) return;
-
-      setState(() {
-        _tasks = _tasks
-            .map(
-              (taskWithDetails) => TaskWithDetails(
-                task: taskWithDetails.task,
-                assignments: taskWithDetails.assignments,
-                subtasks: taskWithDetails.subtasks
-                    .map(
-                      (subtask) => subtask.id == subtaskId
-                          ? Subtask(
-                              id: subtask.id,
-                              taskId: subtask.taskId,
-                              title: subtask.title,
-                              isDone: isDone,
-                            )
-                          : subtask,
-                    )
-                    .toList(),
-              ),
-            )
-            .toList();
-      });
+      _refreshTasksStream();
     } catch (error) {
       debugPrint('Error toggling subtask: $error');
       if (!mounted) return;
@@ -134,33 +87,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
         assignmentId: assignmentId,
         status: nextStatus,
       );
-
-      if (!mounted) return;
-      setState(() {
-        _tasks = _tasks
-            .map(
-              (taskWithDetails) => TaskWithDetails(
-                task: taskWithDetails.task,
-                subtasks: taskWithDetails.subtasks,
-                assignments: taskWithDetails.assignments
-                    .map(
-                      (assignment) => assignment.id == assignmentId
-                          ? TaskAssignment(
-                              id: assignment.id,
-                              taskId: assignment.taskId,
-                              memberId: assignment.memberId,
-                              status: nextStatus,
-                              note: assignment.note,
-                              completedAt: assignment.completedAt,
-                              member: assignment.member,
-                            )
-                          : assignment,
-                    )
-                    .toList(),
-              ),
-            )
-            .toList();
-      });
+      _refreshTasksStream();
     } catch (error) {
       debugPrint('Error toggling assignment status: $error');
       if (!mounted) return;
@@ -185,6 +112,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
     );
 
     if (!mounted) return;
+    if (saved) {
+      _refreshTasksStream();
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -211,7 +141,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
     );
 
     if (changed == true) {
-      await _loadTasks();
+      _refreshTasksStream();
     }
   }
 
@@ -308,7 +238,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
     try {
       await _taskService.deleteTask(task.task.id);
       if (!mounted) return false;
-      await _loadTasks();
       return true;
     } catch (error) {
       debugPrint('Error deleting task: $error');
@@ -327,7 +256,15 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(taskServiceProvider);
+    final householdId = AppContext.instance.requireHouseholdId();
+    final tasksAsync = ref.watch(tasksStreamProvider(householdId));
+    final roomsAsync = ref.watch(taskRoomsProvider);
+    final roomNamesById = roomsAsync.maybeWhen(
+      data: (rooms) => {
+        for (final room in rooms) room.id: room.name,
+      },
+      orElse: () => const <String, String>{},
+    );
     final formattedDate = DateFormat('dd MMM, yyyy').format(widget.date);
 
     return Scaffold(
@@ -349,56 +286,83 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
               Expanded(
                 child: Column(
                   children: [
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 16.0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF28482).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFF28482).withValues(alpha: 0.3)),
+                    Expanded(
+                      child: tasksAsync.when(
+                        loading: () => Center(
+                          child: CircularProgressIndicator(color: themeColor),
+                        ),
+                        error: (error, _) => Padding(
+                          padding: const EdgeInsets.only(
+                            left: 24.0,
+                            right: 24.0,
+                            bottom: 16.0,
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline_rounded, color: Color(0xFFF28482), size: 20),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(_error!, style: GoogleFonts.poppins(color: const Color(0xFFF28482), fontWeight: FontWeight.w600, fontSize: 13)),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFF28482).withValues(alpha: 0.3),
                               ),
-                            ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Color(0xFFF28482),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    error.toString(),
+                                    style: GoogleFonts.poppins(
+                                      color: const Color(0xFFF28482),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
+                        data: (tasks) {
+                          final visibleTasks = _filterTasksForDay(tasks);
+                          if (visibleTasks.isEmpty) {
+                            return _buildEmptyState();
+                          }
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.only(
+                              left: 24.0,
+                              right: 24.0,
+                              bottom: 40.0,
+                            ),
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: visibleTasks.length,
+                            itemBuilder: (context, index) {
+                              final task = visibleTasks[index];
+                              return TaskCard(
+                                key: ValueKey(task.task.id),
+                                taskWithDetails: task,
+                                onSubtaskToggle: _toggleSubtask,
+                                onAssignmentToggle: _toggleAssignmentStatus,
+                                onSaveNote: _saveNote,
+                                onEditTask: _openEditTask,
+                                onConfirmDeleteTask: _deleteTask,
+                                roomName: task.task.roomId != null
+                                    ? roomNamesById[task.task.roomId!]
+                                    : null,
+                              );
+                            },
+                          );
+                        },
                       ),
-                    Expanded(
-                      child: _isLoading
-                          ? Center(child: CircularProgressIndicator(color: themeColor))
-                          : _tasks.isEmpty
-                              ? _buildEmptyState()
-                              : ListView.builder(
-                                  padding: const EdgeInsets.only(
-                                    left: 24.0,
-                                    right: 24.0,
-                                    bottom: 40.0,
-                                  ),
-                                  physics: const BouncingScrollPhysics(),
-                                  itemCount: _tasks.length,
-                                  itemBuilder: (context, index) {
-                                    final task = _tasks[index];
-                                    return TaskCard(
-                                      key: ValueKey(task.task.id),
-                                      taskWithDetails: task,
-                                      onSubtaskToggle: _toggleSubtask,
-                                      onAssignmentToggle: _toggleAssignmentStatus,
-                                      onSaveNote: _saveNote,
-                                      onEditTask: _openEditTask,
-                                      onConfirmDeleteTask: _deleteTask,
-                                      roomName: task.task.roomId != null
-                                          ? _roomNamesById[task.task.roomId!]
-                                          : null,
-                                    );
-                                  },
-                                ),
                     ),
                   ],
                 ),
@@ -449,7 +413,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
               ),
             );
             if (changed == true) {
-              await _loadTasks();
+              _refreshTasksStream();
             }
           },
           child: Container(

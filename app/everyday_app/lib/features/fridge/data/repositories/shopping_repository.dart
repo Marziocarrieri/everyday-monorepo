@@ -27,6 +27,18 @@ class ShoppingRepository {
         .toList();
   }
 
+  Stream<List<ShoppingItem>> watchShoppingItems(String householdId) {
+    return supabase
+        .from('shopping_item')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .map(
+          (rows) => rows
+              .map((row) => ShoppingItem.fromJson(Map<String, dynamic>.from(row)))
+              .toList(),
+        );
+  }
+
   // Cambia stato (da PENDING a BOUGHT)
   Future<void> toggleStatus(String itemId, String currentStatus) async {
     final newStatus = currentStatus == 'PENDING' ? 'BOUGHT' : 'PENDING';

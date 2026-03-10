@@ -4,6 +4,7 @@ import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/providers/app_providers.dart';
 import 'package:everyday_app/features/fridge/data/models/area_type.dart';
 import 'package:everyday_app/features/fridge/data/models/fridge_item.dart';
+import 'package:everyday_app/features/fridge/data/models/shopping_item.dart';
 import 'package:everyday_app/features/fridge/domain/services/pantry_service.dart';
 import 'package:everyday_app/features/fridge/domain/services/shopping_service.dart';
 
@@ -24,4 +25,16 @@ final fridgeItemsProvider = FutureProvider.family<List<FridgeItem>, AreaType>((
 final shoppingServiceProvider = Provider<ShoppingService>((ref) {
   final repository = ref.watch(shoppingRepositoryProvider);
   return ShoppingService(repository);
+});
+
+final shoppingItemsStreamProvider =
+    StreamProvider.family<List<ShoppingItem>, String>((ref, householdId) {
+  final repository = ref.watch(shoppingRepositoryProvider);
+  return repository.watchShoppingItems(householdId);
+});
+
+final pantryItemsStreamProvider =
+    StreamProvider.family<List<FridgeItem>, String>((ref, householdId) {
+  final repository = ref.watch(fridgeRepositoryProvider);
+  return repository.watchPantryItems(householdId);
 });

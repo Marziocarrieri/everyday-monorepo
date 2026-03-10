@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/features/fridge/data/repositories/fridge_repository.dart';
 import 'package:everyday_app/features/fridge/data/repositories/shopping_repository.dart';
+import 'package:everyday_app/features/household/data/repositories/household_member_repository.dart';
 import 'package:everyday_app/features/household/data/repositories/household_repository.dart';
 import 'package:everyday_app/features/tasks/data/repositories/task_repository.dart';
 
@@ -30,6 +31,11 @@ final fridgeRepositoryProvider = Provider<FridgeRepository>((ref) {
 
 final shoppingRepositoryProvider = Provider<ShoppingRepository>((ref) {
   return ShoppingRepository();
+});
+
+final householdMemberRepositoryProvider =
+    Provider<HouseholdMemberRepository>((ref) {
+  return HouseholdMemberRepository();
 });
 
 final householdRepositoryProvider = Provider<HouseholdRepository>((ref) {

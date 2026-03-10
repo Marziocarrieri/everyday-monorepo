@@ -21,6 +21,18 @@ class PantryRepository {
         .toList();
   }
 
+  Stream<List<PantryItem>> watchPantryItems(String householdId) {
+    return supabase
+        .from('pantry_item')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .map(
+          (rows) => rows
+              .map((row) => PantryItem.fromJson(Map<String, dynamic>.from(row)))
+              .toList(),
+        );
+  }
+
   // Aggiorna quantità (es. ho bevuto una bottiglia d'acqua)
   Future<void> updateQuantity(String itemId, int newQuantity) async {
     await supabase

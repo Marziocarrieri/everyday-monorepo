@@ -1,8 +1,48 @@
 import 'package:flutter/foundation.dart';
+import 'package:everyday_app/features/personnel/data/models/household_member.dart';
 
 import '../../../../shared/repositories/supabase_client.dart';
 
 class HouseholdMemberRepository {
+  Stream<List<HouseholdMember>> watchMembers(String householdId) {
+    return supabase
+        .from('household_member')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .asyncMap((rows) async {
+          final membershipRows = List<Map<String, dynamic>>.from(rows);
+          final userIds = membershipRows
+              .map((row) => row['user_id'])
+              .whereType<String>()
+              .toSet()
+              .toList();
+
+          final profilesByUserId = <String, Map<String, dynamic>>{};
+          if (userIds.isNotEmpty) {
+            final profilesResponse = await supabase
+                .from('users_profile')
+                .select('id, name, email')
+                .inFilter('id', userIds);
+
+            for (final profile
+                in List<Map<String, dynamic>>.from(profilesResponse)) {
+              final id = profile['id'] as String?;
+              if (id == null) continue;
+              profilesByUserId[id] = profile;
+            }
+          }
+
+          return membershipRows.map((row) {
+            final mapped = Map<String, dynamic>.from(row);
+            final userId = mapped['user_id'] as String?;
+            if (userId != null && profilesByUserId.containsKey(userId)) {
+              mapped['profile'] = profilesByUserId[userId];
+            }
+            return HouseholdMember.fromJson(mapped);
+          }).toList();
+        });
+  }
+
   Future<List<Map<String, dynamic>>> getMembershipRowsForUser(String userId) async {
     final response = await supabase
         .from('household_member')
