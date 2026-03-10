@@ -52,6 +52,8 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
       return;
     }
 
+    debugPrint("JOIN UI EMAIL: ${currentUser.email}");
+
     setState(() {
       _isLoading = true;
       _error = null;

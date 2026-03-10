@@ -70,6 +70,10 @@ class HouseholdRepository {
     required String userId,
     required String? email,
   }) async {
+    final resolvedEmail = email ?? supabase.auth.currentUser?.email;
+    final normalizedEmail = resolvedEmail?.trim();
+    debugPrint("ENSURE PROFILE EMAIL: input=$email resolved=$normalizedEmail");
+
     final existingProfile = await supabase
         .from('users_profile')
         .select('id')
@@ -79,8 +83,6 @@ class HouseholdRepository {
     if (existingProfile != null) {
       return;
     }
-
-    final normalizedEmail = email?.trim();
 
     await supabase.from('users_profile').upsert({
       'id': userId,
@@ -174,6 +176,7 @@ class HouseholdRepository {
     required String selectedRole,
   }) async {
     debugPrint("JOIN REPOSITORY RECEIVED ROLE: $selectedRole");
+    debugPrint("JOIN REPOSITORY EMAIL: $userEmail");
 
     var normalizedSelectedRole = selectedRole.trim().toUpperCase();
     if (normalizedSelectedRole == 'CO_HOST') {
