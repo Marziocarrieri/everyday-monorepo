@@ -65,6 +65,118 @@ class _PetsScreenState extends State<PetsScreen> {
     }
   }
 
+  // --- FUNZIONE ELIMINA PET (UI PRONTA, LOGICA DA AGGIUNGERE) ---
+  Future<bool> _confirmDeletePet(Pet pet) async {
+    // 1. Mostriamo il Dialog in Vetro per confermare
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFFF28482).withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60, height: 60,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.pets_rounded, color: Color(0xFFF28482), size: 30),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Remove Pet',
+                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C)),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Are you sure you want to remove ${pet.name} from this home?',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.6)),
+                  ),
+                  const SizedBox(height: 30),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(false),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF3D342C).withValues(alpha: 0.1), width: 1.5),
+                            ),
+                            child: Center(
+                              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.7))),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(true),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF28482),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: const Color(0xFFF28482).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
+                            child: Center(
+                              child: Text('Remove', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true) return false;
+
+    // 2. QUI INSERIRAI LA LOGICA DEL DATABASE (Da far fare al tuo compagno)
+    try {
+      // ESEMPIO: await _petRepository.deletePet(pet.id);
+      
+      // Simulo il ricaricamento (Rimuovere dopo aver messo la VERA funzione DB)
+      setState(() {
+        _pets.removeWhere((p) => p.id == pet.id);
+      });
+      
+      return true;
+    } catch (error) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error removing pet', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          backgroundColor: const Color(0xFFF28482),
+        ),
+      );
+      return false;
+    }
+  }
 
 
   // Funzione per aprire il popup di aggiunta Pet
@@ -92,7 +204,7 @@ class _PetsScreenState extends State<PetsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
           child: Column(
             children: [
-              // --- HEADER INVERTITO (Con il tasto "+" ripristinato) ---
+              // --- HEADER INVERTITO ---
               SizedBox(
                 height: 48,
                 child: Row(
@@ -120,16 +232,14 @@ class _PetsScreenState extends State<PetsScreen> {
               ),
               const SizedBox(height: 35),
 
-              // --- LISTA ANIMALI (Card Vetro Bianco) ---
-
-
+              // --- LISTA ANIMALI / EMPTY STATE ---
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator()) // Show loader while fetching
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white)) // Loading Bianco
                     : _error != null
-                        ? Center(child: Text('Error: $_error')) // Show error if it fails
+                        ? Center(child: Text('Error: $_error', style: GoogleFonts.poppins(color: Colors.white))) 
                         : _pets.isEmpty
-                            ? const Center(child: Text('No pets found')) // Show empty state
+                            ? _buildEmptyState() // <--- MAGICO EMPTY STATE
                             : ListView.builder(
                                 physics: const BouncingScrollPhysics(),
                                 itemCount: _pets.length,
@@ -138,9 +248,26 @@ class _PetsScreenState extends State<PetsScreen> {
                                   
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 20.0),
-                                    child: _buildInvertedPetCard(
-                                      pet,
-                                      const Color(0xFFF4A261),
+                                    // --- DISMISSIBLE PER LO SWIPE TO DELETE ---
+                                    child: Dismissible(
+                                      key: ValueKey(pet.id),
+                                      direction: DismissDirection.endToStart,
+                                      confirmDismiss: (_) async {
+                                        return await _confirmDeletePet(pet);
+                                      },
+                                      background: Container(
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF28482),
+                                          borderRadius: BorderRadius.circular(32),
+                                        ),
+                                        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
+                                      ),
+                                      child: _buildInvertedPetCard(
+                                        pet,
+                                        const Color(0xFFF4A261),
+                                      ),
                                     ),
                                   );
                                 },
@@ -163,6 +290,64 @@ class _PetsScreenState extends State<PetsScreen> {
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 8))],
       ),
       child: Icon(icon, color: Colors.white, size: 24),
+    );
+  }
+
+  // --- EMPTY STATE MAGICO ---
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
+            ),
+            child: Icon(
+              Icons.pets_rounded,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No Pets Yet!',
+            style: GoogleFonts.poppins(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add your furry friends to track\ntheir activities and care.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 40),
+          Icon(
+            Icons.arrow_upward_rounded,
+            color: Colors.white.withValues(alpha: 0.4),
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tap the + button to add one',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -332,7 +517,11 @@ class _AddPetSheetState extends State<AddPetSheet> {
                   if (name.isEmpty) {
                     // Feedback rapido se il nome manca
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter a name for your pet')),
+                      SnackBar(
+                        content: Text('Please enter a name for your pet', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                        backgroundColor: const Color(0xFFF28482),
+                        behavior: SnackBarBehavior.floating,
+                      ),
                     );
                     return;
                   }

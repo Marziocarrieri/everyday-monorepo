@@ -240,7 +240,7 @@ class _ProfileHouseholdBottomSheetState
 
   List<_HouseholdOption> _households = const [];
   bool _isLoading = true;
-  bool _isLoggingOut = false; // Aggiunto per gestire il caricamento del logout
+  bool _isLoggingOut = false; 
 
   @override
   void initState() {
@@ -314,7 +314,7 @@ class _ProfileHouseholdBottomSheetState
     }
   }
 
-  // --- LOGICA DI LOGOUT SPOSTATA QUI ---
+  // --- LOGICA DI LOGOUT ---
   Future<void> _logout() async {
     setState(() {
       _isLoggingOut = true;
@@ -325,7 +325,6 @@ class _ProfileHouseholdBottomSheetState
       AppContext.instance.clear();
 
       if (!mounted) return;
-      // Usiamo rootNavigator per assicurarci di chiudere il bottom sheet e cambiare pagina
       Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
         AppRouteNames.login2,
         (route) => false,
@@ -440,7 +439,6 @@ class _ProfileHouseholdBottomSheetState
                   // --- BOTTONI AFFIANCATI: ADD HOME & LOGOUT ---
                   Row(
                     children: [
-                      // Bottone Add Home
                       Expanded(
                         child: GestureDetector(
                           onTap: () async {
@@ -476,8 +474,6 @@ class _ProfileHouseholdBottomSheetState
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
-                      // Bottone Logout
                       Expanded(
                         child: GestureDetector(
                           onTap: _isLoggingOut ? null : _logout,
@@ -1211,56 +1207,123 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     
-                    // --- 🌟 CARD INFO UTENTE SUPER PREMIUM (Liquid Glass) 🌟 ---
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(32),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                        child: Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.white.withValues(alpha: 0.95),
-                                Colors.white.withValues(alpha: 0.6),
-                              ],
-                            ),
+                    // --- 🌟 CARD INFO UTENTE SUPER PREMIUM (STILE FLUTTUANTE) 🌟 ---
+                    // Aggiungiamo un padding top per far spazio all'avatar che esce
+                    Padding(
+                      padding: const EdgeInsets.only(top: 35.0),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.topCenter,
+                        children: [
+                          // 1. LA CARD BIANCA (Sfondo)
+                          ClipRRect(
                             borderRadius: BorderRadius.circular(32),
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF5A8B9E).withValues(alpha: 0.15),
-                                blurRadius: 30,
-                                offset: const Offset(0, 15),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                              child: Container(
+                                width: double.infinity, // Occupa tutta la larghezza disponibile
+                                padding: const EdgeInsets.only(top: 50, bottom: 24, left: 16, right: 16), // Padding top grande per l'avatar
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.95),
+                                      Colors.white.withValues(alpha: 0.6),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(32),
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF5A8B9E).withValues(alpha: 0.10),
+                                      blurRadius: 30,
+                                      offset: const Offset(0, 15),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    // NOME CENTRATO (Con Modifica inline)
+                                    _editingNickname
+                                        ? Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.8),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(color: const Color(0xFF5A8B9E).withValues(alpha: 0.3)),
+                                            ),
+                                            child: TextField(
+                                              controller: _nicknameController,
+                                              autofocus: true,
+                                              textAlign: TextAlign.center, // Centra il testo mentre scrivi
+                                              decoration: const InputDecoration(
+                                                isDense: true,
+                                                border: InputBorder.none,
+                                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                                              ),
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w700,
+                                                color: const Color(0xFF3D342C),
+                                                letterSpacing: -0.5,
+                                              ),
+                                            ),
+                                          )
+                                        : Text(
+                                            displayName,
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 24, // Leggermente più grande
+                                              fontWeight: FontWeight.w800,
+                                              color: const Color(0xFF3D342C),
+                                              letterSpacing: -0.5,
+                                            ),
+                                          ),
+                                    
+                                    const SizedBox(height: 6),
+
+                                    // RUOLO CENTRATO SOTTO IL NOME
+                                    Text(
+                                      role.toUpperCase(),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF5A8B9E), // Blu premium
+                                        letterSpacing: 2.0, // Molto spaziato per l'eleganza
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
+                            ),
                           ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Avatar Illuminato
-                              GestureDetector(
-                                onTap: _isUploadingAvatar ? null : _showAvatarOptions,
+
+                          // 2. L'AVATAR FLUTTUANTE (Centrato in alto)
+                          Positioned(
+                            top: -35, // Metà dell'altezza (70/2) per farlo sbordare perfettamente
+                            child: GestureDetector(
+                              onTap: _isUploadingAvatar ? null : _showAvatarOptions,
+                              child: Container(
+                                width: 70, // Dimensione ridotta come richiesto
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3D342C),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 4),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF5A8B9E).withValues(alpha: 0.4), // Glow azzurrino
+                                      blurRadius: 20,
+                                      spreadRadius: 2, // Espande un po' il glow
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
                                 child: Stack(
                                   clipBehavior: Clip.none,
                                   children: [
-                                    Container(
-                                      width: 90,
-                                      height: 90,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF3D342C),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 4),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: const Color(0xFF5A8B9E).withValues(alpha: 0.3),
-                                            blurRadius: 15,
-                                            offset: const Offset(0, 8),
-                                          ),
-                                        ],
-                                      ),
+                                    Positioned.fill(
                                       child: ClipOval(
                                         child: avatarUrl != null && avatarUrl.isNotEmpty
                                             ? Image.network(
@@ -1271,7 +1334,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                       child: Text(
                                                         _initialFromName(displayName),
                                                         style: GoogleFonts.poppins(
-                                                          fontSize: 32,
+                                                          fontSize: 26,
                                                           fontWeight: FontWeight.bold,
                                                           color: Colors.white,
                                                         ),
@@ -1282,7 +1345,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                 child: Text(
                                                   _initialFromName(displayName),
                                                   style: GoogleFonts.poppins(
-                                                    fontSize: 32,
+                                                    fontSize: 26,
                                                     fontWeight: FontWeight.bold,
                                                     color: Colors.white,
                                                   ),
@@ -1303,167 +1366,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           ),
                                         ),
                                       )
-                                    else
-                                      // Pulsante Fotocamera Smart
-                                      Positioned(
-                                        right: -4,
-                                        bottom: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [Color(0xFF5A8B9E), Color(0xFF4A7585)],
-                                            ),
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: Colors.white, width: 2.5),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: const Color(0xFF5A8B9E).withValues(alpha: 0.4),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 3),
-                                              ),
-                                            ],
-                                          ),
-                                          child: const Icon(
-                                            Icons.camera_alt_rounded,
-                                            size: 14,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 24),
-                              
-                              // Testo e Input (NOME IN CIMA)
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    
-                                    // Nome Editabile Premium
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _editingNickname
-                                              ? Container(
-                                                  padding: const EdgeInsets.only(left: 12),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white.withValues(alpha: 0.8),
-                                                    borderRadius: BorderRadius.circular(12),
-                                                    border: Border.all(color: const Color(0xFF5A8B9E).withValues(alpha: 0.3)),
-                                                  ),
-                                                  child: TextField(
-                                                    controller: _nicknameController,
-                                                    autofocus: true,
-                                                    decoration: const InputDecoration(
-                                                      isDense: true,
-                                                      border: InputBorder.none,
-                                                      contentPadding: EdgeInsets.symmetric(vertical: 10),
-                                                    ),
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 20,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: const Color(0xFF3D342C),
-                                                      letterSpacing: -0.5,
-                                                    ),
-                                                  ),
-                                                )
-                                              : Text(
-                                                  displayName,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: const Color(0xFF3D342C),
-                                                    letterSpacing: -0.5,
-                                                  ),
-                                                ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        // BOTTONE MODIFICA / SALVA
-                                        if (_editingNickname)
-                                          GestureDetector(
-                                            onTap: _isSavingNickname ? null : _handleNicknameEdit,
-                                            child: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF5A8B9E),
-                                                shape: BoxShape.circle,
-                                                boxShadow: [BoxShadow(color: const Color(0xFF5A8B9E).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))]
-                                              ),
-                                              child: _isSavingNickname
-                                                  ? const SizedBox(
-                                                      width: 16,
-                                                      height: 16,
-                                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                                    )
-                                                  : const Icon(Icons.check_rounded, color: Colors.white, size: 16),
-                                            ),
-                                          )
-                                        else
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                _editingNickname = true;
-                                                _nicknameController.text = _activeMembership?.nickname ?? '';
-                                              });
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white.withValues(alpha: 0.6),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: Colors.white, width: 1.5),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
-                                                    blurRadius: 8,
-                                                    offset: const Offset(0, 3),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: const Icon(
-                                                Icons.edit_rounded, 
-                                                color: Color(0xFF5A8B9E), 
-                                                size: 16
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    
-                                    const SizedBox(height: 6),
-
-                                    // --- RUOLO MINIMALISTA E RAFFINATO (SOTTO IL NOME) ---
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          isHost ? Icons.workspace_premium_rounded : Icons.person_outline_rounded,
-                                          size: 16,
-                                          color: isHost ? const Color(0xFFE76F51) : const Color(0xFF5A8B9E),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          role.toUpperCase(),
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: isHost ? const Color(0xFFE76F51) : const Color(0xFF5A8B9E),
-                                            letterSpacing: 1.5,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    
-                                  ],
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+
+                          // 3. LA MATITA DI MODIFICA (In alto a destra della card)
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_editingNickname) {
+                                  if (!_isSavingNickname) _handleNicknameEdit();
+                                } else {
+                                  setState(() {
+                                    _editingNickname = true;
+                                    _nicknameController.text = _activeMembership?.nickname ?? '';
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _editingNickname ? const Color(0xFF5A8B9E) : Colors.white.withValues(alpha: 0.6),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: _editingNickname ? const Color(0xFF5A8B9E) : Colors.white, 
+                                    width: 1.5
+                                  ),
+                                  boxShadow: [
+                                    if (_editingNickname) 
+                                      BoxShadow(color: const Color(0xFF5A8B9E).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))
+                                  ],
+                                ),
+                                child: _editingNickname
+                                  ? (_isSavingNickname
+                                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                      : const Icon(Icons.check_rounded, color: Colors.white, size: 14))
+                                  : const Icon(Icons.edit_outlined, color: Color(0xFF3D342C), size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     
