@@ -1,5 +1,5 @@
+import 'package:everyday_app/legacy_app/household_ui/profile_screen.dart';
 import 'package:flutter/material.dart';
-
 import 'role_tab_config.dart';
 
 class RoleShellScaffold extends StatefulWidget {
@@ -67,31 +67,88 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
     }
 
     return Scaffold(
+      // FONDAMENTALE: Fa scorrere il contenuto della pagina SOTTO la barra fluttuante!
+      extendBody: true, 
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          final routeName = widget.tabs[index].routeName;
-          if (!_canAccess(routeName)) {
-            widget.onBlockedRoute?.call(context, routeName);
-            return;
-          }
+      // Sostituiamo il BottomNavigationBar nativo con la barra Premium
+      bottomNavigationBar: _buildPremiumBottomNav(context),
+    );
+  }
 
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        items: widget.tabs
-            .map(
-              (tab) => BottomNavigationBarItem(
-                icon: Icon(tab.icon),
-                label: tab.label,
-              ),
+  // --- NUOVA BARRA PREMIUM LIQUID GLASS ---
+  Widget _buildPremiumBottomNav(BuildContext context) {
+    return SafeArea(
+      bottom: true,
+      child: Container(
+        height: 65,
+        margin: const EdgeInsets.only(left: 30, right: 30, bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(40),
+          border: Border.all(color: Colors.white, width: 2), // Riflesso del vetro
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
             )
-            .toList(),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(widget.tabs.length, (index) {
+            final tab = widget.tabs[index];
+            final isSelected = _selectedIndex == index;
+            
+            // Verifichiamo se è l'ultimo tab (Profilo)
+            final isProfileTab = index == widget.tabs.length - 1;
+            
+            // Colori premium
+            final iconColor = isSelected 
+                ? const Color(0xFF5A8B9E) 
+                : const Color(0xFF3D342C).withValues(alpha: 0.4);
+
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque, // Rende cliccabile tutto lo spazio interno
+              onTap: () {
+                final routeName = tab.routeName;
+                
+                // Controllo accessi originale intatto
+                if (!_canAccess(routeName)) {
+                  widget.onBlockedRoute?.call(context, routeName);
+                  return;
+                }
+                
+                setState(() {
+                  _selectedIndex = index;
+                });
+              },
+              
+              // PRESSIONE PROLUNGATA: Apre il menu delle case se siamo sul Profilo
+              // (usa Ctrl + Punto / Cmd + Punto per importare questa funzione!)
+              onLongPress: isProfileTab 
+                  ? () => showProfileHouseholdBottomSheet(context)
+                  : null,
+                  
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                // Effetto "Rimbalzo/Zoom" sull'icona selezionata
+                child: AnimatedScale(
+                  scale: isSelected ? 1.15 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    tab.icon,
+                    color: iconColor,
+                    size: 26,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
