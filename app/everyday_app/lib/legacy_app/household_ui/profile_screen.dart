@@ -165,10 +165,12 @@ class _HouseholdRemovalActions {
     BuildContext context, {
     required String householdName,
   }) async {
-    final membershipId = AppContext.instance.membershipId;
+    final userId = AppContext.instance.userId;
     final activeHouseholdId = AppContext.instance.householdId;
 
-    if (membershipId == null || activeHouseholdId == null) return;
+    if (userId == null || activeHouseholdId == null) {
+      return;
+    }
 
     final confirmed = await _showConfirmActionDialog(
       context,
@@ -179,7 +181,10 @@ class _HouseholdRemovalActions {
     if (!context.mounted) return;
     if (!confirmed) return;
 
-    await _profileDataService.removeMembership(membershipId);
+    await _profileDataService.removeMyMembership(
+      householdId: activeHouseholdId,
+      userId: userId,
+    );
 
     if (!context.mounted) return;
     await _applyFallbackAfterActiveRemoval(context);
@@ -1126,8 +1131,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _handleHouseholdSettingsAction() async {
     final membership = _activeMembership;
+    final membershipId = AppContext.instance.membershipId;
+    final userId = AppContext.instance.userId;
     final householdId = AppContext.instance.householdId;
     if (membership == null || householdId == null) return;
+
+    debugPrint(
+      'LEAVE UI MEMBERSHIP ID: membership_id=$membershipId user_id=$userId household_id=$householdId',
+    );
 
     final householdName = AppContext.instance.household?.name ?? 'this household';
     final isHost = membership.role.toUpperCase() == 'HOST';

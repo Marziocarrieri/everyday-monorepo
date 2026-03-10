@@ -11,7 +11,8 @@ class HouseholdFeatureService {
     final response = await supabase
         .from('household_member')
         .select('household(*)')
-        .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('member_status', 'ACTIVE');
 
     return List<Map<String, dynamic>>.from(response)
         .map((row) => Household.fromJson(row['household']))

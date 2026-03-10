@@ -103,7 +103,7 @@ class HouseholdRepository {
     try {
       final response = await supabase.from('household_member').select(
         'household(*)' 
-      ).eq('user_id', userId);
+      ).eq('user_id', userId).eq('member_status', 'ACTIVE');
 
       final seenHouseholdIds = <String>{};
       final households = <Household>[];

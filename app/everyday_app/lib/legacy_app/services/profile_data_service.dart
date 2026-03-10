@@ -27,8 +27,27 @@ class ProfileDataService {
     return _householdMemberRepository.getHouseholdsForUser(userId);
   }
 
-  Future<void> removeMembership(String membershipId) async {
-    await _householdMemberRepository.deleteMembershipById(membershipId);
+  Future<void> removeMembership({
+    required String membershipId,
+    required String userId,
+    required String householdId,
+  }) async {
+    debugPrint(
+      'LEAVE SERVICE MEMBERSHIP ID: membership_id=$membershipId user_id=$userId household_id=$householdId',
+    );
+
+    await _householdMemberRepository.deleteMembershipById(
+      membershipId: membershipId,
+      userId: userId,
+      householdId: householdId,
+    );
+  }
+
+  Future<void> removeMyMembership({
+    required String householdId,
+    required String userId,
+  }) async {
+    await _householdMemberRepository.deleteMyMembership(householdId, userId);
   }
 
   Future<void> removeMembershipsByHousehold(String householdId) async {
