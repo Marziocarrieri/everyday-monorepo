@@ -67,12 +67,21 @@ class HomeConfigurationRepository {
     return supabase
         .from('household_floor')
         .stream(primaryKey: ['id'])
-        .eq('household_id', householdId)
-        .map(
-          (rows) => rows
-              .map((row) => HouseholdFloor.fromJson(Map<String, dynamic>.from(row)))
-              .toList(),
-        );
+        .map((rows) {
+          final filteredRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .where((row) => row['household_id'] == householdId)
+              .toList();
+
+          final floors = filteredRows.map(HouseholdFloor.fromJson).toList();
+          floors.sort((left, right) {
+            final byOrder = left.floorOrder.compareTo(right.floorOrder);
+            if (byOrder != 0) return byOrder;
+            return left.name.compareTo(right.name);
+          });
+
+          return floors;
+        });
   }
 
   Future<List<HouseholdRoom>> getRooms({
@@ -118,12 +127,14 @@ class HomeConfigurationRepository {
     return supabase
         .from('household_room')
         .stream(primaryKey: ['id'])
-        .eq('household_id', householdId)
-        .map(
-          (rows) => rows
-              .map((row) => HouseholdRoom.fromJson(Map<String, dynamic>.from(row)))
-              .toList(),
-        );
+        .map((rows) {
+          final filteredRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .where((row) => row['household_id'] == householdId)
+              .toList();
+
+          return filteredRows.map(HouseholdRoom.fromJson).toList();
+        });
   }
 
   Stream<HomeConfiguration?> watchHomeConfiguration(String householdId) {
