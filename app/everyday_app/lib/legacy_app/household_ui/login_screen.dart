@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final nextRoute = households.isEmpty
         ? AppRouteNames.welcome
-        : AppRouteNames.mainLayout;
+        : AppRouteNames.roleShell;
 
     Navigator.of(context).pushNamedAndRemoveUntil(
       nextRoute,

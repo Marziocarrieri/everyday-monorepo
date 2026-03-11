@@ -146,11 +146,11 @@ class AppRouter {
           settings: settings,
         );
 
-      case AppRouteNames.mainLayout:
-        return MaterialPageRoute(
-          builder: (_) => const MainLayout(),
-          settings: settings,
-        );
+      //case AppRouteNames.mainLayout:
+        //return MaterialPageRoute(
+          //builder: (_) => const MainLayout(),
+          //settings: settings,
+        //);
 
       case AppRouteNames.diet:
         return MaterialPageRoute(

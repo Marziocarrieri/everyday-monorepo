@@ -40,7 +40,7 @@ class PersonnelNavigationShell extends StatelessWidget {
 
     return RoleShellScaffold(
       // Home is the first tab for personnel.
-      initialIndex: 0,
+      initialIndex: 1,
       tabs: tabs,
       canAccessRoute: (routeName) =>
           RouteAccessPolicy.canAccessRoute(AppRole.PERSONNEL, routeName),

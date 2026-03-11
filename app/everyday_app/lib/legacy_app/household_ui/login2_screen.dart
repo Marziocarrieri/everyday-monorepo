@@ -37,7 +37,7 @@ class _Login2ScreenState extends State<Login2Screen> {
 
     AppRouter.navigateAndRemoveUntil<void>(
       context,
-      AppRouteNames.mainLayout,
+      AppRouteNames.roleShell,
     );
   }
 

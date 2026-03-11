@@ -20,7 +20,7 @@ class CohostNavigationShell extends StatelessWidget {
         .toList();
 
     return RoleShellScaffold(
-      initialIndex: 0,
+      initialIndex: 1,
       tabs: tabs,
       canAccessRoute: (routeName) =>
           RouteAccessPolicy.canAccessRoute(AppRole.COHOST, routeName),

@@ -64,12 +64,6 @@ class RoleTabSets {
   static List<RoleTabConfig> cohostTabs() {
     return [
       RoleTabConfig(
-        routeName: AppRouteNames.cohostTabHome,
-        label: 'Home',
-        icon: Icons.home_filled,
-        builder: (_) => const HomeScreen(),
-      ),
-      RoleTabConfig(
         routeName: AppRouteNames.cohostTabUtilities,
         label: 'Utilities',
         icon: Icons.kitchen_rounded,
@@ -77,10 +71,16 @@ class RoleTabSets {
         builder: (_) => const UtilitiesScreen(),
       ),
       RoleTabConfig(
+        routeName: AppRouteNames.cohostTabHome,
+        label: 'Home',
+        icon: Icons.home_filled,
+        builder: (_) => const HomeScreen(),
+      ),
+      RoleTabConfig(
         routeName: AppRouteNames.cohostTabProfile,
         label: 'Profile',
         icon: Icons.person_outline,
-        // TODO(role-shell): replace legacy profile wrapper with cohost-native profile tab.
+
         builder: (_) => const ProfileScreen(),
       ),
     ];
@@ -89,17 +89,17 @@ class RoleTabSets {
   static List<RoleTabConfig> personnelTabs() {
     return [
       RoleTabConfig(
-        routeName: AppRouteNames.personnelTabHome,
-        label: 'Home',
-        icon: Icons.home_filled,
-        builder: (_) => const HomeScreen(),
-      ),
-      RoleTabConfig(
         routeName: AppRouteNames.personnelTabUtilities,
         label: 'Utilities',
         icon: Icons.kitchen_rounded,
         // TODO(role-shell): replace legacy utilities wrapper with personnel-native utilities tab.
         builder: (_) => const UtilitiesScreen(),
+      ),
+      RoleTabConfig(
+        routeName: AppRouteNames.personnelTabHome,
+        label: 'Home',
+        icon: Icons.home_filled,
+        builder: (_) => const HomeScreen(),
       ),
       RoleTabConfig(
         routeName: AppRouteNames.personnelTabProfile,

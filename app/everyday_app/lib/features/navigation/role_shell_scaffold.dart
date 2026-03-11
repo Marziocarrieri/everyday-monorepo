@@ -67,8 +67,9 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
     }
 
     return Scaffold(
-      // FONDAMENTALE: Fa scorrere il contenuto della pagina SOTTO la barra fluttuante!
-      extendBody: true, 
+      backgroundColor: Colors.white, // Sfondo bianco ripristinato
+      // extendBody a false previene che il contenuto vada sotto la barra
+      extendBody: false, 
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
@@ -78,13 +79,13 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
     );
   }
 
-  // --- NUOVA BARRA PREMIUM LIQUID GLASS ---
+  // --- BARRA PREMIUM STILE MAIN_LAYOUT ---
   Widget _buildPremiumBottomNav(BuildContext context) {
     return SafeArea(
       bottom: true,
       child: Container(
         height: 65,
-        margin: const EdgeInsets.only(left: 30, right: 30, bottom: 20),
+        margin: const EdgeInsets.only(left: 30, right: 30, bottom: 30), // Margine bottom tornato a 30
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(40),
@@ -106,10 +107,10 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
             // Verifichiamo se è l'ultimo tab (Profilo)
             final isProfileTab = index == widget.tabs.length - 1;
             
-            // Colori premium
+            // Colori premium del MainLayout originale
             final iconColor = isSelected 
-                ? const Color(0xFF5A8B9E) 
-                : const Color(0xFF3D342C).withValues(alpha: 0.4);
+                ? const Color(0xFFF4A261) // Arancione vivo per la selezione
+                : const Color(0xFF5A8B9E).withValues(alpha: 0.5); // Azzurro spento per gli inattivi
 
             return GestureDetector(
               behavior: HitTestBehavior.opaque, // Rende cliccabile tutto lo spazio interno
@@ -128,7 +129,6 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
               },
               
               // PRESSIONE PROLUNGATA: Apre il menu delle case se siamo sul Profilo
-              // (usa Ctrl + Punto / Cmd + Punto per importare questa funzione!)
               onLongPress: isProfileTab 
                   ? () => showProfileHouseholdBottomSheet(context)
                   : null,
@@ -142,7 +142,7 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
                   child: Icon(
                     tab.icon,
                     color: iconColor,
-                    size: 26,
+                    size: 28, // Dimensione tornata a 28
                   ),
                 ),
               ),
