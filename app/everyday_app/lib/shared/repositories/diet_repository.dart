@@ -1,27 +1,47 @@
 import 'supabase_client.dart';
+import 'package:everyday_app/shared/models/diet_document.dart';
 
 class DietRepository {
-  Future<Map<String, dynamic>?> getLatestDietForUser(String userId) async {
-    final response = await supabase
+  Stream<DietDocument?> watchDiet(String householdId) {
+    return supabase
         .from('diet_document')
-        .select('id, user_id, url, uploaded_at')
-        .eq('user_id', userId)
-        .order('uploaded_at', ascending: false)
-        .limit(1)
-        .maybeSingle();
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .map((rows) {
+          final dietRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .toList();
 
-    if (response == null) {
-      return null;
-    }
+          if (dietRows.isEmpty) {
+            return null;
+          }
 
-    return Map<String, dynamic>.from(response);
+          dietRows.sort((left, right) {
+            final leftDate = DateTime.tryParse(
+              left['uploaded_at']?.toString() ?? '',
+            );
+            final rightDate = DateTime.tryParse(
+              right['uploaded_at']?.toString() ?? '',
+            );
+
+            final normalizedLeft =
+                leftDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final normalizedRight =
+                rightDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return normalizedRight.compareTo(normalizedLeft);
+          });
+
+          return DietDocument.fromJson(dietRows.first);
+        });
   }
 
   Future<void> insertDietDocument({
+    required String householdId,
     required String userId,
     required String url,
   }) async {
     await supabase.from('diet_document').insert({
+      'household_id': householdId,
       'user_id': userId,
       'url': url,
     });
@@ -29,12 +49,14 @@ class DietRepository {
 
   Future<void> deleteDietDocument({
     required String docId,
+    required String householdId,
     required String userId,
   }) async {
     await supabase
         .from('diet_document')
         .delete()
         .eq('id', docId)
+        .eq('household_id', householdId)
         .eq('user_id', userId);
   }
 }

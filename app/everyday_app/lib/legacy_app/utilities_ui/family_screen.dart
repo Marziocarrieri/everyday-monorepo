@@ -1,70 +1,16 @@
 // TODO migrate to features/personnel
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
-import 'package:everyday_app/features/personnel/data/models/household_member.dart';
-import 'package:everyday_app/shared/repositories/family_repository.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
 
-class FamilyScreen extends StatefulWidget {
+class FamilyScreen extends ConsumerWidget {
   const FamilyScreen({super.key});
 
-  @override
-  State<FamilyScreen> createState() => _FamilyScreenState();
-}
-
-class _FamilyScreenState extends State<FamilyScreen> {
-  final FamilyRepository _familyRepository = FamilyRepository();
-  List<HouseholdMember> _members = [];
-  bool _isLoading = false;
-  String? _error;
-
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMembers();
-  }
-
-  Future<void> _loadMembers() async {
-    if (!mounted) return;
-    
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      // Fetches the current active household ID from your AppContext
-      final householdId = AppContext.instance.requireHouseholdId();
-      
-      final members = await _familyRepository.getMembers(householdId);
-
-      if (!mounted) return;
-      
-      setState(() {
-        _members = members;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      
-      setState(() {
-        _error = error.toString();
-      });
-      debugPrint('UI Error loading members: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-
-
-  void _openMemberSelectionSheet() {
+  void _openMemberSelectionSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -74,7 +20,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUserId = AppContext.instance.userId;
+    final membersAsync = ref.watch(householdMembersStreamProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -105,7 +54,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                     ),
                     _buildHeaderIcon(
                       Icons.add_rounded, 
-                      onTap: _openMemberSelectionSheet, 
+                      onTap: () => _openMemberSelectionSheet(context), 
                     ),
                   ],
                 ),
@@ -115,30 +64,44 @@ class _FamilyScreenState extends State<FamilyScreen> {
               // LISTA CARD PREMIUM (MODIFICATA PER IL CLICK)
 
               Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator()) // Show loader while fetching
-                    : _error != null
-                        ? Center(child: Text('Error: $_error')) // Show error if it fails
-                        : _members.isEmpty
-                            ? const Center(child: Text('No members found')) // Show empty state
-                            : ListView.builder(
-                                physics: const BouncingScrollPhysics(),
-                                itemCount: _members.length,
-                                itemBuilder: (context, index) {
-                                  final member = _members[index];
-                                  
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 20.0),
-                                    child: _buildPremiumFamilyCard(
-                                      id: member.id,
-                                      name: member.profile?.name ?? 'Unknown',
-                                      initial: (member.profile?.name ?? '?').isNotEmpty ? (member.profile?.name ?? '?')[0].toUpperCase() : '?',
-                                      color: const Color(0xFFF4A261)
-                                      
-                                    ),
-                                  );
-                                },
-                              ),
+                child: membersAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => Center(child: Text('Error: $error')),
+                  data: (members) {
+                    final familyMembers = members.where((member) {
+                      final role = member.role.toUpperCase();
+                      final isFamilyRole = role == 'HOST' || role == 'COHOST';
+                      final isCurrentUser =
+                          currentUserId != null && member.userId == currentUserId;
+                      return isFamilyRole && !isCurrentUser;
+                    }).toList();
+
+                    if (familyMembers.isEmpty) {
+                      return const Center(child: Text('No members found'));
+                    }
+
+                    return ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: familyMembers.length,
+                      itemBuilder: (context, index) {
+                        final member = familyMembers[index];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20.0),
+                          child: _buildPremiumFamilyCard(
+                            context: context,
+                            id: member.id,
+                            name: member.profile?.name ?? 'Unknown',
+                            initial: (member.profile?.name ?? '?').isNotEmpty
+                                ? (member.profile?.name ?? '?')[0].toUpperCase()
+                                : '?',
+                            color: const Color(0xFFF4A261),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -169,6 +132,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   // --- CARD FAMILY PREMIUM AGGIORNATA ---
   Widget _buildPremiumFamilyCard({
+    required BuildContext context,
     required String id, 
     required String name, 
     //required String status, 

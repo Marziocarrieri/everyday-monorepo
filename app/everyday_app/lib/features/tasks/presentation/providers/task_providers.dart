@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:everyday_app/core/providers/app_providers.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/household/data/models/household_room.dart';
 
 import '../../data/models/task_with_details.dart';
@@ -16,8 +17,18 @@ final dailyTasksProvider = FutureProvider<List<TaskWithDetails>>((ref) async {
   return taskService.getTasksAssignedToCurrentMember();
 });
 
-final tasksStreamProvider =
-    StreamProvider.family<List<TaskWithDetails>, String>((ref, householdId) {
+final tasksStreamProvider = StreamProvider<List<TaskWithDetails>>((ref) {
+  String? householdId;
+  try {
+    householdId = ref.watch(currentHouseholdIdProvider);
+  } catch (_) {
+    householdId = null;
+  }
+
+  if (householdId == null) {
+    return const Stream<List<TaskWithDetails>>.empty();
+  }
+
   final repository = ref.watch(taskRepositoryProvider);
   return repository.watchTasks(householdId);
 });

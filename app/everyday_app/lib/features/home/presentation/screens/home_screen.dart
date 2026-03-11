@@ -5,55 +5,16 @@ import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
 import 'package:everyday_app/features/home/presentation/widgets/home_daily_task_card.dart';
 import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
-import 'package:everyday_app/features/tasks/domain/services/task_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import 'package:everyday_app/features/tasks/presentation/providers/task_providers.dart';
 
-class HomeScreen extends StatefulWidget {
+
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final TaskService _taskService = TaskService();
-  bool _isLoadingAssignedTasks = true;
-  List<TaskWithDetails> _assignedTasks = const [];
-
-  @override
-  void initState() {
-    super.initState();
-
-    debugPrint("USER: ${AppContext.instance.userId}");
-    debugPrint("HOUSEHOLD: ${AppContext.instance.householdId}");
-    _loadAssignedTasks();
-  }
-
-  Future<void> _loadAssignedTasks() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoadingAssignedTasks = true;
-    });
-
-    try {
-      final tasks = await _taskService.getTasksAssignedToCurrentMember();
-      if (!mounted) return;
-      setState(() {
-        _assignedTasks = tasks;
-      });
-    } catch (error) {
-      debugPrint('Error loading personal dashboard tasks: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingAssignedTasks = false;
-        });
-      }
-    }
-  }
 
   bool _isSameDay(DateTime left, DateTime right) {
     return left.year == right.year &&
@@ -62,7 +23,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tasksAsync = ref.watch(tasksStreamProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -73,10 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               SizedBox(
                 height: 48,
-                child: _buildHeader(),
+                child: _buildHeader(context),
               ),
               const SizedBox(height: 40),
-              _buildDailyTaskCard(), 
+              _buildDailyTaskCard(context, tasksAsync), 
             ],
           ),
         ),
@@ -86,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- HEADER PREMIUM ---
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -135,49 +98,65 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- CARD PREMIUM ---
-  Widget _buildDailyTaskCard() {
-    final today = DateTime.now();
-    final todaysTasks = _assignedTasks
-        .where((task) => _isSameDay(task.task.taskDate, today))
-        .toList();
+  Widget _buildDailyTaskCard(
+    BuildContext context,
+    AsyncValue<List<TaskWithDetails>> tasksAsync,
+  ) {
+    Future<void> openDailyTasks() async {
+      await AppRouter.navigate<void>(
+        context,
+        AppRouteNames.dailyTask,
+        arguments: DailyTaskRouteArgs(
+          date: DateTime.now(),
+        ),
+      );
+    }
 
-    final totalTasks = todaysTasks.length;
-    final membershipId = AppContext.instance.membershipId;
-    final completedTasks = todaysTasks
-        .where(
-        (task) {
-        final ownAssignment = task.assignments
-          .where((assignment) => assignment.memberId == membershipId)
-          .toList();
-        final assignmentDone = ownAssignment.isNotEmpty &&
-          ownAssignment.first.status.toUpperCase() == 'DONE';
-        final subtasksDone = task.subtasks.isNotEmpty &&
-          task.subtasks.every((subtask) => subtask.isDone);
-        return assignmentDone || subtasksDone;
-        },
-        )
-        .length;
-    final completion = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
+    return tasksAsync.when(
+      loading: () => HomeDailyTaskCard(
+        totalTasks: 0,
+        completion: 0,
+        subtitle: 'Loading your assignments...',
+        onTap: openDailyTasks,
+      ),
+      error: (error, stackTrace) => HomeDailyTaskCard(
+        totalTasks: 0,
+        completion: 0,
+        subtitle: 'Unable to load assignments',
+        onTap: openDailyTasks,
+      ),
+      data: (tasks) {
+        final today = DateTime.now();
+        final todaysTasks = tasks
+            .where((task) => _isSameDay(task.task.taskDate, today))
+            .toList();
 
-    final subtitle = _isLoadingAssignedTasks
-        ? 'Loading your assignments...'
-        : totalTasks == 0
-      ? "You're free today ✨"
+        final totalTasks = todaysTasks.length;
+        final membershipId = AppContext.instance.membershipId;
+        final completedTasks = todaysTasks
+            .where((task) {
+              final ownAssignment = task.assignments
+                  .where((assignment) => assignment.memberId == membershipId)
+                  .toList();
+              final assignmentDone = ownAssignment.isNotEmpty &&
+                  ownAssignment.first.status.toUpperCase() == 'DONE';
+              final subtasksDone = task.subtasks.isNotEmpty &&
+                  task.subtasks.every((subtask) => subtask.isDone);
+              return assignmentDone || subtasksDone;
+            })
+            .length;
+        final completion = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
+
+        final subtitle = totalTasks == 0
+            ? "You're free today ✨"
             : '$totalTasks assigned task${totalTasks == 1 ? '' : 's'}';
 
-    return HomeDailyTaskCard(
-      totalTasks: totalTasks,
-      completion: completion,
-      subtitle: subtitle,
-      onTap: () async {
-        await AppRouter.navigate<void>(
-          context,
-          AppRouteNames.dailyTask,
-          arguments: DailyTaskRouteArgs(
-            date: DateTime.now(),
-          ),
+        return HomeDailyTaskCard(
+          totalTasks: totalTasks,
+          completion: completion,
+          subtitle: subtitle,
+          onTap: openDailyTasks,
         );
-        await _loadAssignedTasks();
       },
     );
   }

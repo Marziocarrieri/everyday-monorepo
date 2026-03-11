@@ -7,6 +7,7 @@ import 'package:everyday_app/features/fridge/data/repositories/shopping_reposito
 import 'package:everyday_app/features/household/data/repositories/household_member_repository.dart';
 import 'package:everyday_app/features/household/data/repositories/household_repository.dart';
 import 'package:everyday_app/features/tasks/data/repositories/task_repository.dart';
+import 'package:everyday_app/shared/repositories/diet_repository.dart';
 
 final appContextProvider = ChangeNotifierProvider<AppContext>((ref) {
   return AppContext.instance;
@@ -40,4 +41,8 @@ final householdMemberRepositoryProvider =
 
 final householdRepositoryProvider = Provider<HouseholdRepository>((ref) {
   return HouseholdRepository();
+});
+
+final dietRepositoryProvider = Provider<DietRepository>((ref) {
+  return DietRepository();
 });

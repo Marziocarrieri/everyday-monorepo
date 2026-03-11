@@ -5,6 +5,7 @@ import 'package:everyday_app/core/providers/app_providers.dart';
 import 'package:everyday_app/features/household/data/models/household.dart';
 import 'package:everyday_app/features/household/presentation/providers/household_providers.dart';
 import 'package:everyday_app/features/personnel/data/models/household_member.dart';
+import 'package:everyday_app/shared/models/diet_document.dart';
 import 'package:everyday_app/shared/services/auth_service.dart';
 
 final currentUserProvider = Provider<User?>((ref) {
@@ -56,7 +57,34 @@ final householdMembersProvider = FutureProvider<List<HouseholdMember>>((ref) asy
 });
 
 final householdMembersStreamProvider =
-    StreamProvider.family<List<HouseholdMember>, String>((ref, householdId) {
+    StreamProvider<List<HouseholdMember>>((ref) {
+  String? householdId;
+  try {
+    householdId = ref.watch(currentHouseholdIdProvider);
+  } catch (_) {
+    householdId = null;
+  }
+
+  if (householdId == null) {
+    return const Stream<List<HouseholdMember>>.empty();
+  }
+
   final repository = ref.watch(householdMemberRepositoryProvider);
   return repository.watchMembers(householdId);
+});
+
+final dietStreamProvider = StreamProvider<DietDocument?>((ref) {
+  String? householdId;
+  try {
+    householdId = ref.watch(currentHouseholdIdProvider);
+  } catch (_) {
+    householdId = null;
+  }
+
+  if (householdId == null) {
+    return const Stream<DietDocument?>.empty();
+  }
+
+  final repository = ref.watch(dietRepositoryProvider);
+  return repository.watchDiet(householdId);
 });

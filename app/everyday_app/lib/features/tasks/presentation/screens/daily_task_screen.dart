@@ -6,7 +6,6 @@ import 'dart:ui'; // Aggiunto per l'effetto Glassmorphism
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
-import 'package:everyday_app/core/providers/app_state_providers.dart';
 
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
@@ -49,8 +48,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
   }
 
   void _refreshTasksStream() {
-    final householdId = ref.read(currentHouseholdIdProvider);
-    ref.invalidate(tasksStreamProvider(householdId));
+    ref.invalidate(tasksStreamProvider);
   }
 
   Future<void> _toggleSubtask({
@@ -254,8 +252,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final householdId = ref.watch(currentHouseholdIdProvider);
-    final tasksAsync = ref.watch(tasksStreamProvider(householdId));
+    final tasksAsync = ref.watch(tasksStreamProvider);
     final roomsAsync = ref.watch(taskRoomsProvider);
     final roomNamesById = roomsAsync.maybeWhen(
       data: (rooms) => {

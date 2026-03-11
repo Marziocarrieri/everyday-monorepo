@@ -1,63 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
-import 'package:everyday_app/features/personnel/data/repositories/member_repository.dart';
-import 'package:everyday_app/features/personnel/data/models/household_member.dart';
-import 'package:everyday_app/core/app_context.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
 
-class PersonnelScreen extends StatefulWidget {
+class PersonnelScreen extends ConsumerWidget {
   const PersonnelScreen({super.key});
-
-  @override
-  State<PersonnelScreen> createState() => _PersonnelScreenState();
-}
-
-class _PersonnelScreenState extends State<PersonnelScreen> {
-  final MemberRepository _memberRepository = MemberRepository();
-  List<HouseholdMember> _members = [];
-  bool _isLoading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMembers();
-  }
-
-  Future<void> _loadMembers() async {
-    if (!mounted) return;
-    
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final householdId = AppContext.instance.requireHouseholdId();
-      final members = await _memberRepository.getMembers(householdId);
-
-      if (!mounted) return;
-      
-      setState(() {
-        _members = members;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      
-      setState(() {
-        _error = error.toString();
-      });
-      debugPrint('UI Error loading members: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
 
   // --- GENERATORE DI COLORI PASTELLO BASATO SULL'INIZIALE ---
   Color _getColorForMember(String name) {
@@ -77,7 +27,9 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final membersAsync = ref.watch(householdMembersStreamProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -104,47 +56,55 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
 
               // LISTA CARD PREMIUM
               Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _error != null
-                        ? Center(child: Text('Error: $_error'))
-                        : _members.isEmpty
-                            ? const Center(child: Text('No personnel found'))
-                            : ListView.builder(
-                                physics: const BouncingScrollPhysics(),
-                                itemCount: _members.length,
-                                itemBuilder: (context, index) {
-                                  final member = _members[index];
-                                  final String memberName = member.profile?.name ?? 'Unknown';
-                                  // Generiamo un colore unico per questo membro
-                                  final Color memberColor = _getColorForMember(memberName);
-                                  
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 20.0),
-                                    child: GestureDetector(
-                                      // --- IL COLLEGAMENTO MAGICO ---
-                                      onTap: () {
-                                        AppRouter.navigate<void>(
-                                          context,
-                                          AppRouteNames.memberActivities,
-                                          arguments: MemberActivitiesRouteArgs(
-                                            memberId: member.id,
-                                            memberName: memberName,
-                                            themeColor: memberColor,
-                                            isPersonnel: true,
-                                          ),
-                                        );
-                                      },
-                                      child: _buildPremiumPersonnelCard(
-                                        name: memberName,
-                                        role: member.role,
-                                        initial: memberName != 'Unknown' ? memberName[0].toUpperCase() : '?',
-                                        color: memberColor, // Usiamo il colore generato!
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
+                child: membersAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => Center(child: Text('Error: $error')),
+                  data: (members) {
+                    final personnelMembers = members
+                        .where((member) => member.role.toUpperCase() == 'PERSONNEL')
+                        .toList();
+
+                    if (personnelMembers.isEmpty) {
+                      return const Center(child: Text('No personnel found'));
+                    }
+
+                    return ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: personnelMembers.length,
+                      itemBuilder: (context, index) {
+                        final member = personnelMembers[index];
+                        final memberName = member.profile?.name ?? 'Unknown';
+                        final memberColor = _getColorForMember(memberName);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20.0),
+                          child: GestureDetector(
+                            onTap: () {
+                              AppRouter.navigate<void>(
+                                context,
+                                AppRouteNames.memberActivities,
+                                arguments: MemberActivitiesRouteArgs(
+                                  memberId: member.id,
+                                  memberName: memberName,
+                                  themeColor: memberColor,
+                                  isPersonnel: true,
+                                ),
+                              );
+                            },
+                            child: _buildPremiumPersonnelCard(
+                              name: memberName,
+                              role: member.role,
+                              initial: memberName != 'Unknown'
+                                  ? memberName[0].toUpperCase()
+                                  : '?',
+                              color: memberColor,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),

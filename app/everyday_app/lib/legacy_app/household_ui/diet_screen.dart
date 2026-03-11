@@ -1,25 +1,26 @@
 // TODO migrate to features/household
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:everyday_app/core/app_context.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/legacy_app/services/diet_document_service.dart';
+import 'package:everyday_app/shared/models/diet_document.dart';
 
-class DietScreen extends StatefulWidget {
+class DietScreen extends ConsumerStatefulWidget {
   const DietScreen({super.key});
 
   @override
-  State<DietScreen> createState() => _DietScreenState();
+  ConsumerState<DietScreen> createState() => _DietScreenState();
 }
 
-class _DietScreenState extends State<DietScreen> {
+class _DietScreenState extends ConsumerState<DietScreen> {
   final DietDocumentService _dietDocumentService = DietDocumentService();
 
-  bool _isLoading = true;
   bool _isUploading = false;
-  Map<String, dynamic>? _currentDiet;
 
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
@@ -35,52 +36,10 @@ class _DietScreenState extends State<DietScreen> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadDiet();
-  }
-
-  Future<void> _loadDiet() async {
-    final userId = AppContext.instance.userId;
-    if (userId == null) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _currentDiet = null;
-      });
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
-
-    try {
-      final response = await _dietDocumentService.getLatestDietForUser(userId);
-
-      if (!mounted) return;
-      setState(() {
-        _currentDiet = response;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   Future<void> _uploadPdf() async {
     final userId = AppContext.instance.userId;
-    if (userId == null) return;
+    final householdId = AppContext.instance.householdId;
+    if (userId == null || householdId == null) return;
 
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -100,9 +59,11 @@ class _DietScreenState extends State<DietScreen> {
     });
 
     try {
-      await _dietDocumentService.uploadDietPdf(userId: userId, bytes: bytes);
-
-      await _loadDiet();
+      await _dietDocumentService.uploadDietPdf(
+        householdId: householdId,
+        userId: userId,
+        bytes: bytes,
+      );
       if (!mounted) return;
       _showSuccessSnackBar('Diet uploaded');
     } catch (error) {
@@ -111,26 +72,25 @@ class _DietScreenState extends State<DietScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isUploading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
     }
   }
 
-  Future<void> _removePdf() async {
-    final current = _currentDiet;
-    if (current == null) return;
+  Future<void> _removePdf(DietDocument currentDiet) async {
     final userId = AppContext.instance.userId;
-    if (userId == null) return;
+    final householdId = AppContext.instance.householdId;
+    if (userId == null || householdId == null) return;
 
     try {
       await _dietDocumentService.removeDietPdf(
+        householdId: householdId,
         userId: userId,
-        currentDiet: current,
+        currentDiet: currentDiet,
       );
-
-      await _loadDiet();
       if (!mounted) return;
       _showSuccessSnackBar('Diet deleted');
     } catch (error) {
@@ -141,12 +101,9 @@ class _DietScreenState extends State<DietScreen> {
     }
   }
 
-  Future<void> _openPdf() async {
-    final current = _currentDiet;
-    if (current == null) return;
-
+  Future<void> _openPdf(DietDocument currentDiet) async {
     try {
-      final uri = Uri.parse(current['url'] as String);
+      final uri = Uri.parse(currentDiet.url);
       final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!opened && mounted) {
         ScaffoldMessenger.of(
@@ -163,6 +120,8 @@ class _DietScreenState extends State<DietScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dietAsync = ref.watch(dietStreamProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -175,11 +134,17 @@ class _DietScreenState extends State<DietScreen> {
               const SizedBox(height: 40),
 
               Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _currentDiet != null
-                    ? _buildPdfReadyView()
-                    : _buildUploadView(),
+                child: dietAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => Center(child: Text(error.toString())),
+                  data: (currentDiet) {
+                    if (currentDiet == null) {
+                      return _buildUploadView();
+                    }
+
+                    return _buildPdfReadyView(currentDiet);
+                  },
+                ),
               ),
             ],
           ),
@@ -315,16 +280,10 @@ class _DietScreenState extends State<DietScreen> {
     );
   }
 
-  Widget _buildPdfReadyView() {
-    final current = _currentDiet;
-    if (current == null) return const SizedBox.shrink();
-
-    final uploadedAt = DateTime.tryParse(
-      current['uploaded_at'] as String? ?? '',
-    );
-    final subtitle = uploadedAt == null
-        ? 'Added recently'
-        : 'Added on ${uploadedAt.day.toString().padLeft(2, '0')}/${uploadedAt.month.toString().padLeft(2, '0')}/${uploadedAt.year}';
+  Widget _buildPdfReadyView(DietDocument currentDiet) {
+    final uploadedAt = currentDiet.uploadedAt;
+    final subtitle =
+      'Added on ${uploadedAt.day.toString().padLeft(2, '0')}/${uploadedAt.month.toString().padLeft(2, '0')}/${uploadedAt.year}';
 
     return Column(
       children: [
@@ -384,7 +343,7 @@ class _DietScreenState extends State<DietScreen> {
 
                   // TASTO APRI
                   GestureDetector(
-                    onTap: _openPdf,
+                    onTap: () => _openPdf(currentDiet),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -425,7 +384,7 @@ class _DietScreenState extends State<DietScreen> {
 
         // TASTO RIMUOVI/SOSTITUISCI (Sottile, meno invasivo)
         GestureDetector(
-          onTap: _removePdf,
+          onTap: () => _removePdf(currentDiet),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
             decoration: BoxDecoration(

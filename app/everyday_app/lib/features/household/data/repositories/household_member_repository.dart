@@ -8,10 +8,10 @@ class HouseholdMemberRepository {
     return supabase
         .from('household_member')
         .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
         .asyncMap((rows) async {
           final membershipRows = rows
               .map((row) => Map<String, dynamic>.from(row))
-              .where((row) => row['household_id'] == householdId)
               .toList();
 
           final userIds = membershipRows
