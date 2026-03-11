@@ -18,14 +18,9 @@ final dailyTasksProvider = FutureProvider<List<TaskWithDetails>>((ref) async {
 });
 
 final tasksStreamProvider = StreamProvider<List<TaskWithDetails>>((ref) {
-  String? householdId;
-  try {
-    householdId = ref.watch(currentHouseholdIdProvider);
-  } catch (_) {
-    householdId = null;
-  }
+  final householdId = ref.watch(currentHouseholdIdProvider);
 
-  if (householdId == null) {
+  if (householdId == null || householdId.isEmpty) {
     return const Stream<List<TaskWithDetails>>.empty();
   }
 

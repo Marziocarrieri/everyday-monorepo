@@ -13,9 +13,9 @@ final currentUserProvider = Provider<User?>((ref) {
   return appContext.currentUser ?? AuthService().currentUser;
 });
 
-final currentHouseholdIdProvider = Provider<String>((ref) {
+final currentHouseholdIdProvider = StateProvider<String?>((ref) {
   final appContext = ref.watch(appContextProvider);
-  return appContext.requireHouseholdId();
+  return appContext.householdId;
 });
 
 final currentHouseholdProvider = FutureProvider<Household?>((ref) async {
@@ -23,7 +23,8 @@ final currentHouseholdProvider = FutureProvider<Household?>((ref) async {
   final selectedHousehold = appContext.household;
   final selectedHouseholdId = appContext.householdId;
   if (selectedHousehold != null &&
-      (selectedHouseholdId == null || selectedHousehold.id == selectedHouseholdId)) {
+      (selectedHouseholdId == null ||
+          selectedHousehold.id == selectedHouseholdId)) {
     return selectedHousehold;
   }
 
@@ -46,7 +47,9 @@ final currentHouseholdProvider = FutureProvider<Household?>((ref) async {
   return households.first;
 });
 
-final householdMembersProvider = FutureProvider<List<HouseholdMember>>((ref) async {
+final householdMembersProvider = FutureProvider<List<HouseholdMember>>((
+  ref,
+) async {
   final currentHousehold = await ref.watch(currentHouseholdProvider.future);
   if (currentHousehold == null) {
     return [];
@@ -56,16 +59,12 @@ final householdMembersProvider = FutureProvider<List<HouseholdMember>>((ref) asy
   return householdService.getMembers(currentHousehold.id);
 });
 
-final householdMembersStreamProvider =
-    StreamProvider<List<HouseholdMember>>((ref) {
-  String? householdId;
-  try {
-    householdId = ref.watch(currentHouseholdIdProvider);
-  } catch (_) {
-    householdId = null;
-  }
+final householdMembersStreamProvider = StreamProvider<List<HouseholdMember>>((
+  ref,
+) {
+  final householdId = ref.watch(currentHouseholdIdProvider);
 
-  if (householdId == null) {
+  if (householdId == null || householdId.isEmpty) {
     return const Stream<List<HouseholdMember>>.empty();
   }
 
@@ -74,14 +73,9 @@ final householdMembersStreamProvider =
 });
 
 final dietStreamProvider = StreamProvider<DietDocument?>((ref) {
-  String? householdId;
-  try {
-    householdId = ref.watch(currentHouseholdIdProvider);
-  } catch (_) {
-    householdId = null;
-  }
+  final householdId = ref.watch(currentHouseholdIdProvider);
 
-  if (householdId == null) {
+  if (householdId == null || householdId.isEmpty) {
     return const Stream<DietDocument?>.empty();
   }
 

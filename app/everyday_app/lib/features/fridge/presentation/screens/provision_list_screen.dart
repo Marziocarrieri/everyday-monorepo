@@ -12,7 +12,8 @@ class ProvisionListScreen extends ConsumerStatefulWidget {
   const ProvisionListScreen({super.key});
 
   @override
-  ConsumerState<ProvisionListScreen> createState() => _ProvisionListScreenState();
+  ConsumerState<ProvisionListScreen> createState() =>
+      _ProvisionListScreenState();
 }
 
 class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
@@ -43,28 +44,50 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: AlertDialog(
             backgroundColor: Colors.white.withValues(alpha: 0.9),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Colors.white, width: 1.5)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: const BorderSide(color: Colors.white, width: 1.5),
+            ),
             title: Text(
               'Delete Item?',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF3D342C),
+              ),
             ),
             content: Text(
               'Are you sure you want to remove "${item.name}" from your list?',
-              style: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.7)),
+              style: GoogleFonts.poppins(
+                color: const Color(0xFF3D342C).withValues(alpha: 0.7),
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: Text('Cancel', style: GoogleFonts.poppins(color: const Color(0xFF5A8B9E), fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF5A8B9E),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF28482),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 0,
                 ),
-                child: Text('Delete', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Delete',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -79,12 +102,18 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
       _showSuccessSnackBar('Item deleted');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
   Future<void> _openAddModal(ShoppingService shoppingService) async {
     final householdId = ref.read(currentHouseholdIdProvider);
+    if (householdId == null || householdId.isEmpty) {
+      return;
+    }
+
     final changed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -100,15 +129,16 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     }
   }
 
-  Future<void> _openDetailModal(ShoppingItem item, ShoppingService shoppingService) async {
+  Future<void> _openDetailModal(
+    ShoppingItem item,
+    ShoppingService shoppingService,
+  ) async {
     final changed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _ProvisionDetailSheet(
-        item: item,
-        shoppingService: shoppingService,
-      ),
+      builder: (_) =>
+          _ProvisionDetailSheet(item: item, shoppingService: shoppingService),
     );
 
     if (changed == true && mounted) {
@@ -120,6 +150,21 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
   Widget build(BuildContext context) {
     final shoppingService = ref.watch(shoppingServiceProvider);
     final householdId = ref.watch(currentHouseholdIdProvider);
+    if (householdId == null || householdId.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Text(
+            'Household context not ready',
+            style: GoogleFonts.poppins(
+              color: const Color(0xFF3D342C),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
     final itemsAsync = ref.watch(shoppingItemsStreamProvider(householdId));
 
     return Scaffold(
@@ -138,7 +183,9 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                 child: itemsAsync.when(
                   loading: () => Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(getStatusColor('safe')),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        getStatusColor('safe'),
+                      ),
                     ),
                   ),
                   error: (error, _) => Center(
@@ -241,11 +288,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                 ),
               ],
             ),
-            child: Icon(
-              Icons.add_rounded,
-              color: themeColor,
-              size: 28,
-            ),
+            child: Icon(Icons.add_rounded, color: themeColor, size: 28),
           ),
         ),
       ],
@@ -295,7 +338,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
 
   Widget _buildListItem(ShoppingItem item, ShoppingService shoppingService) {
     final themeColor = getStatusColor('safe');
-    
+
     return GestureDetector(
       onTap: () => _openDetailModal(item, shoppingService),
       child: ClipRRect(
@@ -327,7 +370,10 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: themeColor.withValues(alpha: 0.5), width: 2),
+                    border: Border.all(
+                      color: themeColor.withValues(alpha: 0.5),
+                      width: 2,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -418,7 +464,9 @@ class _AddProvisionSheet extends StatefulWidget {
 
 class _AddProvisionSheetState extends State<_AddProvisionSheet> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _quantityController = TextEditingController(text: '1');
+  final TextEditingController _quantityController = TextEditingController(
+    text: '1',
+  );
   bool _isSaving = false;
 
   @override
@@ -433,10 +481,12 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
     if (name.isEmpty) return;
 
     final parsedQuantity = int.tryParse(_quantityController.text.trim());
-    final quantity = parsedQuantity == null || parsedQuantity <= 0 ? 1 : parsedQuantity;
+    final quantity = parsedQuantity == null || parsedQuantity <= 0
+        ? 1
+        : parsedQuantity;
 
     setState(() => _isSaving = true);
-    
+
     await widget.shoppingService.addItem(
       widget.householdId,
       name,
@@ -466,10 +516,7 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
           ),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.95), // Luminoso
-            border: Border.all(
-              color: Colors.white,
-              width: 1.5,
-            ),
+            border: Border.all(color: Colors.white, width: 1.5),
           ),
           child: Stack(
             children: [
@@ -518,20 +565,28 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
                             themeColor,
                           ),
                           const SizedBox(height: 40),
-                          
+
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: _save,
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 backgroundColor: themeColor,
                                 elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                               ),
                               child: Text(
-                                'Add Item', 
-                                style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+                                'Add Item',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18,
+                                ),
                               ),
                             ),
                           ),
@@ -546,7 +601,9 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
                   child: Container(
                     color: Colors.white.withValues(alpha: 0.8),
                     child: Center(
-                      child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(themeColor)),
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                      ),
                     ),
                   ),
                 ),
@@ -571,7 +628,10 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1.5),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
       ),
       child: TextField(
         controller: controller,
@@ -587,8 +647,8 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
           labelStyle: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: isRequired 
-                ? const Color(0xFFF28482) 
+            color: isRequired
+                ? const Color(0xFFF28482)
                 : const Color(0xFF3D342C).withValues(alpha: 0.6),
           ),
           floatingLabelBehavior: FloatingLabelBehavior.always,
@@ -674,8 +734,10 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
         filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
         child: Container(
           padding: EdgeInsets.only(
-            left: 24, right: 24, top: 20, 
-            bottom: MediaQuery.of(context).viewInsets.bottom + 40
+            left: 24,
+            right: 24,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 40,
           ),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.95),
@@ -689,34 +751,61 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                 children: [
                   Center(
                     child: Container(
-                      width: 40, height: 5, margin: const EdgeInsets.only(bottom: 30),
-                      decoration: BoxDecoration(color: themeColor.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)),
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 30),
+                      decoration: BoxDecoration(
+                        color: themeColor.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
 
                   Row(
                     children: [
                       Container(
-                        width: 60, height: 60,
+                        width: 60,
+                        height: 60,
                         decoration: BoxDecoration(
                           color: themeColor.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
-                          border: Border.all(color: themeColor.withValues(alpha: 0.3), width: 2),
+                          border: Border.all(
+                            color: themeColor.withValues(alpha: 0.3),
+                            width: 2,
+                          ),
                         ),
-                        child: Icon(Icons.shopping_cart_outlined, color: themeColor, size: 28),
+                        child: Icon(
+                          Icons.shopping_cart_outlined,
+                          color: themeColor,
+                          size: 28,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: _isEditing
                             ? TextField(
                                 controller: _nameController,
-                                style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.w800, color: textColor, letterSpacing: -0.5),
-                                decoration: const InputDecoration(border: InputBorder.none, isDense: true, hintText: 'Name'),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: textColor,
+                                  letterSpacing: -0.5,
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  hintText: 'Name',
+                                ),
                               )
                             : Text(
                                 widget.item.name,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.w800, color: textColor, letterSpacing: -0.5),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: textColor,
+                                  letterSpacing: -0.5,
+                                ),
                               ),
                       ),
                       if (!_isEditing)
@@ -725,10 +814,21 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white, shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            child: Icon(Icons.edit_rounded, color: themeColor, size: 20),
+                            child: Icon(
+                              Icons.edit_rounded,
+                              color: themeColor,
+                              size: 20,
+                            ),
                           ),
                         ),
                     ],
@@ -737,13 +837,22 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
 
                   if (!_isEditing) ...[
                     // VIEW MODE: Dashboard Card
-                    _buildDashCard('Quantity', widget.item.quantity.toString(), Icons.tag_rounded, themeColor),
+                    _buildDashCard(
+                      'Quantity',
+                      widget.item.quantity.toString(),
+                      Icons.tag_rounded,
+                      themeColor,
+                    ),
                     const SizedBox(height: 20),
                   ] else ...[
                     // EDIT MODE
-                    _buildPremiumTextField('Quantity', _quantityController, themeColor),
+                    _buildPremiumTextField(
+                      'Quantity',
+                      _quantityController,
+                      themeColor,
+                    ),
                     const SizedBox(height: 40),
-                    
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -753,15 +862,28 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                               setState(() {
                                 _isEditing = false;
                                 _nameController.text = widget.item.name;
-                                _quantityController.text = widget.item.quantity.toString();
+                                _quantityController.text = widget.item.quantity
+                                    .toString();
                               });
                             },
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: BorderSide(color: themeColor.withValues(alpha: 0.5), width: 2),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              side: BorderSide(
+                                color: themeColor.withValues(alpha: 0.5),
+                                width: 2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                             ),
-                            child: Text('Cancel', style: GoogleFonts.poppins(color: const Color(0xFF5A8B9E), fontWeight: FontWeight.w700, fontSize: 16)),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF5A8B9E),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -772,9 +894,18 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               backgroundColor: themeColor,
                               elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                             ),
-                            child: Text('Save', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                            child: Text(
+                              'Save',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -787,7 +918,11 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                 Positioned.fill(
                   child: Container(
                     color: Colors.white.withValues(alpha: 0.8),
-                    child: Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(themeColor))),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -797,16 +932,28 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     );
   }
 
-  Widget _buildDashCard(String title, String value, IconData icon, Color accentColor) {
+  Widget _buildDashCard(
+    String title,
+    String value,
+    IconData icon,
+    Color accentColor,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accentColor.withValues(alpha: 0.15), width: 1.5),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
         boxShadow: [
-          BoxShadow(color: accentColor.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5))
+          BoxShadow(
+            color: accentColor.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: Column(
@@ -817,8 +964,12 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
               Icon(icon, size: 18, color: accentColor),
               const SizedBox(width: 8),
               Text(
-                title, 
-                style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.5)),
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF3D342C).withValues(alpha: 0.5),
+                ),
               ),
             ],
           ),
@@ -826,8 +977,8 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
           Text(
             value,
             style: GoogleFonts.poppins(
-              fontSize: 22, 
-              fontWeight: FontWeight.w700, 
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
               color: const Color(0xFF3D342C),
             ),
           ),
@@ -836,25 +987,43 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     );
   }
 
-  Widget _buildPremiumTextField(String label, TextEditingController controller, Color accentColor) {
+  Widget _buildPremiumTextField(
+    String label,
+    TextEditingController controller,
+    Color accentColor,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1.5),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
       ),
       child: TextField(
         controller: controller,
         keyboardType: TextInputType.number,
-        style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
+        style: GoogleFonts.poppins(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF3D342C),
+        ),
         decoration: InputDecoration(
           border: InputBorder.none,
           labelText: label,
-          labelStyle: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.6)),
+          labelStyle: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: const Color(0xFF3D342C).withValues(alpha: 0.6),
+          ),
           floatingLabelBehavior: FloatingLabelBehavior.always,
           hintText: 'Tap to enter...',
-          hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.3), fontSize: 16),
+          hintStyle: GoogleFonts.poppins(
+            color: const Color(0xFF3D342C).withValues(alpha: 0.3),
+            fontSize: 16,
+          ),
         ),
       ),
     );

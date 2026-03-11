@@ -1,18 +1,20 @@
 // TODO migrate to features/household
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:everyday_app/core/runtime/household_runtime_controller.dart';
 import 'package:everyday_app/shared/services/auth_service.dart';
 import 'package:everyday_app/features/household/data/household_service.dart';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -26,17 +28,17 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (households.isNotEmpty) {
-      AppContext.instance.setHousehold(households.first.id);
+      await ref
+          .read(householdRuntimeControllerProvider)
+          .switchHousehold(ref, households.first.id);
+      if (!mounted) return;
     }
 
     final nextRoute = households.isEmpty
         ? AppRouteNames.welcome
         : AppRouteNames.roleShell;
 
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      nextRoute,
-      (route) => false,
-    );
+    Navigator.of(context).pushNamedAndRemoveUntil(nextRoute, (route) => false);
   }
 
   Future<void> _login() async {
