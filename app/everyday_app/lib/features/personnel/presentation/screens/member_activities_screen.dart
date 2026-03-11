@@ -1,3 +1,5 @@
+import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
+import 'package:everyday_app/features/tasks/data/repositories/task_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -23,21 +25,65 @@ class MemberActivitiesScreen extends StatefulWidget {
 
 class _MemberActivitiesScreenState extends State<MemberActivitiesScreen> {
   // Dati Mockati (In futuro arriveranno dal DB per questo specifico utente)
-  final List<Map<String, dynamic>> _activitiesByDate = [
-    {
-      'date': 'Monday 27/11',
-      'tasks': [
-        {'title': 'Homework oversight', 'time': '7:45AM - 8:45AM', 'isCompleted': true},
-        {'title': 'Skin-care Routine', 'time': '8:00PM - 8:30PM', 'isCompleted': false},
-      ]
-    },
-    {
-      'date': 'Tuesday 28/11',
-      'tasks': [
-        {'title': 'Seasonal Closet Swap', 'time': '10:00AM - 12:00PM', 'isCompleted': false},
-      ]
+  // final List<Map<String, dynamic>> _activitiesByDate = [
+  //   {
+  //     'date': 'Monday 27/11',
+  //     'tasks': [
+  //       {'title': 'Homework oversight', 'time': '7:45AM - 8:45AM', 'isCompleted': true},
+  //       {'title': 'Skin-care Routine', 'time': '8:00PM - 8:30PM', 'isCompleted': false},
+  //     ]
+  //   },
+  //   {
+  //     'date': 'Tuesday 28/11',
+  //     'tasks': [
+  //       {'title': 'Seasonal Closet Swap', 'time': '10:00AM - 12:00PM', 'isCompleted': false},
+  //     ]
+  //   }
+  // ];
+
+  List<TaskWithDetails> _activities = [];
+  final TaskRepository _taskRepository = TaskRepository();
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final tasks = await _taskRepository.getTasksForUserId(widget.memberId);
+
+      if (!mounted) return;
+      
+      setState(() {
+        _activities = tasks;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      
+      setState(() {
+        _error = error.toString();
+      });
+      debugPrint('UI Error loading members: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-  ];
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -79,15 +125,15 @@ class _MemberActivitiesScreenState extends State<MemberActivitiesScreen> {
             ),
             const SizedBox(height: 10),
             
-            // --- LISTA ATTIVITÀ A FISARMONICA (Liquid Glass) ---
+            // --- LISTA ATTIVITÀ A FISARMONICA (Liquid Glass) ---    
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 40.0),
                 physics: const BouncingScrollPhysics(),
-                itemCount: _activitiesByDate.length,
+                itemCount: _activities.length,
                 itemBuilder: (context, index) {
                   return ExpandableDateCard(
-                    data: _activitiesByDate[index],
+                    taskWithDetails: _activities[index],
                     color: widget.themeColor,
                   );
                 },
@@ -114,10 +160,10 @@ class _MemberActivitiesScreenState extends State<MemberActivitiesScreen> {
 
 // --- WIDGET CARD FISARMONICA (Date Card) ---
 class ExpandableDateCard extends StatefulWidget {
-  final Map<String, dynamic> data;
+  final TaskWithDetails taskWithDetails;
   final Color color;
   
-  const ExpandableDateCard({super.key, required this.data, required this.color});
+  const ExpandableDateCard({super.key, required this.taskWithDetails, required this.color});
 
   @override
   State<ExpandableDateCard> createState() => _ExpandableDateCardState();
@@ -128,7 +174,7 @@ class _ExpandableDateCardState extends State<ExpandableDateCard> {
 
   @override
   Widget build(BuildContext context) {
-    final List tasks = widget.data['tasks'];
+    final List subtasks = widget.taskWithDetails.subtasks;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
@@ -149,8 +195,8 @@ class _ExpandableDateCardState extends State<ExpandableDateCard> {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: tasks.map<Widget>((task) {
-                  bool isDone = task['isCompleted'];
+                children: subtasks.map<Widget>((subtask) {
+                  bool isDone = subtask.isDone;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: Row(
@@ -176,7 +222,7 @@ class _ExpandableDateCardState extends State<ExpandableDateCard> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                task['title'],
+                                subtask.title,
                                 style: GoogleFonts.poppins(
                                   fontSize: 15, fontWeight: FontWeight.w600, 
                                   color: isDone ? const Color(0xFF3D342C).withValues(alpha: 0.5) : const Color(0xFF3D342C),
@@ -188,10 +234,10 @@ class _ExpandableDateCardState extends State<ExpandableDateCard> {
                                 children: [
                                   Icon(Icons.access_time_rounded, size: 12, color: const Color(0xFF3D342C).withValues(alpha: 0.4)),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    task['time'],
-                                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.5)),
-                                  ),
+                                  // Text(
+                                  //   task['time'],
+                                  //   style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.5)),
+                                  // ),
                                 ],
                               ),
                             ],
@@ -235,7 +281,7 @@ class _ExpandableDateCardState extends State<ExpandableDateCard> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(
-                          widget.data['date'],
+                          widget.taskWithDetails.task.taskDate.toString(),
                           style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
                         ),
                       ),

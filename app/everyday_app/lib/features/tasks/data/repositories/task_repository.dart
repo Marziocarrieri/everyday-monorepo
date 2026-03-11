@@ -233,6 +233,21 @@ class TaskRepository {
     }
   }
 
+
+Future<List<TaskWithDetails>> getTasksForUserId(String userId) async {
+    final response = await supabase
+        .from('tasks') // The first table
+        .select('*,task_assignment!inner(*)')
+        .eq('task_assignment.member_id', userId);
+
+      debugPrint('GETTING TASKS → userID: $userId');
+      debugPrint('Response Data: $response');
+
+    return List<Map<String, dynamic>>.from(response)
+        .map(TaskWithDetails.fromJson)
+        .toList();
+  }
+
   Future<List<HouseholdRoom>> getHouseholdRooms(String householdId) async {
     try {
       final response = await supabase
