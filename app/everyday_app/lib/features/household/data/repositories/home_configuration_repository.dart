@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/home_configuration.dart';
 import '../models/household_floor.dart';
 import '../models/household_room.dart';
 import '../../../../shared/repositories/supabase_client.dart';
@@ -62,6 +63,18 @@ class HomeConfigurationRepository {
     }
   }
 
+  Stream<List<HouseholdFloor>> watchFloors(String householdId) {
+    return supabase
+        .from('household_floor')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .map(
+          (rows) => rows
+              .map((row) => HouseholdFloor.fromJson(Map<String, dynamic>.from(row)))
+              .toList(),
+        );
+  }
+
   Future<List<HouseholdRoom>> getRooms({
     required String householdId,
     required String floorId,
@@ -99,6 +112,31 @@ class HomeConfigurationRepository {
           )
           .toList();
     }
+  }
+
+  Stream<List<HouseholdRoom>> watchRooms(String householdId) {
+    return supabase
+        .from('household_room')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .map(
+          (rows) => rows
+              .map((row) => HouseholdRoom.fromJson(Map<String, dynamic>.from(row)))
+              .toList(),
+        );
+  }
+
+  Stream<HomeConfiguration?> watchHomeConfiguration(String householdId) {
+    return supabase
+        .from('home_configuration')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .map((rows) {
+          if (rows.isEmpty) return null;
+          return HomeConfiguration.fromMap(
+            Map<String, dynamic>.from(rows.first),
+          );
+        });
   }
 
   Future<List<HouseholdRoom>> getRoomsForHousehold(String householdId) async {
