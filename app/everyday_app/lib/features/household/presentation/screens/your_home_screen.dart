@@ -160,8 +160,12 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   }
 
   Future<void> _removeRoom(String id) async {
+    final householdId = ref.read(currentHouseholdIdProvider);
+
     try {
       await _homeConfigurationService.removeRoom(id);
+      ref.invalidate(roomsStreamProvider(householdId));
+      ref.invalidate(floorsStreamProvider(householdId));
       _showSuccessSnackBar('Room deleted');
     } catch (error) {
       debugPrint('Error deleting room: $error');
