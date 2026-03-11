@@ -6,16 +6,17 @@ import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
+import '../../features/personnel/data/models/household_member.dart';
 
 class FamilyScreen extends ConsumerWidget {
   const FamilyScreen({super.key});
 
-  void _openMemberSelectionSheet(BuildContext context) {
+  void _openMemberSelectionSheet(BuildContext context, AsyncValue<List<HouseholdMember>> members) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => const SelectFamilyMemberSheet(),
+      builder: (context) =>SelectFamilyMemberSheet(members: members),
     );
   }
 
@@ -54,7 +55,7 @@ class FamilyScreen extends ConsumerWidget {
                     ),
                     _buildHeaderIcon(
                       Icons.add_rounded, 
-                      onTap: () => _openMemberSelectionSheet(context), 
+                      onTap: () => _openMemberSelectionSheet(context, membersAsync),
                     ),
                   ],
                 ),
@@ -226,23 +227,23 @@ class FamilyScreen extends ConsumerWidget {
 // BOTTOM SHEET: SELEZIONA MEMBRI PER TASK
 // ==========================================
 class SelectFamilyMemberSheet extends StatefulWidget {
-  const SelectFamilyMemberSheet({super.key});
+  final AsyncValue<List<HouseholdMember>> members;
+  
+  const SelectFamilyMemberSheet({super.key, required this.members});
 
   @override
   State<SelectFamilyMemberSheet> createState() => _SelectFamilyMemberSheetState();
 }
 
 class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
-  final List<Map<String, dynamic>> familyMembers = [
-    {'id': '1', 'name': 'Enrico Cirillo', 'initial': 'E'},
-    {'id': '2', 'name': 'Leone Cirillo', 'initial': 'L'},
-    {'id': '3', 'name': 'Lara Vigorelli', 'initial': 'L'},
-  ];
 
   final Set<String> _selectedMemberIds = {};
 
-  bool get _isAllSelected => _selectedMemberIds.length == familyMembers.length;
-
+  bool get _isAllSelected {
+  final list = widget.members.value ?? [];
+  return _selectedMemberIds.length == list.length;
+  }
+  
   void _toggleSelection(String id) {
     setState(() {
       if (_selectedMemberIds.contains(id)) {
@@ -254,11 +255,15 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
   }
 
   void _toggleSelectAll() {
+    final list = widget.members.value;
+
+    if (list == null) return;
+
     setState(() {
       if (_isAllSelected) {
-        _selectedMemberIds.clear(); 
+        _selectedMemberIds.clear();
       } else {
-        _selectedMemberIds.addAll(familyMembers.map((m) => m['id'] as String));
+        _selectedMemberIds.addAll(list.map((m) => m.id));
       }
     });
   }
@@ -273,112 +278,140 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
         filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
         child: Container(
           padding: EdgeInsets.only(
-            left: 24, right: 24, top: 20, 
+            left: 24, right: 24, top: 20,
             bottom: MediaQuery.of(context).viewInsets.bottom + 30,
           ),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.9),
             border: Border.all(color: Colors.white, width: 1.5),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 50, height: 5, decoration: BoxDecoration(color: brandBlue.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 24),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Use .when to handle the AsyncValue state
+          child: widget.members.when(
+            loading: () => const SizedBox(
+              height: 200, 
+              child: Center(child: CircularProgressIndicator())
+            ),
+            error: (err, stack) => Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text('Error loading members: $err'),
+            ),
+            data: (membersList) { // 'membersList' is now your actual List<HouseholdMember>
+              return Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Assign Task To...', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: brandBlue)),
-                  GestureDetector(
-                    onTap: _toggleSelectAll,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _isAllSelected ? brandBlue : brandBlue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
+                  Container(
+                    width: 50, height: 5, 
+                    decoration: BoxDecoration(
+                      color: brandBlue.withValues(alpha: 0.2), 
+                      borderRadius: BorderRadius.circular(10)
+                    )
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Assign Task To...', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: brandBlue)),
+                      GestureDetector(
+                        onTap: _toggleSelectAll,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _isAllSelected ? brandBlue : brandBlue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            _isAllSelected ? 'Deselect All' : 'Select All',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13, 
+                              fontWeight: FontWeight.w600, 
+                              color: _isAllSelected ? Colors.white : brandBlue
+                            ),
+                          ),
+                        ),
                       ),
-                      child: Text(
-                        _isAllSelected ? 'Deselect All' : 'Select All',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13, 
-                          fontWeight: FontWeight.w600, 
-                          color: _isAllSelected ? Colors.white : brandBlue
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Map through the actual membersList objects
+                  ...membersList.map((member) {
+                    final isSelected = _selectedMemberIds.contains(member.id); // Changed from member['id']
+                    return GestureDetector(
+                      onTap: () => _toggleSelection(member.id), // Changed from member['id']
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected ? brandBlue.withValues(alpha: 0.1) : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: isSelected ? brandBlue.withValues(alpha: 0.5) : Colors.white, width: 1.5),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44, height: 44,
+                              decoration: const BoxDecoration(color: Color(0xFF3D342C), shape: BoxShape.circle),
+                              child: Center(
+                                child: Text(
+                                  member.profile?.name?[0].toUpperCase() ?? '?', // Changed from member['initial']
+                                  style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
+                                )
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                member.profile?.name ?? 'Unknown Member', // Changed from member['name']
+                                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C))
+                              ),
+                            ),
+                            Icon(
+                              isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                              color: isSelected ? brandBlue : Colors.grey.withValues(alpha: 0.4),
+                              size: 26,
+                            )
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+
+                  const SizedBox(height: 30),
+
+                  GestureDetector(
+                    onTap: _selectedMemberIds.isEmpty ? null : () {
+                      Navigator.pop(context); 
+                      Navigator.of(context).pushNamed(
+                        AppRouteNames.addTask,
+                        arguments: AddTaskRouteArgs(
+                          assignedMemberIds: _selectedMemberIds, // Ensure it's a List if your args expect it
+                        ),
+                      );
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: double.infinity,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: _selectedMemberIds.isEmpty ? Colors.grey.withValues(alpha: 0.5) : brandBlue,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: _selectedMemberIds.isEmpty ? [] : [BoxShadow(color: brandBlue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Continue', 
+                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 24),
-
-              ...familyMembers.map((member) {
-                final isSelected = _selectedMemberIds.contains(member['id']);
-                return GestureDetector(
-                  onTap: () => _toggleSelection(member['id']),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected ? brandBlue.withValues(alpha: 0.1) : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: isSelected ? brandBlue.withValues(alpha: 0.5) : Colors.white, width: 1.5),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44, height: 44,
-                          decoration: const BoxDecoration(color: Color(0xFF3D342C), shape: BoxShape.circle),
-                          child: Center(child: Text(member['initial'], style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(member['name'], style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C))),
-                        ),
-                        Icon(
-                          isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                          color: isSelected ? brandBlue : Colors.grey.withValues(alpha: 0.4),
-                          size: 26,
-                        )
-                      ],
-                    ),
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 30),
-
-              GestureDetector(
-                onTap: _selectedMemberIds.isEmpty ? null : () {
-                  Navigator.pop(context); 
-                  Navigator.of(context).pushNamed(
-                    AppRouteNames.addTask,
-                    arguments: AddTaskRouteArgs(
-                      assignedMemberIds: _selectedMemberIds,
-                    ),
-                  );
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: double.infinity,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: _selectedMemberIds.isEmpty ? Colors.grey.withValues(alpha: 0.5) : brandBlue,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: _selectedMemberIds.isEmpty ? [] : [BoxShadow(color: brandBlue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Continue', 
-                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
