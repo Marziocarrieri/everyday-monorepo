@@ -240,7 +240,7 @@ class TaskRepository {
 Future<List<TaskWithDetails>> getTasksForUserId(String userId) async {
     final response = await supabase
         .from('tasks') // The first table
-        .select('*,task_assignment!inner(*)')
+        .select('*,task_assignment!inner(*), subtask(*)')
         .eq('task_assignment.member_id', userId);
 
       debugPrint('GETTING TASKS → userID: $userId');

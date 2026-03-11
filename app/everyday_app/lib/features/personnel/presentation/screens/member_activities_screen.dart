@@ -24,22 +24,6 @@ class MemberActivitiesScreen extends StatefulWidget {
 }
 
 class _MemberActivitiesScreenState extends State<MemberActivitiesScreen> {
-  // Dati Mockati (In futuro arriveranno dal DB per questo specifico utente)
-  // final List<Map<String, dynamic>> _activitiesByDate = [
-  //   {
-  //     'date': 'Monday 27/11',
-  //     'tasks': [
-  //       {'title': 'Homework oversight', 'time': '7:45AM - 8:45AM', 'isCompleted': true},
-  //       {'title': 'Skin-care Routine', 'time': '8:00PM - 8:30PM', 'isCompleted': false},
-  //     ]
-  //   },
-  //   {
-  //     'date': 'Tuesday 28/11',
-  //     'tasks': [
-  //       {'title': 'Seasonal Closet Swap', 'time': '10:00AM - 12:00PM', 'isCompleted': false},
-  //     ]
-  //   }
-  // ];
 
   List<TaskWithDetails> _activities = [];
   final TaskRepository _taskRepository = TaskRepository();
