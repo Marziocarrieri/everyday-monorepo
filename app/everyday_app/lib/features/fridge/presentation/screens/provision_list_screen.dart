@@ -280,10 +280,12 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
           ),
           confirmDismiss: (direction) async {
             final shouldDelete = await _confirmDelete(item);
-            return shouldDelete ?? false;
-          },
-          onDismissed: (direction) async {
+            if (shouldDelete != true) {
+              return false;
+            }
+
             await _deleteItem(item.id, shoppingService);
+            return false;
           },
           child: _buildListItem(item, shoppingService),
         );

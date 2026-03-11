@@ -398,8 +398,15 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 24),
             child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
           ),
-          confirmDismiss: (direction) async => await _confirmDelete(item) ?? false,
-          onDismissed: (direction) async => await _deleteItem(item),
+          confirmDismiss: (direction) async {
+            final shouldDelete = await _confirmDelete(item);
+            if (shouldDelete != true) {
+              return false;
+            }
+
+            await _deleteItem(item);
+            return false;
+          },
           child: _buildListItem(item, pantryService),
         );
       },
