@@ -25,12 +25,14 @@ class PantryRepository {
     return supabase
         .from('pantry_item')
         .stream(primaryKey: ['id'])
-        .eq('household_id', householdId)
-        .map(
-          (rows) => rows
-              .map((row) => PantryItem.fromJson(Map<String, dynamic>.from(row)))
-              .toList(),
-        );
+        .map((rows) {
+          final filteredRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .where((row) => row['household_id'] == householdId)
+              .toList();
+
+          return filteredRows.map(PantryItem.fromJson).toList();
+        });
   }
 
   // Aggiorna quantità (es. ho bevuto una bottiglia d'acqua)

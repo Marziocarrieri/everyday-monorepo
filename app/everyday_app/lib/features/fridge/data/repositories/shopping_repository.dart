@@ -31,12 +31,14 @@ class ShoppingRepository {
     return supabase
         .from('shopping_item')
         .stream(primaryKey: ['id'])
-        .eq('household_id', householdId)
-        .map(
-          (rows) => rows
-              .map((row) => ShoppingItem.fromJson(Map<String, dynamic>.from(row)))
-              .toList(),
-        );
+        .map((rows) {
+          final filteredRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .where((row) => row['household_id'] == householdId)
+              .toList();
+
+          return filteredRows.map(ShoppingItem.fromJson).toList();
+        });
   }
 
   // Cambia stato (da PENDING a BOUGHT)

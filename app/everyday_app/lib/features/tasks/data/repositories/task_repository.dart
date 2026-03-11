@@ -117,9 +117,12 @@ class TaskRepository {
     return supabase
         .from('tasks')
         .stream(primaryKey: ['id'])
-        .eq('household_id', householdId)
         .asyncMap((rows) async {
-          final taskRows = List<Map<String, dynamic>>.from(rows);
+          final taskRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .where((row) => row['household_id'] == householdId)
+              .toList();
+
           if (taskRows.isEmpty) {
             return <TaskWithDetails>[];
           }

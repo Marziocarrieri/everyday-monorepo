@@ -28,12 +28,14 @@ class FridgeRepository {
     return supabase
         .from('pantry_item')
         .stream(primaryKey: ['id'])
-        .eq('household_id', householdId)
-        .map(
-          (rows) => rows
-              .map((row) => FridgeItem.fromJson(Map<String, dynamic>.from(row)))
-              .toList(),
-        );
+        .map((rows) {
+          final filteredRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .where((row) => row['household_id'] == householdId)
+              .toList();
+
+          return filteredRows.map(FridgeItem.fromJson).toList();
+        });
   }
 
   Future<void> addItem({
