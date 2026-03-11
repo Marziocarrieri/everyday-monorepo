@@ -96,6 +96,7 @@ class FamilyScreen extends ConsumerWidget {
                                 ? (member.profile?.name ?? '?')[0].toUpperCase()
                                 : '?',
                             color: const Color(0xFFF4A261),
+                            role: member.role
                           ),
                         );
                       },
@@ -135,7 +136,7 @@ class FamilyScreen extends ConsumerWidget {
     required BuildContext context,
     required String id, 
     required String name, 
-    //required String status, 
+    required String role, 
     required String initial, 
     required Color color
   }) {
@@ -189,7 +190,11 @@ class FamilyScreen extends ConsumerWidget {
                             children: [
                               Text(name, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
                               const SizedBox(height: 2),
-                              //Text(status, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 0.3)),
+                              Text(
+                                role,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
                             ],
                           ),
                         ),
