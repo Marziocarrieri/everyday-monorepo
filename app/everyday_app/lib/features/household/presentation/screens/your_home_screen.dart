@@ -9,23 +9,6 @@ import 'package:everyday_app/features/household/data/services/home_configuration
 import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/household/presentation/providers/household_providers.dart';
 
-// --- MODELLO DATI PER LA STANZA ---
-class RoomItem {
-  final String id;
-  final String name;
-  final String floor;
-  final String floorId;
-  final String? roomType;
-
-  RoomItem({
-    required this.id,
-    required this.name,
-    required this.floor,
-    required this.floorId,
-    this.roomType,
-  });
-}
-
 class YourHomeScreen extends ConsumerStatefulWidget {
   const YourHomeScreen({super.key});
 
@@ -35,14 +18,11 @@ class YourHomeScreen extends ConsumerStatefulWidget {
 
 class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   // Stato: Piano selezionato e Modalità Modifica
-  String _selectedFloor = '';
   String? _selectedFloorId;
   bool _isEditMode = false;
 
-  final List<RoomItem> _allRooms = [];
   final HomeConfigurationService _homeConfigurationService =
       HomeConfigurationService();
-  List<HouseholdFloor> _floors = const [];
   static const List<String> _roomTypes = [
     'kitchen',
     'bathroom',
@@ -71,7 +51,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
         .join(' ');
   }
 
-  String _roomDisplayLabel(RoomItem room) {
+  String _roomDisplayLabel(HouseholdRoom room) {
     final roomType = room.roomType;
     if (roomType == null || roomType.trim().isEmpty) {
       return room.name;
@@ -95,96 +75,41 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     );
   }
 
-  List<String> get _availableFloors {
-    return _floors.map((floor) => floor.name).toList();
+  List<HouseholdFloor> _sortedFloors(List<HouseholdFloor> floors) {
+    final sorted = [...floors]
+      ..sort((a, b) => a.floorOrder.compareTo(b.floorOrder));
+    return sorted;
   }
 
-  // Filtra le stanze in base al piano selezionato
-  List<RoomItem> get _currentFloorRooms {
+  String? _resolveSelectedFloorId(List<HouseholdFloor> floors) {
+    if (floors.isEmpty) return null;
+
     final selectedFloorId = _selectedFloorId;
-    if (selectedFloorId == null) return const [];
-    return _allRooms
-        .where((room) => room.floorId == selectedFloorId)
-        .toList();
+    if (selectedFloorId == null) return floors.first.id;
+
+    final exists = floors.any((floor) => floor.id == selectedFloorId);
+    return exists ? selectedFloorId : floors.first.id;
   }
 
-  void _syncHomeConfigurationState({
-    required List<HouseholdFloor> floors,
-    required List<HouseholdRoom> rooms,
-  }) {
-    _floors = floors;
-
-    if (floors.isEmpty) {
-      _selectedFloor = '';
-      _selectedFloorId = null;
-      _allRooms.clear();
-      return;
-    }
-
-    HouseholdFloor selectedFloor = floors.first;
-    final currentSelectedFloorId = _selectedFloorId;
-    if (currentSelectedFloorId != null) {
-      for (final floor in floors) {
-        if (floor.id == currentSelectedFloorId) {
-          selectedFloor = floor;
-          break;
-        }
+  String _selectedFloorName(
+    List<HouseholdFloor> floors,
+    String? selectedFloorId,
+  ) {
+    if (selectedFloorId == null) return '';
+    for (final floor in floors) {
+      if (floor.id == selectedFloorId) {
+        return floor.name;
       }
     }
-
-    _selectedFloor = selectedFloor.name;
-    _selectedFloorId = selectedFloor.id;
-
-    final floorNamesById = {
-      for (final floor in floors) floor.id: floor.name,
-    };
-
-    final mappedRooms = rooms
-        .map(
-          (room) => RoomItem(
-            id: room.id,
-            name: room.name,
-            floor: floorNamesById[room.floorId] ?? 'Unknown floor',
-            floorId: room.floorId,
-            roomType: room.roomType,
-          ),
-        )
-        .toList();
-
-    final nextById = {
-      for (final room in mappedRooms) room.id: room,
-    };
-
-    final sameRoomSet = _allRooms.length == mappedRooms.length &&
-        _allRooms.every((room) => nextById.containsKey(room.id));
-
-    if (!sameRoomSet) {
-      _allRooms
-        ..clear()
-        ..addAll(mappedRooms);
-      return;
-    }
-
-    final reordered = _allRooms.map((room) => nextById[room.id]!).toList();
-    _allRooms
-      ..clear()
-      ..addAll(reordered);
+    return '';
   }
 
-  Future<void> _addRoom(String roomName, {String? roomType}) async {
+  Future<void> _addRoom({
+    required String roomName,
+    required String floorId,
+    String? roomType,
+  }) async {
     final householdId = ref.read(currentHouseholdIdProvider);
-    final floorId = _selectedFloorId;
-    if (floorId == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No floor available for this household yet', style: GoogleFonts.poppins()),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: errorColor,
-        ),
-      );
-      return;
-    }
 
     try {
       await _homeConfigurationService.addRoom(
@@ -193,9 +118,6 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
         name: roomName,
         roomType: roomType,
       );
-      ref.invalidate(roomsStreamProvider(householdId));
-      ref.invalidate(floorsStreamProvider(householdId));
-      ref.invalidate(homeConfigurationStreamProvider(householdId));
       _showSuccessSnackBar('Room added');
     } catch (error) {
       debugPrint('Error adding room: $error');
@@ -210,16 +132,17 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
 
   Future<void> _addFloor(String floorName) async {
     final householdId = ref.read(currentHouseholdIdProvider);
+    final floors = ref.read(floorsStreamProvider(householdId)).maybeWhen(
+      data: (value) => value,
+      orElse: () => const <HouseholdFloor>[],
+    );
 
     try {
       await _homeConfigurationService.addFloor(
         householdId: householdId,
         name: floorName,
-        floorOrder: _floors.length,
+        floorOrder: floors.length,
       );
-      ref.invalidate(roomsStreamProvider(householdId));
-      ref.invalidate(floorsStreamProvider(householdId));
-      ref.invalidate(homeConfigurationStreamProvider(householdId));
       _showSuccessSnackBar('Floor added');
     } catch (error) {
       debugPrint('Error adding floor: $error');
@@ -237,13 +160,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   }
 
   Future<void> _removeRoom(String id) async {
-    final householdId = ref.read(currentHouseholdIdProvider);
-
     try {
       await _homeConfigurationService.removeRoom(id);
-      ref.invalidate(roomsStreamProvider(householdId));
-      ref.invalidate(floorsStreamProvider(householdId));
-      ref.invalidate(homeConfigurationStreamProvider(householdId));
       _showSuccessSnackBar('Room deleted');
     } catch (error) {
       debugPrint('Error deleting room: $error');
@@ -261,24 +179,34 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     final householdId = ref.watch(currentHouseholdIdProvider);
     final floorsAsync = ref.watch(floorsStreamProvider(householdId));
     final roomsAsync = ref.watch(roomsStreamProvider(householdId));
-    final homeConfigurationAsync = ref.watch(homeConfigurationStreamProvider(householdId));
 
-    return homeConfigurationAsync.when(
+    return floorsAsync.when(
       loading: () => _buildScaffoldBody(isLoading: true),
       error: (error, _) => _buildScaffoldBody(isLoading: false, streamError: error),
-      data: (_) {
-        return floorsAsync.when(
+      data: (floors) {
+        final sortedFloors = _sortedFloors(floors);
+        final selectedFloorId = _resolveSelectedFloorId(sortedFloors);
+        final selectedFloorName = _selectedFloorName(
+          sortedFloors,
+          selectedFloorId,
+        );
+
+        return roomsAsync.when(
           loading: () => _buildScaffoldBody(isLoading: true),
           error: (error, _) => _buildScaffoldBody(isLoading: false, streamError: error),
-          data: (floors) {
-            return roomsAsync.when(
-              loading: () => _buildScaffoldBody(isLoading: true),
-              error: (error, _) =>
-                  _buildScaffoldBody(isLoading: false, streamError: error),
-              data: (rooms) {
-                _syncHomeConfigurationState(floors: floors, rooms: rooms);
-                return _buildScaffoldBody(isLoading: false);
-              },
+          data: (rooms) {
+            final visibleRooms = selectedFloorId == null
+                ? const <HouseholdRoom>[]
+                : rooms
+                      .where((room) => room.floorId == selectedFloorId)
+                      .toList();
+
+            return _buildScaffoldBody(
+              isLoading: false,
+              floors: sortedFloors,
+              selectedFloorId: selectedFloorId,
+              selectedFloorName: selectedFloorName,
+              visibleRooms: visibleRooms,
             );
           },
         );
@@ -289,6 +217,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   Widget _buildScaffoldBody({
     required bool isLoading,
     Object? streamError,
+    List<HouseholdFloor> floors = const [],
+    String? selectedFloorId,
+    String selectedFloorName = '',
+    List<HouseholdRoom> visibleRooms = const [],
   }) {
     return Scaffold(
       body: Container(
@@ -310,7 +242,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
               ),
 
               if (!isLoading) ...[
-                if (_floors.isNotEmpty)
+                if (floors.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
@@ -352,7 +284,11 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                             
                             // SELETTORE PIANO
                             GestureDetector(
-                              onTap: () => _showFloorSelectorModal(context),
+                              onTap: () => _showFloorSelectorModal(
+                                context,
+                                floors: floors,
+                                selectedFloorId: selectedFloorId,
+                              ),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -369,7 +305,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                                 child: Row(
                                   children: [
                                     Text(
-                                      _selectedFloor,
+                                      selectedFloorName,
                                       style: GoogleFonts.poppins(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
@@ -427,10 +363,13 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
               Expanded(
                 child: isLoading
                     ? Center(child: CircularProgressIndicator(color: primaryColor))
-                    : (_selectedFloorId == null
+                    : (selectedFloorId == null
                         ? _buildNoFloorsState()
-                        : _currentFloorRooms.isEmpty
-                        ? _buildNoRoomsState()
+                        : visibleRooms.isEmpty
+                        ? _buildNoRoomsState(
+                            selectedFloorName: selectedFloorName,
+                            selectedFloorId: selectedFloorId,
+                          )
                         : GridView.builder(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24.0,
@@ -445,12 +384,15 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                             childAspectRatio: 1.0, // Quadrati perfetti
                           ),
                       // Numero di stanze + 1 per il bottone "Aggiungi"
-                      itemCount: _currentFloorRooms.length + 1,
+                      itemCount: visibleRooms.length + 1,
                       itemBuilder: (context, index) {
-                        if (index == _currentFloorRooms.length) {
-                          return _buildAddRoomCard();
+                        if (index == visibleRooms.length) {
+                          return _buildAddRoomCard(
+                            selectedFloorId: selectedFloorId,
+                            selectedFloorName: selectedFloorName,
+                          );
                         }
-                        final room = _currentFloorRooms[index];
+                        final room = visibleRooms[index];
                         return _buildRoomCard(room);
                       },
                     )),
@@ -510,57 +452,13 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     );
   }
 
-  // --- CARD STANZA SINGOLA CON DRAG & DROP ---
-  Widget _buildRoomCard(RoomItem room) {
-    return DragTarget<RoomItem>(
-      onAcceptWithDetails: (details) {
-        final draggedRoom = details.data;
-        if (draggedRoom.id != room.id) {
-          setState(() {
-            // Troviamo le posizioni delle due stanze nella lista
-            final oldIndex = _allRooms.indexOf(draggedRoom);
-            final newIndex = _allRooms.indexOf(room);
-
-            // Magia: le scambiamo di posto!
-            _allRooms[oldIndex] = room;
-            _allRooms[newIndex] = draggedRoom;
-          });
-        }
-      },
-      builder: (context, candidateItems, rejectedItems) {
-        // Se c'è un'altra card che sta "volando" sopra questa, candidateItems non è vuoto
-        final isHovered = candidateItems.isNotEmpty;
-
-        return LongPressDraggable<RoomItem>(
-          data: room,
-          // 1. Quello che vedi "volare" sotto al dito mentre trascini
-          feedback: Material(
-            color: Colors.transparent,
-            child: SizedBox(
-              width:
-                  MediaQuery.of(context).size.width *
-                  0.4, // Grandezza simile alla griglia
-              height: MediaQuery.of(context).size.width * 0.4,
-              child: Opacity(
-                opacity: 0.8,
-                child: _buildInnerRoomCard(room, isHovered: false),
-              ),
-            ),
-          ),
-          // 2. Come appare la card originale mentre la stai spostando (semi-trasparente)
-          childWhenDragging: Opacity(
-            opacity: 0.3,
-            child: _buildInnerRoomCard(room, isHovered: false),
-          ),
-          // 3. La card normale a riposo (o illuminata se ci passi sopra con un'altra)
-          child: _buildInnerRoomCard(room, isHovered: isHovered),
-        );
-      },
-    );
+  // --- CARD STANZA SINGOLA ---
+  Widget _buildRoomCard(HouseholdRoom room) {
+    return _buildInnerRoomCard(room, isHovered: false);
   }
 
-  // --- CONTENUTO GRAFICO DELLA CARD (Separato per riutilizzarlo nel trascinamento) ---
-  Widget _buildInnerRoomCard(RoomItem room, {required bool isHovered}) {
+  // --- CONTENUTO GRAFICO DELLA CARD ---
+  Widget _buildInnerRoomCard(HouseholdRoom room, {required bool isHovered}) {
     return Stack(
       children: [
         // Animazione fluida quando ci passi sopra con un'altra card!
@@ -683,12 +581,22 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   }
 
   // --- CARD AGGIUNGI STANZA (+) ---
-  Widget _buildAddRoomCard() {
+  Widget _buildAddRoomCard({
+    required String selectedFloorId,
+    required String selectedFloorName,
+  }) {
     return GestureDetector(
       onTap: () async {
-        final newRoom = await _showAddRoomModal(context);
+        final newRoom = await _showAddRoomModal(
+          context,
+          selectedFloorName: selectedFloorName,
+        );
         if (newRoom == null || newRoom.name.trim().isEmpty) return;
-        await _addRoom(newRoom.name.trim(), roomType: newRoom.roomType);
+        await _addRoom(
+          roomName: newRoom.name.trim(),
+          floorId: selectedFloorId,
+          roomType: newRoom.roomType,
+        );
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
@@ -733,9 +641,11 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   // ==========================================
   // MODAL: SELETTORE PIANO (Stile pulito richiesto)
   // ==========================================
-  void _showFloorSelectorModal(BuildContext context) {
-    final floors = _availableFloors;
-
+  void _showFloorSelectorModal(
+    BuildContext context, {
+    required List<HouseholdFloor> floors,
+    required String? selectedFloorId,
+  }) {
     if (floors.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -789,7 +699,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                 return _buildFloorOption(
                   context,
                   floor,
-                  floor == _selectedFloor,
+                  floor.id == selectedFloorId,
                   isLast,
                 );
               }),
@@ -837,21 +747,15 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   // --- SINGOLA OPZIONE PIANO ---
   Widget _buildFloorOption(
     BuildContext context,
-    String floorName,
+    HouseholdFloor floor,
     bool isActive,
     bool isLast,
   ) {
     return GestureDetector(
       onTap: () {
-        for (final floor in _floors) {
-          if (floor.name == floorName) {
-            setState(() {
-              _selectedFloor = floor.name;
-              _selectedFloorId = floor.id;
-            });
-            break;
-          }
-        }
+        setState(() {
+          _selectedFloorId = floor.id;
+        });
         Navigator.pop(context); // Chiude il modal dopo la selezione
       },
       child: Container(
@@ -872,7 +776,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              floorName,
+              floor.name,
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 // Grassetto e arancione se attivo, normale e scuro se inattivo
@@ -1079,7 +983,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   // ==========================================
   // MODAL: AGGIUNGI NUOVA STANZA (Room)
   // ==========================================
-  Future<_NewRoomData?> _showAddRoomModal(BuildContext context) {
+  Future<_NewRoomData?> _showAddRoomModal(
+    BuildContext context, {
+    required String selectedFloorName,
+  }) {
     final roomNameController = TextEditingController();
     String? selectedRoomType;
 
@@ -1135,7 +1042,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                           ),
                         ),
                         Text(
-                          'It will be added to $_selectedFloor',
+                          'It will be added to $selectedFloorName',
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -1312,7 +1219,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     );
   }
 
-  Widget _buildNoRoomsState() {
+  Widget _buildNoRoomsState({
+    required String selectedFloorName,
+    required String selectedFloorId,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1335,16 +1245,23 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Add your first room to $_selectedFloor.',
+              'Add your first room to $selectedFloorName.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.6)),
             ),
             const SizedBox(height: 32),
             GestureDetector(
               onTap: () async {
-                final newRoom = await _showAddRoomModal(context);
+                final newRoom = await _showAddRoomModal(
+                  context,
+                  selectedFloorName: selectedFloorName,
+                );
                 if (newRoom == null || newRoom.name.trim().isEmpty) return;
-                await _addRoom(newRoom.name.trim(), roomType: newRoom.roomType);
+                await _addRoom(
+                  roomName: newRoom.name.trim(),
+                  floorId: selectedFloorId,
+                  roomType: newRoom.roomType,
+                );
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
