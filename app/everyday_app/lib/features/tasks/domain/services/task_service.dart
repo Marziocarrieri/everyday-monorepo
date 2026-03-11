@@ -10,6 +10,10 @@ import 'package:everyday_app/features/household/data/repositories/household_repo
 import '../../data/repositories/task_repository.dart';
 import '../../../../shared/services/auth_service.dart';
 
+// --- NUOVI IMPORT PER LA SICUREZZA ---
+import 'package:everyday_app/core/roles/app_role.dart';
+import 'package:everyday_app/core/roles/task_visibility_policy.dart';
+
 class TaskCreationAccess {
   final bool canCreate;
   final bool canAssignMultiple;
@@ -255,10 +259,44 @@ class TaskService {
     }
   }
 
+  // --- I METODI AGGIORNATI CON LA POLICY DI SICUREZZA ---
   Future<List<TaskWithDetails>> getTasksForHousehold() async {
     try {
       final householdId = requireHouseholdId();
-      return await _repo.getTasksForHousehold(householdId);
+      final activeMembership = AppContext.instance.activeMembership;
+      final membershipId = AppContext.instance.membershipId;
+
+      if (activeMembership == null || membershipId == null) return [];
+
+      // 1. Chiediamo tutti i task della casa al repository
+      final allTasks = await _repo.getTasksForHousehold(householdId);
+
+      // 2. Determiniamo il ruolo corrente convertendolo in enum AppRole
+      AppRole currentRole;
+      final roleStr = activeMembership.role.toUpperCase();
+      if (roleStr == 'HOST') {
+        currentRole = AppRole.HOST;
+      } else if (roleStr == 'COHOST') {
+        currentRole = AppRole.COHOST;
+      } else {
+        currentRole = AppRole.PERSONNEL;
+      }
+
+      // 3. Filtriamo i task usando la TaskVisibilityPolicy (FIX APPLICATO QUI)
+      final viewableTasks = allTasks.where((taskDetails) {
+        // Controlliamo se l'utente corrente è assegnato a questo task
+        final isAssignedToMe = taskDetails.assignments.any((a) => a.memberId == membershipId);
+
+        // Chiediamo alla Policy se il task può essere visto
+        return TaskVisibilityPolicy.canViewTask(
+          userRole: currentRole,
+          taskVisibility: taskDetails.task.visibility, // <- Fix: accesso corretto a visibility
+          isAssignedToCurrentUser: isAssignedToMe,
+        );
+      }).toList();
+
+      return viewableTasks;
+
     } catch (error) {
       debugPrint('Error loading household tasks: $error');
       return [];
@@ -269,15 +307,18 @@ class TaskService {
     final membershipId = AppContext.instance.membershipId;
     if (membershipId == null) return [];
 
+    // Ora questo metodo chiama getTasksForHousehold() che è GIA' filtrato e sicuro!
     final tasks = await getTasksForHousehold();
+    
     return tasks
         .where(
-          (task) => task.assignments.any(
+          (taskDetails) => taskDetails.assignments.any(
             (assignment) => assignment.memberId == membershipId,
           ),
         )
         .toList();
   }
+  // --- FINE METODI AGGIORNATI ---
 
   Future<void> setSubtaskDone({
     required String subtaskId,
