@@ -1,3 +1,4 @@
+// TODO migrate to features/fridge
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -28,6 +29,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   final TextEditingController dateTextController = TextEditingController();
   bool _isListView = true;
 
+  // Colori Brand per coerenza
+  final Color primaryColor = const Color(0xFF5A8B9E);
+  final Color darkTextColor = const Color(0xFF3D342C);
+
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -35,10 +40,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF5A8B9E),
+        backgroundColor: primaryColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 2),
       ),
@@ -87,60 +92,89 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     }
   }
 
+  // --- DIALOG DI CONFERMA ELIMINAZIONE ---
   Future<bool?> _confirmDelete(FridgeItem item) {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: AlertDialog(
-            backgroundColor: Colors.white.withValues(alpha: 0.9),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: const BorderSide(color: Colors.white, width: 1.5),
-            ),
-            title: Text(
-              'Delete Item?',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF3D342C),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFFF28482).withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
+                ],
               ),
-            ),
-            content: Text(
-              'Are you sure you want to remove "${item.name}" from your fridge?',
-              style: GoogleFonts.poppins(
-                color: const Color(0xFF3D342C).withValues(alpha: 0.7),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF5A8B9E),
-                    fontWeight: FontWeight.w600,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60, height: 60,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF28482), size: 30),
                   ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF28482),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Delete Item',
+                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: darkTextColor),
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Delete',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 12),
+                  Text(
+                    'Are you sure you want to remove "${item.name}"?',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: darkTextColor.withValues(alpha: 0.6)),
                   ),
-                ),
+                  const SizedBox(height: 30),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(false),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: darkTextColor.withValues(alpha: 0.1), width: 1.5),
+                            ),
+                            child: Center(
+                              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: darkTextColor.withValues(alpha: 0.7))),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(true),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF28482),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: const Color(0xFFF28482).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
+                            child: Center(
+                              child: Text('Delete', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -171,7 +205,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           child: Text(
             'Household context not ready',
             style: GoogleFonts.poppins(
-              color: const Color(0xFF3D342C),
+              color: darkTextColor,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -243,7 +277,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           ),
         ),
       ),
-      floatingActionButton: _buildAddButton(),
+      // --- IL BOTTONE È TORNATO: FLUTTUANTE, PICCOLO E CENTRATO ---
+      floatingActionButton: _buildFloatingAddButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
@@ -265,20 +300,20 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               color: Colors.white,
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF5A8B9E).withValues(alpha: 0.08),
+                  color: primaryColor.withValues(alpha: 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF5A8B9E),
+              color: primaryColor,
               size: 20,
             ),
           ),
@@ -288,7 +323,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           style: GoogleFonts.poppins(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF5A8B9E),
+            color: primaryColor,
           ),
         ),
         Container(
@@ -298,20 +333,20 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             color: Colors.white,
             shape: BoxShape.circle,
             border: Border.all(
-              color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
+              color: primaryColor.withValues(alpha: 0.1),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF5A8B9E).withValues(alpha: 0.08),
+                color: primaryColor.withValues(alpha: 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.qr_code_scanner_rounded,
-            color: Color(0xFF5A8B9E),
+            color: primaryColor,
             size: 22,
           ),
         ),
@@ -328,10 +363,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           height: 55,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.5),
+            color: primaryColor.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFF5A8B9E).withValues(alpha: 0.2),
+              color: primaryColor.withValues(alpha: 0.2),
               width: 1.2,
             ),
           ),
@@ -342,17 +377,17 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   decoration: InputDecoration(
                     hintText: 'Search items...',
                     hintStyle: GoogleFonts.poppins(
-                      color: const Color(0xFF5A8B9E).withValues(alpha: 0.5),
+                      color: primaryColor.withValues(alpha: 0.5),
                       fontSize: 15,
                     ),
                     border: InputBorder.none,
                   ),
-                  style: GoogleFonts.poppins(color: const Color(0xFF3D342C)),
+                  style: GoogleFonts.poppins(color: darkTextColor),
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.search_rounded,
-                color: Color(0xFF5A8B9E),
+                color: primaryColor,
                 size: 24,
               ),
             ],
@@ -368,7 +403,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
+          color: primaryColor.withValues(alpha: 0.1),
           width: 1.2,
         ),
       ),
@@ -396,8 +431,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                 Icons.view_list_rounded,
                 size: 22,
                 color: _isListView
-                    ? const Color(0xFF5A8B9E)
-                    : const Color(0xFF5A8B9E).withValues(alpha: 0.4),
+                    ? primaryColor
+                    : primaryColor.withValues(alpha: 0.4),
               ),
             ),
           ),
@@ -422,8 +457,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                 Icons.grid_view_rounded,
                 size: 22,
                 color: !_isListView
-                    ? const Color(0xFF5A8B9E)
-                    : const Color(0xFF5A8B9E).withValues(alpha: 0.4),
+                    ? primaryColor
+                    : primaryColor.withValues(alpha: 0.4),
               ),
             ),
           ),
@@ -438,11 +473,11 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF3D342C),
+          color: darkTextColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF3D342C).withValues(alpha: 0.2),
+              color: darkTextColor.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -501,7 +536,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     width: 50,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF5A8B9E).withValues(alpha: 0.2),
+                      color: primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -538,7 +573,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected
                   ? const Color(0xFFF4A261)
-                  : const Color(0xFF3D342C),
+                  : darkTextColor,
             ),
           ),
           if (isSelected)
@@ -554,8 +589,11 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 
   Widget _buildGlassList(List<FridgeItem> items, PantryService pantryService) {
     if (items.isEmpty) return _buildEmptyState();
+    
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
+      // Spazio sufficiente per far scorrere l'ultimo elemento sopra il FAB
+      padding: const EdgeInsets.only(bottom: 120), 
       itemCount: items.length,
       separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
@@ -603,15 +641,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             height: 85,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  iconColor.withValues(alpha: 0.15),
-                  Colors.white.withValues(alpha: 0.4),
-                ],
-              ),
+              color: Colors.white.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: primaryColor.withValues(alpha: 0.1),
                 width: 1.2,
               ),
             ),
@@ -643,7 +676,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF3D342C),
+                      color: darkTextColor,
                     ),
                   ),
                 ),
@@ -667,6 +700,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     if (items.isEmpty) return _buildEmptyState();
     return GridView.builder(
       physics: const BouncingScrollPhysics(),
+      // Spazio sufficiente per far scorrere gli elementi sopra il FAB
+      padding: const EdgeInsets.only(bottom: 120), 
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 16,
@@ -690,17 +725,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  iconColor.withValues(alpha: 0.15),
-                  Colors.white.withValues(alpha: 0.4),
-                ],
-              ),
+              color: Colors.white.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: primaryColor.withValues(alpha: 0.1),
                 width: 1.2,
               ),
             ),
@@ -735,7 +763,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF3D342C),
+                    color: darkTextColor,
                     height: 1.1,
                   ),
                 ),
@@ -747,15 +775,45 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
   }
 
+  // --- EMPTY STATE MAGICO ---
   Widget _buildEmptyState() {
     return Center(
-      child: Text(
-        'No items found.',
-        style: GoogleFonts.poppins(
-          color: const Color(0xFF5A8B9E).withValues(alpha: 0.5),
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: primaryColor.withValues(alpha: 0.2), width: 2),
+            ),
+            child: Icon(
+              Icons.shopping_basket_outlined,
+              size: 64,
+              color: primaryColor.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Nothing here yet',
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: darkTextColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tap the + button to add\ngroceries to this area.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: darkTextColor.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -777,37 +835,30 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   }
 
   // ==========================================
-  // SEZIONE ADD ELEMENT
+  // FLOATING ACTION BUTTON (PULITO E CENTRATO)
   // ==========================================
 
-  Widget _buildAddButton() {
+  Widget _buildFloatingAddButton() {
     return GestureDetector(
       onTap: () => _showAddElementModal(context),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(35),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.6),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF5A8B9E).withValues(alpha: 0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+      child: Container(
+        width: 65, 
+        height: 65,
+        decoration: BoxDecoration(
+          color: primaryColor,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.4),
+              blurRadius: 15,
+              offset: const Offset(0, 6),
             ),
-            child: const Icon(
-              Icons.add_rounded,
-              color: Color(0xFF5A8B9E),
-              size: 40,
-            ),
-          ),
+          ],
+        ),
+        child: const Icon(
+          Icons.add_rounded,
+          color: Colors.white,
+          size: 32,
         ),
       ),
     );
@@ -821,7 +872,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     selectedDate = null;
 
     final themeColor = getStatusColor('safe');
-    final textColor = const Color(0xFF3D342C);
 
     final changed = await showModalBottomSheet<bool>(
       context: context,
@@ -863,7 +913,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      color: textColor,
+                      color: darkTextColor,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -986,7 +1036,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                             colorScheme: ColorScheme.light(
                               primary: accentColor,
                               onPrimary: Colors.white,
-                              onSurface: const Color(0xFF3D342C),
+                              onSurface: darkTextColor,
                             ),
                           ),
                           child: child!,
@@ -1006,7 +1056,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF3D342C),
+                color: darkTextColor,
               ),
               decoration: InputDecoration(
                 border: InputBorder.none,
@@ -1016,12 +1066,12 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   fontWeight: FontWeight.w500,
                   color: isRequired
                       ? const Color(0xFFF28482)
-                      : const Color(0xFF3D342C).withValues(alpha: 0.6),
+                      : darkTextColor.withValues(alpha: 0.6),
                 ),
                 floatingLabelBehavior: FloatingLabelBehavior.always,
                 hintText: isDate ? 'Select date...' : 'Tap to type...',
                 hintStyle: GoogleFonts.poppins(
-                  color: const Color(0xFF3D342C).withValues(alpha: 0.3),
+                  color: darkTextColor.withValues(alpha: 0.3),
                   fontSize: 16,
                 ),
               ),
@@ -1036,7 +1086,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 }
 
 // ==========================================
-// COMPONENTE: POPUP DETTAGLIO/MODIFICA (RESTYLING PREMIUM "CUTE")
+// COMPONENTE: POPUP DETTAGLIO/MODIFICA
 // ==========================================
 class FridgeItemDetailSheet extends StatefulWidget {
   const FridgeItemDetailSheet({
@@ -1059,6 +1109,8 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
   late final TextEditingController _expirationDateController;
   DateTime? _selectedDate;
   bool _isSaving = false;
+
+  final Color darkTextColor = const Color(0xFF3D342C);
 
   @override
   void initState() {
@@ -1139,7 +1191,6 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final itemColor = getStatusColor('safe');
-    final textColor = const Color(0xFF3D342C);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
@@ -1203,7 +1254,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                                   style: GoogleFonts.poppins(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w800,
-                                    color: textColor,
+                                    color: darkTextColor,
                                     letterSpacing: -0.5,
                                   ),
                                   decoration: const InputDecoration(
@@ -1217,7 +1268,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                                   style: GoogleFonts.poppins(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w800,
-                                    color: textColor,
+                                    color: darkTextColor,
                                     letterSpacing: -0.5,
                                   ),
                                   maxLines: 2,
@@ -1469,7 +1520,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF3D342C).withValues(alpha: 0.5),
+                    color: darkTextColor.withValues(alpha: 0.5),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1484,8 +1535,8 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
               fontSize: value == '-' ? 16 : 18,
               fontWeight: value == '-' ? FontWeight.w500 : FontWeight.w700,
               color: value == '-'
-                  ? const Color(0xFF3D342C).withValues(alpha: 0.3)
-                  : const Color(0xFF3D342C),
+                  ? darkTextColor.withValues(alpha: 0.3)
+                  : darkTextColor,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1525,7 +1576,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF3D342C),
+                color: darkTextColor,
               ),
               decoration: InputDecoration(
                 border: InputBorder.none,
@@ -1533,7 +1584,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                 labelStyle: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF3D342C).withValues(alpha: 0.6),
+                  color: darkTextColor.withValues(alpha: 0.6),
                 ),
                 floatingLabelBehavior: FloatingLabelBehavior.always,
               ),
