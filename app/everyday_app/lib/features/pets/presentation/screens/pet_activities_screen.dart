@@ -10,7 +10,7 @@ import 'package:everyday_app/shared/utils/date_utils.dart';
 
 class PetActivitiesScreen extends StatefulWidget {
   final String petId;
-  final Color petColor; // Useremo questo come colore di Sfondo!
+  final Color petColor; 
   const PetActivitiesScreen({super.key, required this.petId, required this.petColor});
 
   @override
@@ -23,11 +23,9 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   bool _isLoading = false;
   String? _error;
   
-  // Forziamo il colore del brand per sostituire l'arancione
   final Color brandBlue = const Color(0xFF5A8B9E);
 
-
-    @override
+  @override
   void initState() {
     super.initState();
     _loadActivities();
@@ -65,7 +63,6 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
     }
   }
 
-  // --- FUNZIONE ELIMINA ATTIVITÀ (UI PRONTA, LOGICA DA AGGIUNGERE) ---
   Future<bool> _confirmDeleteActivity(PetActivity activity) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -155,12 +152,13 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
 
     if (confirmed != true) return false;
 
-    // 2. QUI INSERIRAI LA LOGICA DEL DATABASE (Da far fare al tuo compagno)
     try {
-      // ESEMPIO: await _activityRepository.deleteActivity(activity.id);
-      
+      // 1. CHIAMIAMO IL DATABASE PER L'ELIMINAZIONE VERA!
+      await _activityRepository.deleteActivity(activity.id);
+
+      // 2. Se il database va a buon fine, togliamo l'elemento dalla schermata
       setState(() {
-        _activities.removeWhere((a) => a.id == activity.id); // Sostituisci a.id con la tua chiave primaria
+        _activities.removeWhere((a) => a.id == activity.id); 
       });
       
       return true;
@@ -181,11 +179,10 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => AddPetActivitySheet(petColor: brandBlue, petId: widget.petId,), // Usiamo brandBlue
+      builder: (context) => AddPetActivitySheet(petColor: brandBlue, petId: widget.petId,),
     );
 
     if (result == true) {
-      debugPrint("Refresh della lista in corso...");
       setState(() {
         _loadActivities();
       });
@@ -195,11 +192,10 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: brandBlue, // Usiamo sempre brandBlue
+      backgroundColor: brandBlue,
       body: SafeArea(
         child: Column(
           children: [
-            // --- HEADER INVERTITO ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
               child: Row(
@@ -222,7 +218,6 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
             ),
             const SizedBox(height: 10),
             
-            // --- LISTA O EMPTY STATE ---
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Colors.white))
@@ -238,7 +233,7 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
                                 final activity = _activities[index];
                                 
                                 return Dismissible(
-                                  key: ValueKey(activity.hashCode), // Sostituisci con activity.id se disponibile
+                                  key: ValueKey(activity.id), // Aggiornato per usare l'id univoco
                                   direction: DismissDirection.endToStart,
                                   confirmDismiss: (_) async {
                                     return await _confirmDeleteActivity(activity);
@@ -280,7 +275,6 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
     );
   }
   
-  // --- EMPTY STATE MAGICO ---
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -293,52 +287,25 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
             ),
-            child: Icon(
-              Icons.event_note_rounded,
-              size: 64,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
+            child: Icon(Icons.add_rounded, size: 64, color: Colors.white.withValues(alpha: 0.5)),
           ),
           const SizedBox(height: 24),
-          Text(
-            'No Activities Yet',
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
+          Text('No Activities Yet', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
           const SizedBox(height: 8),
           Text(
             'Track walks, vet visits,\nor feeding times here.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.7),
-            ),
+            style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.7)),
           ),
           const SizedBox(height: 40),
-          Icon(
-            Icons.arrow_upward_rounded,
-            color: Colors.white.withValues(alpha: 0.4),
-            size: 32,
-          ),
+          Icon(Icons.arrow_upward_rounded, color: Colors.white.withValues(alpha: 0.4), size: 32),
           const SizedBox(height: 8),
-          Text(
-            'Tap the + button to add one',
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
-          ),
+          Text('Tap the + button to add one', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.5))),
         ],
       ),
     );
   }
 }
-
 
 class ExpandableInvertedDateCard extends StatefulWidget {
   final PetActivity activity; 
@@ -360,19 +327,23 @@ class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard>
   @override
   Widget build(BuildContext context) {
     final String dateStr = widget.activity.date != null 
-        ? "${widget.activity.date!.day}/${widget.activity.date!.month}" 
+        ? "${widget.activity.date!.day}/${widget.activity.date!.month}/${widget.activity.date!.year}" 
         : "No Date";
 
-    final String timeStr = widget.activity.time != null 
-        ? widget.activity.time!.format(context) 
-        : "No Time";
+    // --- LOGICA ORARIO (Inizio - Fine uniti sulla stessa riga) ---
+    String timeStr = "No Time";
+    if (widget.activity.time != null) {
+      timeStr = widget.activity.time!.format(context);
+      if (widget.activity.endTime != null) {
+         timeStr = "$timeStr - ${widget.activity.endTime!.format(context)}"; // Unisce i due orari
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // ESPANSIONE BIANCA TRASLUCIDA
           if (_isExpanded)
             Container(
               margin: const EdgeInsets.only(top: 25),
@@ -382,9 +353,7 @@ class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard>
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))
-                ],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,29 +364,50 @@ class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard>
                       const SizedBox(width: 6),
                       Text(
                         timeStr, 
-                        style: GoogleFonts.poppins(
-                          fontSize: 13, 
-                          fontWeight: FontWeight.w600, 
-                          color: Colors.white.withValues(alpha: 0.8),
-                        ),
+                        style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.8)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
                     widget.activity.description ?? 'No Description', 
-                    style: GoogleFonts.poppins(
-                      fontSize: 18, 
-                      fontWeight: FontWeight.w700, 
-                      color: Colors.white,
-                      height: 1.3
-                    ),
+                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, height: 1.3),
                   ),
+                  
+                  // --- LOGICA NOTE ---
+                  if (widget.activity.notes != null && widget.activity.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.notes_rounded, size: 18, color: Colors.white.withValues(alpha: 0.9)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.activity.notes!,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14, 
+                                fontWeight: FontWeight.w500, 
+                                color: Colors.white.withValues(alpha: 0.95),
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
 
-          // PILLOLA PRINCIPALE IN VETRO BIANCO
           GestureDetector(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             child: ClipRRect(
@@ -430,28 +420,18 @@ class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.3), 
-                        Colors.white.withValues(alpha: 0.1),
-                      ],
+                      colors: [Colors.white.withValues(alpha: 0.3), Colors.white.withValues(alpha: 0.1)],
                     ),
                     borderRadius: BorderRadius.circular(30),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05), 
-                        blurRadius: 20, 
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))],
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.white, 
-                          shape: BoxShape.circle,
+                          color: Colors.white, shape: BoxShape.circle,
                           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4))],
                         ),
                         child: Icon(Icons.calendar_today_rounded, color: widget.color, size: 20),
@@ -460,12 +440,7 @@ class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard>
                       Expanded(
                         child: Text(
                           dateStr, 
-                          style: GoogleFonts.poppins(
-                            fontSize: 18, 
-                            fontWeight: FontWeight.w700, 
-                            color: Colors.white,
-                            letterSpacing: 0.5
-                          ),
+                          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
                         ),
                       ),
                       Container(
@@ -475,11 +450,8 @@ class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard>
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          _isExpanded 
-                              ? Icons.keyboard_arrow_up_rounded 
-                              : Icons.keyboard_arrow_down_rounded, 
-                          color: Colors.white, 
-                          size: 24,
+                          _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, 
+                          color: Colors.white, size: 24,
                         ),
                       ),
                     ],
@@ -494,8 +466,6 @@ class _ExpandableInvertedDateCardState extends State<ExpandableInvertedDateCard>
   }
 }
 
-
-// --- BOTTOM SHEET PER AGGIUNGERE L'ATTIVITÀ (Bianco Puro per contrastare) ---
 class AddPetActivitySheet extends StatefulWidget {
   final Color petColor;
   final String petId;
@@ -507,6 +477,7 @@ class AddPetActivitySheet extends StatefulWidget {
 
 class _AddPetActivitySheetState extends State<AddPetActivitySheet> {
   final TextEditingController _taskController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController(); 
   DateTime? _selectedDate;
   DateTime? _startTime;
   DateTime? _endTime;
@@ -564,6 +535,7 @@ class _AddPetActivitySheetState extends State<AddPetActivitySheet> {
   @override
   void dispose() {
     _taskController.dispose();
+    _notesController.dispose(); 
     super.dispose();
   }
 
@@ -577,113 +549,137 @@ class _AddPetActivitySheetState extends State<AddPetActivitySheet> {
           constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.90),
           padding: EdgeInsets.only(left: 24, right: 24, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
           decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.95), border: Border.all(color: Colors.white, width: 1.5)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 50, height: 5, decoration: BoxDecoration(color: const Color(0xFF3D342C).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 24),
-              Text('Add Activity', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: widget.petColor)),
-              const SizedBox(height: 30),
-              
-              _buildActionPill(
-                icon: Icons.calendar_today_rounded, 
-                text: _selectedDate != null ? _formatDate(_selectedDate!) : 'Select Date', 
-                color: widget.petColor, 
-                onTap: _selectDate,
-                fullWidth: true
-              ),
-              const SizedBox(height: 16),
-
-              Container(
-                height: 60, padding: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  color: widget.petColor.withValues(alpha: 0.05), 
-                  borderRadius: BorderRadius.circular(20), 
-                  border: Border.all(color: widget.petColor.withValues(alpha: 0.2), width: 1.5), 
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 50, height: 5, decoration: BoxDecoration(color: const Color(0xFF3D342C).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10))),
+                const SizedBox(height: 24),
+                Text('Add Activity', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: widget.petColor)),
+                const SizedBox(height: 30),
+                
+                _buildActionPill(
+                  icon: Icons.calendar_today_rounded, 
+                  text: _selectedDate != null ? _formatDate(_selectedDate!) : 'Select Date', 
+                  color: widget.petColor, 
+                  onTap: _selectDate,
+                  fullWidth: true
                 ),
-                child: Center(
-                  child: TextField(
-                    controller: _taskController, 
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C)),
-                    decoration: InputDecoration(border: InputBorder.none, hintText: 'Activity details...', hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.3))),
+                const SizedBox(height: 16),
+
+                Container(
+                  height: 60, padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: widget.petColor.withValues(alpha: 0.05), 
+                    borderRadius: BorderRadius.circular(20), 
+                    border: Border.all(color: widget.petColor.withValues(alpha: 0.2), width: 1.5), 
+                  ),
+                  child: Center(
+                    child: TextField(
+                      controller: _taskController, 
+                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C)),
+                      decoration: InputDecoration(border: InputBorder.none, hintText: 'Activity details...', hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.3))),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              
-              Row(
-                children: [
-                  Expanded(child: _buildActionPill(icon: Icons.access_time_rounded, text: _startTime != null ? TimeOfDay.fromDateTime(_startTime!).format(context) : 'Start', color: widget.petColor, onTap: () => _selectTime(true))),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildActionPill(icon: Icons.access_time_filled_rounded, text: _endTime != null ? TimeOfDay.fromDateTime(_endTime!).format(context) : 'End', color: widget.petColor, onTap: () => _selectTime(false))),
-                ],
-              ),
-              const SizedBox(height: 40),
-              
-              GestureDetector(
-                onTap: () async {
-                  final description = _taskController.text.trim();
-                  
-                  if (description.isEmpty || _selectedDate == null || _startTime == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Please fill in description, date and start time', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                        backgroundColor: const Color(0xFFF28482),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
-                  }
+                const SizedBox(height: 16),
+                
+                Row(
+                  children: [
+                    Expanded(child: _buildActionPill(icon: Icons.access_time_rounded, text: _startTime != null ? TimeOfDay.fromDateTime(_startTime!).format(context) : 'Start', color: widget.petColor, onTap: () => _selectTime(true))),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildActionPill(icon: Icons.access_time_filled_rounded, text: _endTime != null ? TimeOfDay.fromDateTime(_endTime!).format(context) : 'End', color: widget.petColor, onTap: () => _selectTime(false))),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-                  try {
-                    final householdId = AppContext.instance.requireHouseholdId();
-                    final petId = widget.petId; 
-
-                    String formatTime(DateTime dt) {
-                      return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:00";
-                    }
-
-                    final repo = PetActivitiesRepository();
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: widget.petColor.withValues(alpha: 0.05), 
+                    borderRadius: BorderRadius.circular(20), 
+                    border: Border.all(color: widget.petColor.withValues(alpha: 0.2), width: 1.5), 
+                  ),
+                  child: TextField(
+                    controller: _notesController, 
+                    maxLines: 3, 
+                    style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C)),
+                    decoration: InputDecoration(
+                      border: InputBorder.none, 
+                      hintText: 'Additional notes (optional)...', 
+                      hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.3))
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                
+                GestureDetector(
+                  onTap: () async {
+                    final description = _taskController.text.trim();
+                    final notes = _notesController.text.trim();
                     
-                    await repo.insertActivity(
-                      houseHoldId: householdId,
-                      petId: petId,
-                      description: description,
-                      date: _selectedDate!,
-                      time: formatTime(_startTime!),
-                      endTime: _endTime != null ? formatTime(_endTime!) : null,
-                    );
-                  
-                    if (context.mounted) {
-                      Navigator.pop(context, true);
-                    }
-                  } catch (e) {
-                    debugPrint('Errore durante l\'inserimento attività: $e');
-                    if (context.mounted) {
+                    if (description.isEmpty || _selectedDate == null || _startTime == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Error saving activity: $e', style: GoogleFonts.poppins()),
+                          content: Text('Please fill in description, date and start time', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                           backgroundColor: const Color(0xFFF28482),
+                          behavior: SnackBarBehavior.floating,
                         ),
                       );
+                      return;
                     }
-                  }
-                },
 
-                child: Container(
-                  width: double.infinity, height: 60, 
-                  decoration: BoxDecoration(
-                    color: widget.petColor, 
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: widget.petColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8))],
-                  ), 
-                  child: Center(
-                    child: Text('Save Activity', style: GoogleFonts.poppins(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                    try {
+                      final householdId = AppContext.instance.requireHouseholdId();
+                      final petId = widget.petId; 
+
+                      String formatTime(DateTime dt) {
+                        return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:00";
+                      }
+
+                      final repo = PetActivitiesRepository();
+                      
+                      await repo.insertActivity(
+                        houseHoldId: householdId,
+                        petId: petId,
+                        description: description,
+                        date: _selectedDate!,
+                        time: formatTime(_startTime!),
+                        endTime: _endTime != null ? formatTime(_endTime!) : null,
+                        notes: notes.isNotEmpty ? notes : null, 
+                      );
+                    
+                      if (context.mounted) {
+                        Navigator.pop(context, true);
+                      }
+                    } catch (e) {
+                      debugPrint('Errore durante l\'inserimento attività: $e');
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error saving activity: $e', style: GoogleFonts.poppins()),
+                            backgroundColor: const Color(0xFFF28482),
+                          ),
+                        );
+                      }
+                    }
+                  },
+
+                  child: Container(
+                    width: double.infinity, height: 60, 
+                    decoration: BoxDecoration(
+                      color: widget.petColor, 
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: widget.petColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                    ), 
+                    child: Center(
+                      child: Text('Save Activity', style: GoogleFonts.poppins(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-            ],
+                const SizedBox(height: 10),
+              ],
+            ),
           ),
         ),
       ),

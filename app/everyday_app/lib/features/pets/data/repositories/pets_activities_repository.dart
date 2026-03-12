@@ -10,7 +10,7 @@ class PetActivitiesRepository {
     try {
       debugPrint('ACTIVITY LOAD → petId: $petId');
 
-      // We query the 'pets' table (or whatever your table is named in Supabase)
+      // We query the 'pets_activities' table
       final response = await supabase
           .from('pets_activities') 
           .select('*')
@@ -41,6 +41,7 @@ class PetActivitiesRepository {
     required DateTime date,
     required String time, // Formato "HH:mm:ss"
     String? endTime,      // Opzionale, formato "HH:mm:ss"
+    String? notes,        // <-- AGGIUNTO
   }) async {
     try {
       debugPrint('SAVING ACTIVITY → petId: $petId');
@@ -52,11 +53,30 @@ class PetActivitiesRepository {
         'date': date.toIso8601String().split('T')[0], // Estrae solo YYYY-MM-DD
         'time': time,
         'end_time': endTime,
+        'notes': notes, // <-- AGGIUNTO
       });
 
       debugPrint('ACTIVITY SAVED SUCCESSFULLY');
     } catch (e) {
       debugPrint('Error inserting pet activity: $e');
+      rethrow;
+    }
+  }
+
+  /// Elimina un'attività specifica dal database usando il suo ID
+  Future<void> deleteActivity(String activityId) async {
+    try {
+      debugPrint('DELETING ACTIVITY → id: $activityId');
+
+      // Interroga Supabase per cancellare la riga dove l'id corrisponde
+      await supabase
+          .from('pets_activities')
+          .delete()
+          .eq('id', activityId);
+
+      debugPrint('ACTIVITY DELETED SUCCESSFULLY');
+    } catch (e) {
+      debugPrint('Error deleting pet activity: $e');
       rethrow;
     }
   }

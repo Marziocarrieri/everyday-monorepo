@@ -65,7 +65,7 @@ class _PetsScreenState extends State<PetsScreen> {
     }
   }
 
-  // --- FUNZIONE ELIMINA PET (UI PRONTA, LOGICA DA AGGIUNGERE) ---
+  // --- FUNZIONE ELIMINA PET ---
   Future<bool> _confirmDeletePet(Pet pet) async {
     // 1. Mostriamo il Dialog in Vetro per confermare
     final confirmed = await showDialog<bool>(
@@ -156,11 +156,11 @@ class _PetsScreenState extends State<PetsScreen> {
 
     if (confirmed != true) return false;
 
-    // 2. QUI INSERIRAI LA LOGICA DEL DATABASE (Da far fare al tuo compagno)
     try {
-      // ESEMPIO: await _petRepository.deletePet(pet.id);
+      // CHIAMIAMO IL DATABASE PER L'ELIMINAZIONE REALE
+      await _petRepository.deletePet(pet.id);
       
-      // Simulo il ricaricamento (Rimuovere dopo aver messo la VERA funzione DB)
+      // Rimuoviamo l'elemento dallo schermo
       setState(() {
         _pets.removeWhere((p) => p.id == pet.id);
       });
@@ -307,7 +307,7 @@ class _PetsScreenState extends State<PetsScreen> {
               border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
             ),
             child: Icon(
-              Icons.pets_rounded,
+              Icons.add_rounded,
               size: 64,
               color: Colors.white.withValues(alpha: 0.5),
             ),
@@ -511,11 +511,10 @@ class _AddPetSheetState extends State<AddPetSheet> {
                 onTap: () async {
                   final name = _nameController.text.trim();
                   
-                  // 1. Recuperiamo l'ID dal contesto (adatta questa riga alla tua implementazione)
+                  // 1. Recuperiamo l'ID dal contesto 
                   final householdId = AppContext.instance.requireHouseholdId();
 
                   if (name.isEmpty) {
-                    // Feedback rapido se il nome manca
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Please enter a name for your pet', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
@@ -541,7 +540,6 @@ class _AddPetSheetState extends State<AddPetSheet> {
                       Navigator.pop(context, true);
                     }
                   } catch (e) {
-                    // Qui catturi errori di rete o le famose RLS policies
                     debugPrint('Errore durante il salvataggio: $e');
                   }
                 },

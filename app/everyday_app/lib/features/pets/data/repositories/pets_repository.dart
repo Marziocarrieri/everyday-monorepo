@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../../../../shared/repositories/supabase_client.dart';
 import '../models/pet.dart'; 
 
-
 class PetRepository {
   /// Fetches all pets for a specific household ID.
   /// Maps the database response to the Pet model.
@@ -10,7 +9,7 @@ class PetRepository {
     try {
       debugPrint('PETS LOAD → household: $householdId');
 
-      // We query the 'pets' table (or whatever your table is named in Supabase)
+      // We query the 'pets' table
       final response = await supabase
           .from('pets') 
           .select('*')
@@ -33,7 +32,7 @@ class PetRepository {
     }
   }
 
-  
+  /// Crea un nuovo Pet
   Future<void> createPet({
     required String name,
     required String species,
@@ -44,11 +43,27 @@ class PetRepository {
         'name': name,
         'species': species,
         'household_id': householdId,
-        // 'owner_id': supabase.auth.currentUser?.id, // Opzionale
       });
       debugPrint('PET CREATED: $name');
     } catch (e) {
       debugPrint('Error creating pet: $e');
+      rethrow;
+    }
+  }
+
+  /// Elimina un Pet specifico dal database usando il suo ID
+  Future<void> deletePet(String petId) async {
+    try {
+      debugPrint('DELETING PET → id: $petId');
+
+      await supabase
+          .from('pets')
+          .delete()
+          .eq('id', petId);
+
+      debugPrint('PET DELETED SUCCESSFULLY');
+    } catch (e) {
+      debugPrint('Error deleting pet: $e');
       rethrow;
     }
   }
