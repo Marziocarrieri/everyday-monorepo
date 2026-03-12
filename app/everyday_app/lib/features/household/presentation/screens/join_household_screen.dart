@@ -25,31 +25,47 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
   final SessionInitializer _sessionInitializer = SessionInitializer();
 
   bool _isLoading = false;
-  String? _error;
-  String? _selectedRole;
+  String? _selectedRole = 'PERSONNEL'; // Valore di default
+
+  // Colori Brand
+  final Color primaryColor = const Color(0xFF5A8B9E);
+  final Color errorColor = const Color(0xFFF28482);
+  final Color darkTextColor = const Color(0xFF3D342C);
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: errorColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
 
   Future<void> _joinHousehold(HouseholdService householdService) async {
     final inviteCode = _codeController.text.trim();
     if (inviteCode.isEmpty) {
-      setState(() {
-        _error = 'Invite code is required';
-      });
+      _showErrorSnackBar('Please enter an invite code.');
       return;
     }
 
     final selectedRole = _selectedRole;
     if (selectedRole == null || selectedRole.trim().isEmpty) {
-      setState(() {
-        _error = 'Role is required';
-      });
+      _showErrorSnackBar('Please select a role.');
       return;
     }
 
     final currentUser = AuthService().currentUser;
     if (currentUser == null) {
-      setState(() {
-        _error = 'User not authenticated';
-      });
+      _showErrorSnackBar('User not authenticated.');
       return;
     }
 
@@ -57,7 +73,6 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
 
     setState(() {
       _isLoading = true;
-      _error = null;
     });
 
     try {
@@ -101,9 +116,7 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
     } catch (error) {
       debugPrint('Error joining household: $error');
       if (!mounted) return;
-      setState(() {
-        _error = error.toString();
-      });
+      _showErrorSnackBar(error.toString());
     } finally {
       if (mounted) {
         setState(() {
@@ -164,111 +177,65 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(
-                                0xFF5A8B9E,
-                              ).withValues(alpha: 0.2),
+                              color: primaryColor.withValues(alpha: 0.2),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.vpn_key_outlined,
-                          color: Color(0xFF5A8B9E),
+                          color: primaryColor,
                           size: 40,
-                        ), // Azzurro Premium
+                        ),
                       ),
                       const SizedBox(height: 40),
 
                       // CAMPO DI TESTO IN VETRO
                       _buildGlassTextField(
-                        label: 'Invite code',
+                        label: 'Enter Invite Code',
                         controller: _codeController,
                         icon: Icons.qr_code_2_rounded,
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 32),
+
+                      // SELETTORE RUOLO (Nuovo Design a Pillole)
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Role',
+                          'Your Role in this Home',
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF3D342C),
+                            color: darkTextColor.withValues(alpha: 0.8),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Column(
-                          children: [
-                            RadioListTile<String>(
-                              value: 'HOST',
-                              groupValue: _selectedRole,
-                              onChanged: (value) {
-                                if (_isLoading || value == null) return;
-                                setState(() {
-                                  _selectedRole = value;
-                                });
-                              },
-                              title: const Text('Host'),
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                            ),
-                            RadioListTile<String>(
-                              value: 'CO_HOST',
-                              groupValue: _selectedRole,
-                              onChanged: (value) {
-                                if (_isLoading || value == null) return;
-                                setState(() {
-                                  _selectedRole = value;
-                                });
-                              },
-                              title: const Text('Co-Host'),
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                            ),
-                            RadioListTile<String>(
-                              value: 'PERSONNEL',
-                              groupValue: _selectedRole,
-                              onChanged: (value) {
-                                if (_isLoading || value == null) return;
-                                setState(() {
-                                  _selectedRole = value;
-                                });
-                              },
-                              title: const Text('Personnel'),
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                            ),
-                          ],
-                        ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: _buildRolePill('HOST', 'Host', Icons.admin_panel_settings_rounded),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildRolePill('CO_HOST', 'Co-Host', Icons.supervised_user_circle_rounded),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildRolePill('PERSONNEL', 'Personnel', Icons.work_outline_rounded),
+                          ),
+                        ],
                       ),
 
                       const SizedBox(height: 50),
 
                       // BOTTONE CONFERMA
-                      _buildPrimaryButton('Join', () {
+                      _buildPrimaryButton('Join Household', () {
                         _joinHousehold(householdService);
                       }),
-                      if (_error != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -293,31 +260,31 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
               color: Colors.white,
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF5A8B9E).withValues(alpha: 0.08),
+                  color: primaryColor.withValues(alpha: 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF5A8B9E),
+              color: primaryColor,
               size: 20,
             ),
           ),
         ),
         const SizedBox(width: 20),
         Text(
-          'Join household',
+          'Join Household',
           style: GoogleFonts.poppins(
             fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF5A8B9E),
+            fontWeight: FontWeight.w800, // Reso più spesso per coerenza
+            color: primaryColor,
           ),
         ),
       ],
@@ -340,7 +307,7 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF3D342C),
+              color: darkTextColor.withValues(alpha: 0.8),
             ),
           ),
         ),
@@ -357,7 +324,7 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
                 border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF5A8B9E).withValues(alpha: 0.05),
+                    color: primaryColor.withValues(alpha: 0.05),
                     blurRadius: 15,
                     offset: const Offset(0, 10),
                   ),
@@ -367,20 +334,25 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
                 children: [
                   Icon(
                     icon,
-                    color: const Color(0xFF5A8B9E).withValues(alpha: 0.7),
+                    color: primaryColor.withValues(alpha: 0.7),
                     size: 22,
                   ),
                   const SizedBox(width: 15),
                   Expanded(
                     child: TextField(
                       controller: controller,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         border: InputBorder.none,
+                        hintText: 'e.g. A1B2C3D4',
+                        hintStyle: GoogleFonts.poppins(
+                          color: darkTextColor.withValues(alpha: 0.3),
+                        ),
                       ),
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF3D342C),
+                        color: darkTextColor,
+                        letterSpacing: 1.5, // Leggermente distanziato per il codice
                       ),
                     ),
                   ),
@@ -393,7 +365,60 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
     );
   }
 
-  // --- BOTTONE ---
+  // --- ROLE PILL (Sostituisce i vecchi RadioButton) ---
+  Widget _buildRolePill(String roleValue, String label, IconData icon) {
+    bool isSelected = _selectedRole == roleValue;
+    return GestureDetector(
+      onTap: _isLoading
+          ? null
+          : () {
+              setState(() {
+                _selectedRole = roleValue;
+              });
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryColor : Colors.white.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? primaryColor : primaryColor.withValues(alpha: 0.1),
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  )
+                ]
+              : [],
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : primaryColor.withValues(alpha: 0.6),
+              size: 24,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected ? Colors.white : darkTextColor.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- BOTTONE PRIMARY ---
   Widget _buildPrimaryButton(String text, VoidCallback onTap) {
     return GestureDetector(
       onTap: _isLoading ? null : onTap,
@@ -401,13 +426,13 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
         height: 60,
         width: double.infinity,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF5A8B9E), Color(0xFF3A5F6E)],
+          gradient: LinearGradient(
+            colors: [primaryColor, const Color(0xFF3A5F6E)],
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF5A8B9E).withValues(alpha: 0.3),
+              color: primaryColor.withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),

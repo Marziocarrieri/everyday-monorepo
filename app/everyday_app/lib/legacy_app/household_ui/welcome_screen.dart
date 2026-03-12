@@ -28,31 +28,75 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: fromProfile
-          ? AppBar(
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context),
-              ),
-            )
-          : null,
+      // Abbiamo rimosso l'AppBar standard per mantenere il gradiente ininterrotto
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [Color(0xFFF6F9FA), Color(0xFFE3EDF2)], 
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF6F9FA), Color(0xFFE3EDF2)],
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0), // Padding verticale ridotto per far spazio al bottone back
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                
+                // --- BOTTONE BACK PREMIUM (Visibile solo se fromProfile == true) ---
+                if (fromProfile) ...[
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF5A8B9E).withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Color(0xFF5A8B9E),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32), // Spazio tra il bottone e il titolo
+                ] else ...[
+                  const SizedBox(height: 20), // Spazio iniziale se non c'è il bottone
+                ],
+
                 // HEADER
-                Text('Welcome!', style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.w800, color: const Color(0xFF5A8B9E), letterSpacing: -0.5)),
+                Text(
+                  'Welcome!', 
+                  style: GoogleFonts.poppins(
+                    fontSize: 32, 
+                    fontWeight: FontWeight.w800, 
+                    color: const Color(0xFF5A8B9E), 
+                    letterSpacing: -0.5
+                  )
+                ),
                 const SizedBox(height: 8),
-                Text('Let\'s set up your living space.', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.6))),
+                Text(
+                  'Let\'s set up your living space.', 
+                  style: GoogleFonts.poppins(
+                    fontSize: 16, 
+                    fontWeight: FontWeight.w500, 
+                    color: const Color(0xFF3D342C).withValues(alpha: 0.6)
+                  )
+                ),
                 
                 const Spacer(),
 
