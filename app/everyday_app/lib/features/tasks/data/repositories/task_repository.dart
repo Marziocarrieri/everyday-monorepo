@@ -124,9 +124,6 @@ class TaskRepository {
     List<Map<String, dynamic>> latestTaskRows = const [];
     List<Map<String, dynamic>> latestSubtaskRows = const [];
     List<Map<String, dynamic>> latestAssignmentRows = const [];
-    Set<String> watchedTaskIds = <String>{};
-    StreamSubscription<List<Map<String, dynamic>>>? subtaskSubscription;
-    StreamSubscription<List<Map<String, dynamic>>>? assignmentSubscription;
     var disposed = false;
 
     List<String> currentTaskIds() {
@@ -272,80 +269,86 @@ class TaskRepository {
       controller.addError(error, stackTrace);
     }
 
-    Future<void> ensureDetailSubscriptions() async {
-      if (disposed) {
-        return;
-      }
+    late RealtimeChannel subtaskChannel;
+    late RealtimeChannel assignmentChannel;
 
-      final nextTaskIds = currentTaskIds().toSet();
-      final hasActiveSubscriptions =
-          subtaskSubscription != null && assignmentSubscription != null;
-      if (setEquals(nextTaskIds, watchedTaskIds) && hasActiveSubscriptions) {
-        return;
-      }
-
-      watchedTaskIds = nextTaskIds;
-
-      await subtaskSubscription?.cancel();
-      await assignmentSubscription?.cancel();
-      subtaskSubscription = null;
-      assignmentSubscription = null;
-
-      if (watchedTaskIds.isEmpty) {
-        latestSubtaskRows = const [];
-        latestAssignmentRows = const [];
-        emitLatestSnapshot(source: 'task_scope_empty');
-        return;
-      }
-
-      final scopedTaskIds = watchedTaskIds.toList(growable: false);
-
-      subtaskSubscription = supabase
-          .from('subtask')
-          .stream(primaryKey: ['id'])
-          .inFilter('task_id', scopedTaskIds)
-          .listen((rows) {
+    void setupDetailListeners() {
+      // SUBTASK event-driven listener (scoped to current task IDs)
+      subtaskChannel = supabase.channel('schema-db-changes:subtask:$householdId')
+        ..onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'subtask',
+          callback: (payload) {
             Future<void>(() async {
-              latestSubtaskRows = rows
-                  .map((row) => Map<String, dynamic>.from(row))
-                  .toList(growable: false);
+              if (disposed) {
+                return;
+              }
+
+              final affectedTaskId =
+                  (payload.newRecord['task_id'] ?? payload.oldRecord['task_id'])
+                      as String?;
+              final currentIds = currentTaskIds().toSet();
+
+              if (affectedTaskId == null ||
+                  !currentIds.contains(affectedTaskId)) {
+                return;
+              }
 
               if (kDebugMode) {
                 debugPrint(
-                  'SUBTASK REALTIME EVENT household=$householdId rows=${latestSubtaskRows.length} scoped_task_ids=${scopedTaskIds.length}',
+                  'SUBTASK REALTIME EVENT event=${payload.eventType} subtask_id=${payload.newRecord['id']} task_id=$affectedTaskId household=$householdId',
                 );
               }
 
               await refreshSubtaskCache();
-              emitLatestSnapshot(source: 'subtask_stream');
+              emitLatestSnapshot(source: 'subtask_event');
             }).catchError((Object error, StackTrace stackTrace) {
               handleError(error, stackTrace);
             });
-          }, onError: handleError);
+          },
+        ).subscribe();
 
-      assignmentSubscription = supabase
-          .from('task_assignment')
-          .stream(primaryKey: ['id'])
-          .inFilter('task_id', scopedTaskIds)
-          .listen((rows) {
-            Future<void>(() async {
-              latestAssignmentRows = rows
-                  .map((row) => Map<String, dynamic>.from(row))
-                  .toList(growable: false);
+      // ASSIGNMENT event-driven listener (scoped to current task IDs)
+      assignmentChannel =
+          supabase.channel('schema-db-changes:task_assignment:$householdId')
+            ..onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'task_assignment',
+              callback: (payload) {
+                Future<void>(() async {
+                  if (disposed) {
+                    return;
+                  }
 
-              if (kDebugMode) {
-                debugPrint(
-                  'ASSIGNMENT REALTIME EVENT household=$householdId rows=${latestAssignmentRows.length} scoped_task_ids=${scopedTaskIds.length}',
-                );
-              }
+                  final affectedTaskId =
+                      (payload.newRecord['task_id'] ??
+                              payload.oldRecord['task_id'])
+                          as String?;
+                  final currentIds = currentTaskIds().toSet();
 
-              await refreshAssignmentCache();
-              emitLatestSnapshot(source: 'assignment_stream');
-            }).catchError((Object error, StackTrace stackTrace) {
-              handleError(error, stackTrace);
-            });
-          }, onError: handleError);
+                  if (affectedTaskId == null ||
+                      !currentIds.contains(affectedTaskId)) {
+                    return;
+                  }
+
+                  if (kDebugMode) {
+                    debugPrint(
+                      'ASSIGNMENT REALTIME EVENT event=${payload.eventType} assignment_id=${payload.newRecord['id']} task_id=$affectedTaskId household=$householdId',
+                    );
+                  }
+
+                  await refreshAssignmentCache();
+                  emitLatestSnapshot(source: 'assignment_event');
+                }).catchError((Object error, StackTrace stackTrace) {
+                  handleError(error, stackTrace);
+                });
+              },
+            ).subscribe();
     }
+
+    setupDetailListeners();
 
     final taskSubscription = supabase
         .from('tasks')
@@ -356,7 +359,6 @@ class TaskRepository {
             latestTaskRows = rows
                 .map((row) => Map<String, dynamic>.from(row))
                 .toList(growable: false);
-            await ensureDetailSubscriptions();
             await refreshSubtaskCache();
             await refreshAssignmentCache();
             emitLatestSnapshot(source: 'tasks_stream');
@@ -368,8 +370,8 @@ class TaskRepository {
     controller.onCancel = () async {
       disposed = true;
       await taskSubscription.cancel();
-      await subtaskSubscription?.cancel();
-      await assignmentSubscription?.cancel();
+      await supabase.removeChannel(subtaskChannel);
+      await supabase.removeChannel(assignmentChannel);
       await controller.close();
     };
 
