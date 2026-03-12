@@ -124,6 +124,9 @@ class TaskRepository {
     List<Map<String, dynamic>> latestTaskRows = const [];
     List<Map<String, dynamic>> latestSubtaskRows = const [];
     List<Map<String, dynamic>> latestAssignmentRows = const [];
+    Set<String> watchedTaskIds = <String>{};
+    StreamSubscription<List<Map<String, dynamic>>>? subtaskSubscription;
+    StreamSubscription<List<Map<String, dynamic>>>? assignmentSubscription;
     var disposed = false;
 
     List<String> currentTaskIds() {
@@ -183,7 +186,7 @@ class TaskRepository {
       ).map((row) => Map<String, dynamic>.from(row)).toList(growable: false);
     }
 
-    void emitLatestSnapshot() {
+    void emitLatestSnapshot({required String source}) {
       if (disposed || controller.isClosed) {
         return;
       }
@@ -245,6 +248,9 @@ class TaskRepository {
           .toList(growable: false);
 
       if (kDebugMode) {
+        debugPrint(
+          'TASK REPO EMIT source=$source tasks=${taskDetails.length} scoped_task_ids=${taskIdSet.length}',
+        );
         for (final task in taskDetails) {
           final subtaskSignature = task.subtasks
               .map((subtask) => '${subtask.id}:${subtask.isDone ? 1 : 0}')
@@ -266,6 +272,81 @@ class TaskRepository {
       controller.addError(error, stackTrace);
     }
 
+    Future<void> ensureDetailSubscriptions() async {
+      if (disposed) {
+        return;
+      }
+
+      final nextTaskIds = currentTaskIds().toSet();
+      final hasActiveSubscriptions =
+          subtaskSubscription != null && assignmentSubscription != null;
+      if (setEquals(nextTaskIds, watchedTaskIds) && hasActiveSubscriptions) {
+        return;
+      }
+
+      watchedTaskIds = nextTaskIds;
+
+      await subtaskSubscription?.cancel();
+      await assignmentSubscription?.cancel();
+      subtaskSubscription = null;
+      assignmentSubscription = null;
+
+      if (watchedTaskIds.isEmpty) {
+        latestSubtaskRows = const [];
+        latestAssignmentRows = const [];
+        emitLatestSnapshot(source: 'task_scope_empty');
+        return;
+      }
+
+      final scopedTaskIds = watchedTaskIds.toList(growable: false);
+
+      subtaskSubscription = supabase
+          .from('subtask')
+          .stream(primaryKey: ['id'])
+          .inFilter('task_id', scopedTaskIds)
+          .listen((rows) {
+            Future<void>(() async {
+              latestSubtaskRows = rows
+                  .map((row) => Map<String, dynamic>.from(row))
+                  .toList(growable: false);
+
+              if (kDebugMode) {
+                debugPrint(
+                  'SUBTASK REALTIME EVENT household=$householdId rows=${latestSubtaskRows.length} scoped_task_ids=${scopedTaskIds.length}',
+                );
+              }
+
+              await refreshSubtaskCache();
+              emitLatestSnapshot(source: 'subtask_stream');
+            }).catchError((Object error, StackTrace stackTrace) {
+              handleError(error, stackTrace);
+            });
+          }, onError: handleError);
+
+      assignmentSubscription = supabase
+          .from('task_assignment')
+          .stream(primaryKey: ['id'])
+          .inFilter('task_id', scopedTaskIds)
+          .listen((rows) {
+            Future<void>(() async {
+              latestAssignmentRows = rows
+                  .map((row) => Map<String, dynamic>.from(row))
+                  .toList(growable: false);
+
+              if (kDebugMode) {
+                debugPrint(
+                  'ASSIGNMENT REALTIME EVENT household=$householdId rows=${latestAssignmentRows.length} scoped_task_ids=${scopedTaskIds.length}',
+                );
+              }
+
+              await refreshAssignmentCache();
+              emitLatestSnapshot(source: 'assignment_stream');
+            }).catchError((Object error, StackTrace stackTrace) {
+              handleError(error, stackTrace);
+            });
+          }, onError: handleError);
+    }
+
     final taskSubscription = supabase
         .from('tasks')
         .stream(primaryKey: ['id'])
@@ -275,70 +356,10 @@ class TaskRepository {
             latestTaskRows = rows
                 .map((row) => Map<String, dynamic>.from(row))
                 .toList(growable: false);
+            await ensureDetailSubscriptions();
             await refreshSubtaskCache();
             await refreshAssignmentCache();
-            emitLatestSnapshot();
-          }).catchError((Object error, StackTrace stackTrace) {
-            handleError(error, stackTrace);
-          });
-        }, onError: handleError);
-
-    final subtaskSubscription = supabase.from('subtask').stream(primaryKey: ['id']).listen((
-      rows,
-    ) {
-      Future<void>(() async {
-        latestSubtaskRows = rows
-            .map((row) => Map<String, dynamic>.from(row))
-            .toList(growable: false);
-
-        if (kDebugMode) {
-          final taskIdSet = currentTaskIds().toSet();
-          for (final row in latestSubtaskRows) {
-            final taskId = row['task_id'] as String?;
-            if (taskId == null || !taskIdSet.contains(taskId)) {
-              continue;
-            }
-
-            debugPrint(
-              'SUBTASK STREAM EVENT id=${row['id']} task_id=$taskId is_done=${row['is_done']}',
-            );
-          }
-        }
-
-        // Refresh from DB to avoid stale payload merges and guarantee latest is_done.
-        await refreshSubtaskCache();
-
-        if (kDebugMode) {
-          final taskIdSet = currentTaskIds().toSet();
-          for (final row in latestSubtaskRows) {
-            final taskId = row['task_id'] as String?;
-            if (taskId == null || !taskIdSet.contains(taskId)) {
-              continue;
-            }
-
-            debugPrint(
-              'SUBTASK CACHE SNAPSHOT id=${row['id']} task_id=$taskId is_done=${row['is_done']}',
-            );
-          }
-        }
-
-        emitLatestSnapshot();
-      }).catchError((Object error, StackTrace stackTrace) {
-        handleError(error, stackTrace);
-      });
-    }, onError: handleError);
-
-    final assignmentSubscription = supabase
-        .from('task_assignment')
-        .stream(primaryKey: ['id'])
-        .listen((rows) {
-          Future<void>(() async {
-            // Cache realtime assignment rows first, then enrich with joined member data.
-            latestAssignmentRows = rows
-                .map((row) => Map<String, dynamic>.from(row))
-                .toList(growable: false);
-            await refreshAssignmentCache();
-            emitLatestSnapshot();
+            emitLatestSnapshot(source: 'tasks_stream');
           }).catchError((Object error, StackTrace stackTrace) {
             handleError(error, stackTrace);
           });
@@ -347,8 +368,8 @@ class TaskRepository {
     controller.onCancel = () async {
       disposed = true;
       await taskSubscription.cancel();
-      await subtaskSubscription.cancel();
-      await assignmentSubscription.cancel();
+      await subtaskSubscription?.cancel();
+      await assignmentSubscription?.cancel();
       await controller.close();
     };
 
