@@ -3,9 +3,198 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:everyday_app/core/providers/app_providers.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/household/data/models/household_room.dart';
+import 'package:everyday_app/features/personnel/data/models/household_member.dart';
+import 'package:everyday_app/features/tasks/data/models/subtask.dart';
+import 'package:everyday_app/features/tasks/data/models/task.dart';
+import 'package:everyday_app/features/tasks/data/models/task_assignement.dart';
+import 'package:everyday_app/shared/models/user.dart';
 
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
+
+DateTime _copyDateTime(DateTime value) {
+  return DateTime.fromMillisecondsSinceEpoch(
+    value.millisecondsSinceEpoch,
+    isUtc: value.isUtc,
+  );
+}
+
+AppUser _copyUser(AppUser user) {
+  return AppUser(
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    birthdate: user.birthdate == null ? null : _copyDateTime(user.birthdate!),
+    avatarUrl: user.avatarUrl,
+  );
+}
+
+HouseholdMember _copyMember(HouseholdMember member) {
+  return HouseholdMember(
+    id: member.id,
+    userId: member.userId,
+    householdId: member.householdId,
+    role: member.role,
+    isPersonnel: member.isPersonnel,
+    personnelType: member.personnelType,
+    profile: member.profile == null ? null : _copyUser(member.profile!),
+  );
+}
+
+Task _copyTask(Task task) {
+  return Task(
+    id: task.id,
+    householdId: task.householdId,
+    roomId: task.roomId,
+    title: task.title,
+    description: task.description,
+    taskDate: _copyDateTime(task.taskDate),
+    timeFrom: task.timeFrom,
+    timeTo: task.timeTo,
+    repeatRule: task.repeatRule,
+    visibility: task.visibility,
+  );
+}
+
+Subtask _copySubtask(Subtask subtask) {
+  return Subtask(
+    id: subtask.id,
+    taskId: subtask.taskId,
+    title: subtask.title,
+    isDone: subtask.isDone,
+  );
+}
+
+TaskAssignment _copyAssignment(TaskAssignment assignment) {
+  return TaskAssignment(
+    id: assignment.id,
+    taskId: assignment.taskId,
+    memberId: assignment.memberId,
+    status: assignment.status,
+    note: assignment.note,
+    completedAt: assignment.completedAt == null
+        ? null
+        : _copyDateTime(assignment.completedAt!),
+    member: assignment.member == null ? null : _copyMember(assignment.member!),
+  );
+}
+
+TaskWithDetails _copyTaskWithDetails(TaskWithDetails taskWithDetails) {
+  return TaskWithDetails(
+    task: _copyTask(taskWithDetails.task),
+    subtasks: taskWithDetails.subtasks
+        .map(_copySubtask)
+        .toList(growable: false),
+    assignments: taskWithDetails.assignments
+        .map(_copyAssignment)
+        .toList(growable: false),
+  );
+}
+
+List<TaskWithDetails> _copyTaskList(Iterable<TaskWithDetails> tasks) {
+  return tasks.map(_copyTaskWithDetails).toList(growable: false);
+}
+
+class OptimisticSubtaskOverridesNotifier
+    extends StateNotifier<Map<String, bool>> {
+  OptimisticSubtaskOverridesNotifier() : super(const {});
+
+  void setOverride({required String subtaskId, required bool isDone}) {
+    final current = state[subtaskId];
+    if (current == isDone) {
+      return;
+    }
+
+    state = <String, bool>{...state, subtaskId: isDone};
+  }
+
+  void clearOverride(String subtaskId) {
+    if (!state.containsKey(subtaskId)) {
+      return;
+    }
+
+    final next = <String, bool>{...state}..remove(subtaskId);
+    state = next;
+  }
+
+  void reconcileWithTasks(List<TaskWithDetails> tasks) {
+    if (state.isEmpty) {
+      return;
+    }
+
+    final currentSubtaskStates = <String, bool>{};
+    for (final task in tasks) {
+      for (final subtask in task.subtasks) {
+        currentSubtaskStates[subtask.id] = subtask.isDone;
+      }
+    }
+
+    var changed = false;
+    final next = <String, bool>{};
+
+    for (final entry in state.entries) {
+      final liveValue = currentSubtaskStates[entry.key];
+      if (liveValue != null && liveValue == entry.value) {
+        changed = true;
+        continue;
+      }
+
+      next[entry.key] = entry.value;
+    }
+
+    if (changed || next.length != state.length) {
+      state = next;
+    }
+  }
+}
+
+final optimisticSubtaskOverridesProvider =
+    StateNotifierProvider<
+      OptimisticSubtaskOverridesNotifier,
+      Map<String, bool>
+    >((ref) => OptimisticSubtaskOverridesNotifier());
+
+List<TaskWithDetails> _applyOptimisticSubtaskOverrides({
+  required Iterable<TaskWithDetails> tasks,
+  required Map<String, bool> overrides,
+}) {
+  final copiedTasks = _copyTaskList(tasks);
+  if (overrides.isEmpty) {
+    return copiedTasks;
+  }
+
+  return copiedTasks
+      .map((task) {
+        var patched = false;
+        final patchedSubtasks = task.subtasks
+            .map((subtask) {
+              final override = overrides[subtask.id];
+              if (override == null || override == subtask.isDone) {
+                return subtask;
+              }
+
+              patched = true;
+              return Subtask(
+                id: subtask.id,
+                taskId: subtask.taskId,
+                title: subtask.title,
+                isDone: override,
+              );
+            })
+            .toList(growable: false);
+
+        if (!patched) {
+          return task;
+        }
+
+        return TaskWithDetails(
+          task: task.task,
+          subtasks: patchedSubtasks,
+          assignments: task.assignments,
+        );
+      })
+      .toList(growable: false);
+}
 
 final taskServiceProvider = Provider<TaskService>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
@@ -25,7 +214,13 @@ final tasksStreamProvider = StreamProvider<List<TaskWithDetails>>((ref) {
   }
 
   final repository = ref.watch(taskRepositoryProvider);
-  return repository.watchTasks(householdId);
+  return repository.watchTasks(householdId).map((tasks) {
+    final copiedTasks = _copyTaskList(tasks);
+    ref
+        .read(optimisticSubtaskOverridesProvider.notifier)
+        .reconcileWithTasks(copiedTasks);
+    return copiedTasks;
+  });
 });
 
 class UserTaskTimelineQuery {
@@ -68,6 +263,9 @@ final homeDailyTasksProvider = Provider<AsyncValue<List<TaskWithDetails>>>((
   final householdId = ref.watch(currentHouseholdIdProvider);
   final currentUser = ref.watch(currentUserProvider);
   final tasksAsync = ref.watch(tasksStreamProvider);
+  final optimisticSubtaskOverrides = ref.watch(
+    optimisticSubtaskOverridesProvider,
+  );
 
   if (householdId == null ||
       householdId.isEmpty ||
@@ -79,11 +277,15 @@ final homeDailyTasksProvider = Provider<AsyncValue<List<TaskWithDetails>>>((
   final today = DateTime.now();
 
   return tasksAsync.whenData((tasks) {
-    return tasks
+    final filtered = tasks
         .where((task) => task.task.householdId == householdId)
         .where((task) => _isSameCalendarDay(task.task.taskDate, today))
-        .where((task) => _isTaskAssignedToUser(task, currentUser.id))
-        .toList();
+        .where((task) => _isTaskAssignedToUser(task, currentUser.id));
+
+    return _applyOptimisticSubtaskOverrides(
+      tasks: filtered,
+      overrides: optimisticSubtaskOverrides,
+    );
   });
 });
 
@@ -94,6 +296,9 @@ final userTaskTimelineProvider =
     ) {
       final householdId = ref.watch(currentHouseholdIdProvider);
       final tasksAsync = ref.watch(tasksStreamProvider);
+      final optimisticSubtaskOverrides = ref.watch(
+        optimisticSubtaskOverridesProvider,
+      );
 
       if (householdId == null ||
           householdId.isEmpty ||
@@ -102,11 +307,15 @@ final userTaskTimelineProvider =
       }
 
       return tasksAsync.whenData((tasks) {
-        return tasks
+        final filtered = tasks
             .where((task) => task.task.householdId == householdId)
             .where((task) => _isSameCalendarDay(task.task.taskDate, query.date))
-            .where((task) => _isTaskAssignedToUser(task, query.targetUserId))
-            .toList();
+            .where((task) => _isTaskAssignedToUser(task, query.targetUserId));
+
+        return _applyOptimisticSubtaskOverrides(
+          tasks: filtered,
+          overrides: optimisticSubtaskOverrides,
+        );
       });
     });
 

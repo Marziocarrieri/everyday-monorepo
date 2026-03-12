@@ -21,41 +21,44 @@ class TaskSubtaskList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: subtasks
-          .map(
-            (subtask) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      subtask.title,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: subtask.isDone
-                            ? const Color(0xFF3D342C).withValues(alpha: 0.5)
-                            : const Color(0xFF3D342C),
-                        decoration: subtask.isDone
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
+          .map((subtask) {
+            return KeyedSubtree(
+              key: ValueKey('subtask_${subtask.id}_${subtask.isDone ? 1 : 0}'),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        subtask.title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: subtask.isDone
+                              ? const Color(0xFF3D342C).withValues(alpha: 0.5)
+                              : const Color(0xFF3D342C),
+                          decoration: subtask.isDone
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                        ),
                       ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: readOnly ? null : () => onToggle(subtask),
-                    child: Icon(
-                      subtask.isDone
-                          ? Icons.check_box_rounded
-                          : Icons.check_box_outline_blank_rounded,
-                      color: statusColor,
+                    GestureDetector(
+                      onTap: readOnly ? null : () => onToggle(subtask),
+                      child: Icon(
+                        subtask.isDone
+                            ? Icons.check_box_rounded
+                            : Icons.check_box_outline_blank_rounded,
+                        color: statusColor,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          )
-          .toList(),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }

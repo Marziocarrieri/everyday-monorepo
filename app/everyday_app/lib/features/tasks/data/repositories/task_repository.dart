@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/task.dart';
@@ -73,27 +75,31 @@ class TaskRepository {
         .from('tasks')
         .select() // Prendi tutto
         .eq('household_id', householdId) // Filtra per casa
-        .eq('task_date', dateString)     // Filtra per data esatta
-        .order('created_at');            // Mettili in ordine cronologico
+        .eq('task_date', dateString) // Filtra per data esatta
+        .order('created_at'); // Mettili in ordine cronologico
 
     // Trasformiamo la lista di dati grezzi in una lista di oggetti Task
     return (response as List).map((json) => Task.fromJson(json)).toList();
   }
-  
+
   // 3. ASSEGNA TASK
   Future<void> assignTask(String taskId, String memberId) async {
     await supabase.from('task_assignment').insert({
       'task_id': taskId,
       'member_id': memberId,
-      'status': 'TODO'
+      'status': 'TODO',
     });
   }
+
   // Serve per dire: "L'assegnazione X ora è 'DONE' o 'SKIPPED'"
-  Future<void> updateAssignmentStatus(String assignmentId, String newStatus) async {
+  Future<void> updateAssignmentStatus(
+    String assignmentId,
+    String newStatus,
+  ) async {
     await supabase
         .from('task_assignment') // Andiamo nella tabella delle assegnazioni
         .update({'status': newStatus}) // Cambiamo la colonna status
-        .eq('id', assignmentId); 
+        .eq('id', assignmentId);
   }
 
   Future<List<TaskWithDetails>> getTasksForHousehold(String householdId) async {
@@ -108,71 +114,251 @@ class TaskRepository {
         .order('task_date', ascending: true)
         .order('created_at', ascending: true);
 
-    return List<Map<String, dynamic>>.from(response)
-        .map(TaskWithDetails.fromJson)
-        .toList();
+    return List<Map<String, dynamic>>.from(
+      response,
+    ).map(TaskWithDetails.fromJson).toList();
   }
 
   Stream<List<TaskWithDetails>> watchTasks(String householdId) {
-    return supabase
-        .from('tasks')
-        .stream(primaryKey: ['id'])
-        .asyncMap((rows) async {
-          final taskRows = rows
-              .map((row) => Map<String, dynamic>.from(row))
-              .where((row) => row['household_id'] == householdId)
-              .toList();
+    final controller = StreamController<List<TaskWithDetails>>();
+    List<Map<String, dynamic>> latestTaskRows = const [];
+    List<Map<String, dynamic>> latestSubtaskRows = const [];
+    List<Map<String, dynamic>> latestAssignmentRows = const [];
+    var disposed = false;
 
-          if (taskRows.isEmpty) {
-            return <TaskWithDetails>[];
-          }
+    List<String> currentTaskIds() {
+      return latestTaskRows
+          .map((row) => row['id'])
+          .whereType<String>()
+          .toList(growable: false);
+    }
 
-          final taskIds = taskRows
-              .map((row) => row['id'])
-              .whereType<String>()
-              .toList();
+    Future<void> refreshSubtaskCache() async {
+      if (disposed) {
+        return;
+      }
 
-          if (taskIds.isEmpty) {
-            return <TaskWithDetails>[];
-          }
+      final taskIds = currentTaskIds();
+      if (taskIds.isEmpty) {
+        latestSubtaskRows = const [];
+        return;
+      }
 
-          final subtasksResponse = await supabase
-              .from('subtask')
-              .select('*')
-              .inFilter('task_id', taskIds);
+      final subtasksResponse = await supabase
+          .from('subtask')
+          .select('*')
+          .inFilter('task_id', taskIds);
 
-          final assignmentsResponse = await supabase
-              .from('task_assignment')
-              .select('*, household_member(*, users_profile(*))')
-              .inFilter('task_id', taskIds);
+      if (disposed) {
+        return;
+      }
 
-          final subtasksByTaskId = <String, List<Map<String, dynamic>>>{};
-          for (final row in List<Map<String, dynamic>>.from(subtasksResponse)) {
-            final taskId = row['task_id'] as String?;
-            if (taskId == null) continue;
-            subtasksByTaskId.putIfAbsent(taskId, () => <Map<String, dynamic>>[]).add(row);
-          }
+      latestSubtaskRows = List<Map<String, dynamic>>.from(
+        subtasksResponse,
+      ).map((row) => Map<String, dynamic>.from(row)).toList(growable: false);
+    }
 
-          final assignmentsByTaskId = <String, List<Map<String, dynamic>>>{};
-          for (final row in List<Map<String, dynamic>>.from(assignmentsResponse)) {
-            final taskId = row['task_id'] as String?;
-            if (taskId == null) continue;
-            assignmentsByTaskId.putIfAbsent(taskId, () => <Map<String, dynamic>>[]).add(row);
-          }
+    Future<void> refreshAssignmentCache() async {
+      if (disposed) {
+        return;
+      }
 
-          return taskRows.map((taskRow) {
+      final taskIds = currentTaskIds();
+      if (taskIds.isEmpty) {
+        latestAssignmentRows = const [];
+        return;
+      }
+
+      final assignmentsResponse = await supabase
+          .from('task_assignment')
+          .select('*, household_member(*, users_profile(*))')
+          .inFilter('task_id', taskIds);
+
+      if (disposed) {
+        return;
+      }
+
+      latestAssignmentRows = List<Map<String, dynamic>>.from(
+        assignmentsResponse,
+      ).map((row) => Map<String, dynamic>.from(row)).toList(growable: false);
+    }
+
+    void emitLatestSnapshot() {
+      if (disposed || controller.isClosed) {
+        return;
+      }
+
+      final taskRows = latestTaskRows
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList(growable: false);
+
+      if (taskRows.isEmpty) {
+        controller.add(<TaskWithDetails>[]);
+        return;
+      }
+
+      final taskIds = currentTaskIds();
+
+      if (taskIds.isEmpty) {
+        controller.add(<TaskWithDetails>[]);
+        return;
+      }
+
+      final taskIdSet = taskIds.toSet();
+
+      final subtasksByTaskId = <String, List<Map<String, dynamic>>>{};
+      for (final row in latestSubtaskRows) {
+        final taskId = row['task_id'] as String?;
+        if (taskId == null || !taskIdSet.contains(taskId)) {
+          continue;
+        }
+
+        subtasksByTaskId
+            .putIfAbsent(taskId, () => <Map<String, dynamic>>[])
+            .add(Map<String, dynamic>.from(row));
+      }
+
+      final assignmentsByTaskId = <String, List<Map<String, dynamic>>>{};
+      for (final row in latestAssignmentRows) {
+        final taskId = row['task_id'] as String?;
+        if (taskId == null || !taskIdSet.contains(taskId)) {
+          continue;
+        }
+
+        assignmentsByTaskId
+            .putIfAbsent(taskId, () => <Map<String, dynamic>>[])
+            .add(Map<String, dynamic>.from(row));
+      }
+
+      final taskDetails = taskRows
+          .map((taskRow) {
             final taskId = taskRow['id'] as String?;
             final merged = Map<String, dynamic>.from(taskRow);
-            merged['subtask'] = taskId == null ? const [] : (subtasksByTaskId[taskId] ?? const []);
+            merged['subtask'] = taskId == null
+                ? const []
+                : (subtasksByTaskId[taskId] ?? const []);
             merged['task_assignment'] = taskId == null
                 ? const []
                 : (assignmentsByTaskId[taskId] ?? const []);
             return TaskWithDetails.fromJson(merged);
-          }).toList();
-        });
+          })
+          .toList(growable: false);
+
+      if (kDebugMode) {
+        for (final task in taskDetails) {
+          final subtaskSignature = task.subtasks
+              .map((subtask) => '${subtask.id}:${subtask.isDone ? 1 : 0}')
+              .join('|');
+          debugPrint(
+            'EMITTED TASK SNAPSHOT task_id=${task.task.id} subtasks=$subtaskSignature',
+          );
+        }
+      }
+
+      controller.add(taskDetails);
+    }
+
+    void handleError(Object error, StackTrace stackTrace) {
+      if (disposed || controller.isClosed) {
+        return;
+      }
+
+      controller.addError(error, stackTrace);
+    }
+
+    final taskSubscription = supabase
+        .from('tasks')
+        .stream(primaryKey: ['id'])
+        .eq('household_id', householdId)
+        .listen((rows) {
+          Future<void>(() async {
+            latestTaskRows = rows
+                .map((row) => Map<String, dynamic>.from(row))
+                .toList(growable: false);
+            await refreshSubtaskCache();
+            await refreshAssignmentCache();
+            emitLatestSnapshot();
+          }).catchError((Object error, StackTrace stackTrace) {
+            handleError(error, stackTrace);
+          });
+        }, onError: handleError);
+
+    final subtaskSubscription = supabase.from('subtask').stream(primaryKey: ['id']).listen((
+      rows,
+    ) {
+      Future<void>(() async {
+        latestSubtaskRows = rows
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList(growable: false);
+
+        if (kDebugMode) {
+          final taskIdSet = currentTaskIds().toSet();
+          for (final row in latestSubtaskRows) {
+            final taskId = row['task_id'] as String?;
+            if (taskId == null || !taskIdSet.contains(taskId)) {
+              continue;
+            }
+
+            debugPrint(
+              'SUBTASK STREAM EVENT id=${row['id']} task_id=$taskId is_done=${row['is_done']}',
+            );
+          }
+        }
+
+        // Refresh from DB to avoid stale payload merges and guarantee latest is_done.
+        await refreshSubtaskCache();
+
+        if (kDebugMode) {
+          final taskIdSet = currentTaskIds().toSet();
+          for (final row in latestSubtaskRows) {
+            final taskId = row['task_id'] as String?;
+            if (taskId == null || !taskIdSet.contains(taskId)) {
+              continue;
+            }
+
+            debugPrint(
+              'SUBTASK CACHE SNAPSHOT id=${row['id']} task_id=$taskId is_done=${row['is_done']}',
+            );
+          }
+        }
+
+        emitLatestSnapshot();
+      }).catchError((Object error, StackTrace stackTrace) {
+        handleError(error, stackTrace);
+      });
+    }, onError: handleError);
+
+    final assignmentSubscription = supabase
+        .from('task_assignment')
+        .stream(primaryKey: ['id'])
+        .listen((rows) {
+          Future<void>(() async {
+            // Cache realtime assignment rows first, then enrich with joined member data.
+            latestAssignmentRows = rows
+                .map((row) => Map<String, dynamic>.from(row))
+                .toList(growable: false);
+            await refreshAssignmentCache();
+            emitLatestSnapshot();
+          }).catchError((Object error, StackTrace stackTrace) {
+            handleError(error, stackTrace);
+          });
+        }, onError: handleError);
+
+    controller.onCancel = () async {
+      disposed = true;
+      await taskSubscription.cancel();
+      await subtaskSubscription.cancel();
+      await assignmentSubscription.cancel();
+      await controller.close();
+    };
+
+    return controller.stream;
   }
 
-  Future<void> assignTaskToMembers(String taskId, List<String> memberIds) async {
+  Future<void> assignTaskToMembers(
+    String taskId,
+    List<String> memberIds,
+  ) async {
     if (memberIds.isEmpty) return;
 
     final payload = memberIds
@@ -236,19 +422,18 @@ class TaskRepository {
     }
   }
 
-
-Future<List<TaskWithDetails>> getTasksForUserId(String userId) async {
+  Future<List<TaskWithDetails>> getTasksForUserId(String userId) async {
     final response = await supabase
         .from('tasks') // The first table
         .select('*,task_assignment!inner(*), subtask(*)')
         .eq('task_assignment.member_id', userId);
 
-      debugPrint('GETTING TASKS → userID: $userId');
-      debugPrint('Response Data: $response');
+    debugPrint('GETTING TASKS → userID: $userId');
+    debugPrint('Response Data: $response');
 
-    return List<Map<String, dynamic>>.from(response)
-        .map(TaskWithDetails.fromJson)
-        .toList();
+    return List<Map<String, dynamic>>.from(
+      response,
+    ).map(TaskWithDetails.fromJson).toList();
   }
 
   Future<List<HouseholdRoom>> getHouseholdRooms(String householdId) async {
@@ -259,15 +444,17 @@ Future<List<TaskWithDetails>> getTasksForUserId(String userId) async {
           .eq('household_id', householdId)
           .order('created_at', ascending: true);
 
-      return List<Map<String, dynamic>>.from(response)
-          .map(HouseholdRoom.fromJson)
-          .toList();
+      return List<Map<String, dynamic>>.from(
+        response,
+      ).map(HouseholdRoom.fromJson).toList();
     } catch (error) {
       if (!_isMissingColumnError(error, 'room_type')) {
         rethrow;
       }
 
-      debugPrint('room_type not available, loading task rooms without type: $error');
+      debugPrint(
+        'room_type not available, loading task rooms without type: $error',
+      );
       final fallbackResponse = await supabase
           .from('household_room')
           .select('id, household_id, floor_id, name')
@@ -275,12 +462,7 @@ Future<List<TaskWithDetails>> getTasksForUserId(String userId) async {
           .order('created_at', ascending: true);
 
       return List<Map<String, dynamic>>.from(fallbackResponse)
-          .map(
-            (row) => HouseholdRoom.fromJson({
-              ...row,
-              'room_type': null,
-            }),
-          )
+          .map((row) => HouseholdRoom.fromJson({...row, 'room_type': null}))
           .toList();
     }
   }

@@ -85,9 +85,15 @@ class _UserTaskTimelineScreenState
       return;
     }
 
+    final optimisticOverrides = ref.read(
+      optimisticSubtaskOverridesProvider.notifier,
+    );
+    optimisticOverrides.setOverride(subtaskId: subtaskId, isDone: isDone);
+
     try {
       await _taskService.setSubtaskDone(subtaskId: subtaskId, isDone: isDone);
     } catch (error) {
+      optimisticOverrides.clearOverride(subtaskId);
       debugPrint('Error toggling subtask: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

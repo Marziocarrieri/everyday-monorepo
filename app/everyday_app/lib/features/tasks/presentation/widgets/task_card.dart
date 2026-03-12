@@ -122,6 +122,7 @@ class _TaskCardState extends State<TaskCard> {
   @override
   void didUpdateWidget(covariant TaskCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (_isEditingNote) return;
 
     final assignment = _targetAssignments();
