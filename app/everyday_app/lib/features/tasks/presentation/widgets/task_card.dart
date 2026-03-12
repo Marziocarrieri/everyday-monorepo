@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -148,6 +149,15 @@ class _TaskCardState extends State<TaskCard> {
     final subtasks = widget.taskWithDetails.subtasks;
     final taskHasSubtasks = subtasks.isNotEmpty;
     final isAllDone = taskHasSubtasks && subtasks.every((st) => st.isDone);
+
+    if (kDebugMode) {
+      final subtaskSignature = subtasks
+          .map((subtask) => '${subtask.id}:${subtask.isDone ? 1 : 0}')
+          .join('|');
+      debugPrint(
+        'TASK UI BUILD task_id=${widget.taskWithDetails.task.id} expanded=$_isExpanded subtasks=$subtaskSignature',
+      );
+    }
 
     final ownAssignment = widget.taskWithDetails.assignments
         .where((assignment) => assignment.member?.userId == widget.targetUserId)

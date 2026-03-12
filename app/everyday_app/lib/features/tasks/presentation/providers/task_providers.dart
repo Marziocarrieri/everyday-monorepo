@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:everyday_app/core/providers/app_providers.dart';
@@ -216,6 +217,17 @@ final tasksStreamProvider = StreamProvider<List<TaskWithDetails>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
   return repository.watchTasks(householdId).map((tasks) {
     final copiedTasks = _copyTaskList(tasks);
+    if (kDebugMode) {
+      final taskSignatures = copiedTasks
+          .map(
+            (task) =>
+                '${task.task.id}[${task.subtasks.map((subtask) => '${subtask.id}:${subtask.isDone ? 1 : 0}').join('|')}]',
+          )
+          .join(', ');
+      debugPrint(
+        'TASK PROVIDER EMIT household=$householdId tasks=${copiedTasks.length} signatures=$taskSignatures',
+      );
+    }
     ref
         .read(optimisticSubtaskOverridesProvider.notifier)
         .reconcileWithTasks(copiedTasks);
