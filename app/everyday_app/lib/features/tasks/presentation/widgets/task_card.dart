@@ -63,6 +63,38 @@ class _TaskCardState extends State<TaskCard> {
   bool _isEditingNote = false;
   String _savedNote = '';
   late final TextEditingController _noteController;
+  bool _didRestoreExpandedState = false;
+
+  String _subtaskSignature(TaskWithDetails taskWithDetails) {
+    return taskWithDetails.subtasks
+        .map((subtask) => '${subtask.id}:${subtask.isDone}')
+        .join('|');
+  }
+
+  String get _expandedStorageId =>
+      'task_card_expanded_${widget.taskWithDetails.task.id}';
+
+  void _restoreExpandedState() {
+    if (_didRestoreExpandedState) {
+      return;
+    }
+
+    final storedValue = PageStorage.maybeOf(
+      context,
+    )?.readState(context, identifier: _expandedStorageId);
+
+    if (storedValue is bool) {
+      _isExpanded = storedValue;
+    }
+
+    _didRestoreExpandedState = true;
+  }
+
+  void _persistExpandedState() {
+    PageStorage.maybeOf(
+      context,
+    )?.writeState(context, _isExpanded, identifier: _expandedStorageId);
+  }
 
   bool get _isAssignedToCurrentUser {
     final currentUserId =
@@ -121,8 +153,33 @@ class _TaskCardState extends State<TaskCard> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _restoreExpandedState();
+  }
+
+  @override
   void didUpdateWidget(covariant TaskCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.taskWithDetails.task.id != widget.taskWithDetails.task.id) {
+      _didRestoreExpandedState = false;
+      _restoreExpandedState();
+    }
+
+    final oldSubtaskSignature = _subtaskSignature(oldWidget.taskWithDetails);
+    final newSubtaskSignature = _subtaskSignature(widget.taskWithDetails);
+
+    if (oldSubtaskSignature != newSubtaskSignature) {
+      final storedValue = PageStorage.maybeOf(
+        context,
+      )?.readState(context, identifier: _expandedStorageId);
+      if (storedValue is bool) {
+        _isExpanded = storedValue;
+      }
+
+      setState(() {});
+    }
 
     if (_isEditingNote) return;
 
@@ -275,6 +332,9 @@ class _TaskCardState extends State<TaskCard> {
 
                     if (subtasks.isNotEmpty)
                       TaskSubtaskList(
+                        key: ValueKey(
+                          'task_subtasks_${widget.taskWithDetails.task.id}_${_subtaskSignature(widget.taskWithDetails)}',
+                        ),
                         subtasks: subtasks,
                         statusColor: statusColor,
                         readOnly: _isChecklistReadOnly,
@@ -563,7 +623,12 @@ class _TaskCardState extends State<TaskCard> {
 
             // --- HEADER DELLA CARD PRINCIPALE (Pillola In Alto) ---
             GestureDetector(
-              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              onTap: () {
+                setState(() {
+                  _isExpanded = !_isExpanded;
+                });
+                _persistExpandedState();
+              },
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(30),
                 child: BackdropFilter(
