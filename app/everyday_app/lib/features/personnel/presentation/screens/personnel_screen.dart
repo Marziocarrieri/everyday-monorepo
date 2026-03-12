@@ -12,7 +12,7 @@ class PersonnelScreen extends ConsumerWidget {
   // --- GENERATORE DI COLORI PASTELLO BASATO SULL'INIZIALE ---
   Color _getColorForMember(String name) {
     if (name.isEmpty) return const Color(0xFF5A8B9E); // Default Azzurro
-    
+
     final List<Color> palette = [
       const Color(0xFFF4A261), // Arancio
       const Color(0xFF2A9D8F), // Verde Acqua
@@ -44,8 +44,8 @@ class PersonnelScreen extends ConsumerWidget {
                   child: Text(
                     'Personnel',
                     style: GoogleFonts.poppins(
-                      fontSize: 24, 
-                      fontWeight: FontWeight.w700, 
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
                       color: const Color(0xFF5A8B9E),
                       letterSpacing: 0.5,
                     ),
@@ -57,11 +57,14 @@ class PersonnelScreen extends ConsumerWidget {
               // LISTA CARD PREMIUM
               Expanded(
                 child: membersAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (error, _) => Center(child: Text('Error: $error')),
                   data: (members) {
                     final personnelMembers = members
-                        .where((member) => member.role.toUpperCase() == 'PERSONNEL')
+                        .where(
+                          (member) => member.role.toUpperCase() == 'PERSONNEL',
+                        )
                         .toList();
 
                     if (personnelMembers.isEmpty) {
@@ -82,12 +85,9 @@ class PersonnelScreen extends ConsumerWidget {
                             onTap: () {
                               AppRouter.navigate<void>(
                                 context,
-                                AppRouteNames.memberActivities,
-                                arguments: MemberActivitiesRouteArgs(
-                                  memberId: member.id,
-                                  memberName: memberName,
-                                  themeColor: memberColor,
-                                  isPersonnel: true,
+                                AppRouteNames.userTaskHistory,
+                                arguments: UserTaskHistoryRouteArgs(
+                                  targetUserId: member.userId,
                                 ),
                               );
                             },
@@ -115,7 +115,10 @@ class PersonnelScreen extends ConsumerWidget {
 
   // --- CARD PERSONALE PREMIUM (Invariata) ---
   Widget _buildPremiumPersonnelCard({
-    required String name, required String role, required String initial, required Color color 
+    required String name,
+    required String role,
+    required String initial,
+    required Color color,
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(32),
@@ -125,13 +128,24 @@ class PersonnelScreen extends ConsumerWidget {
           height: 135,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [color.withValues(alpha: 0.2), Colors.white.withValues(alpha: 0.5)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: 0.2),
+                Colors.white.withValues(alpha: 0.5),
+              ],
             ),
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.2),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.8),
+              width: 1.2,
+            ),
             boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 30, offset: const Offset(0, 15))
+              BoxShadow(
+                color: color.withValues(alpha: 0.08),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
             ],
           ),
           child: Row(
@@ -139,19 +153,38 @@ class PersonnelScreen extends ConsumerWidget {
               Expanded(
                 flex: 3,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
                   child: Row(
                     children: [
                       Container(
-                        width: 48, height: 48,
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF3D342C), 
+                          color: const Color(0xFF3D342C),
                           shape: BoxShape.circle,
                           boxShadow: [
-                            BoxShadow(color: const Color(0xFF3D342C).withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
-                          ]
+                            BoxShadow(
+                              color: const Color(
+                                0xFF3D342C,
+                              ).withValues(alpha: 0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: Center(child: Text(initial, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18))),
+                        child: Center(
+                          child: Text(
+                            initial,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -161,13 +194,22 @@ class PersonnelScreen extends ConsumerWidget {
                           children: [
                             Text(
                               name,
-                              overflow: TextOverflow.ellipsis, 
-                              style: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF3D342C),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                              ),
                             ),
                             Text(
                               role,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(color: const Color(0xFF3D342C), fontSize: 13, fontWeight: FontWeight.w600),
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF3D342C),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -177,13 +219,18 @@ class PersonnelScreen extends ConsumerWidget {
                 ),
               ),
               Container(
-                width: 1, 
+                width: 1,
                 margin: const EdgeInsets.symmetric(vertical: 20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.6), Colors.white.withValues(alpha: 0.0)]
-                  )
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.0),
+                      Colors.white.withValues(alpha: 0.6),
+                      Colors.white.withValues(alpha: 0.0),
+                    ],
+                  ),
                 ),
               ),
               Expanded(
@@ -192,7 +239,12 @@ class PersonnelScreen extends ConsumerWidget {
                   child: Text(
                     'View\nActivity',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(color: const Color(0xFF5A8B9E), fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+                    style: GoogleFonts.poppins(
+                      color: const Color(0xFF5A8B9E),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ),

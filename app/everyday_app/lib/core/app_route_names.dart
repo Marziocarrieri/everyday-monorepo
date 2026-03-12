@@ -19,6 +19,7 @@ class AppRouteNames {
 
   static const String addTask = '/tasks/add';
   static const String dailyTask = '/tasks/daily';
+  static const String userTaskHistory = '/tasks/history/user';
   static const String fridgeKeeping = '/fridge/keeping';
   static const String provisionList = '/fridge/provision-list';
   static const String memberActivities = '/personnel/member-activities';
@@ -44,12 +45,16 @@ class AppRouteNames {
 
 class AddTaskRouteArgs {
   final Set<String>? assignedMemberIds;
+  final String? preselectedAssigneeUserId;
+  final bool supervisionCreationMode;
   final DateTime? initialDate;
   final bool personalOnly;
   final Object? initialTask;
 
   const AddTaskRouteArgs({
     this.assignedMemberIds,
+    this.preselectedAssigneeUserId,
+    this.supervisionCreationMode = false,
     this.initialDate,
     this.personalOnly = false,
     this.initialTask,
@@ -58,8 +63,20 @@ class AddTaskRouteArgs {
 
 class DailyTaskRouteArgs {
   final DateTime date;
+  final String? targetUserId;
+  final bool readOnlyChecklist;
 
-  const DailyTaskRouteArgs({required this.date});
+  const DailyTaskRouteArgs({
+    required this.date,
+    this.targetUserId,
+    this.readOnlyChecklist = false,
+  });
+}
+
+class UserTaskHistoryRouteArgs {
+  final String targetUserId;
+
+  const UserTaskHistoryRouteArgs({required this.targetUserId});
 }
 
 class MemberActivitiesRouteArgs {

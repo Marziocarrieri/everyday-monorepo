@@ -1,3 +1,4 @@
+import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/features/fridge/presentation/screens/fridge_keeping_screen.dart';
 import 'package:everyday_app/features/fridge/presentation/screens/provision_list_screen.dart';
@@ -9,7 +10,6 @@ import 'package:everyday_app/features/navigation/role_shell_gate.dart';
 import 'package:everyday_app/legacy_app/screens/diet_screen.dart';
 import 'package:everyday_app/legacy_app/screens/family_screen.dart';
 import 'package:everyday_app/legacy_app/screens/login2_screen.dart';
-import 'package:everyday_app/legacy_app/screens/main_layout.dart';
 import 'package:everyday_app/features/pets/presentation/screens/pet_activities_screen.dart';
 import 'package:everyday_app/features/pets/presentation/screens/pets_screen.dart';
 import 'package:everyday_app/legacy_app/screens/welcome_screen.dart';
@@ -17,6 +17,7 @@ import 'package:everyday_app/features/personnel/presentation/screens/member_acti
 import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/add_task_screen.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/daily_task_screen.dart';
+import 'package:everyday_app/features/tasks/presentation/screens/user_task_history_screen.dart';
 import 'package:flutter/material.dart';
 
 class AppRouter {
@@ -34,6 +35,8 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => AddTaskScreen(
             assignedMemberIds: args?.assignedMemberIds,
+            preselectedAssigneeUserId: args?.preselectedAssigneeUserId,
+            supervisionCreationMode: args?.supervisionCreationMode ?? false,
             initialDate: args?.initialDate,
             personalOnly: args?.personalOnly ?? false,
             initialTask: initialTask is TaskWithDetails ? initialTask : null,
@@ -51,7 +54,26 @@ class AppRouter {
         }
 
         return MaterialPageRoute(
-          builder: (_) => DailyTaskScreen(date: args.date),
+          builder: (_) => UserTaskTimelineScreen(
+            date: args.date,
+            targetUserId: args.targetUserId ?? AppContext.instance.userId ?? '',
+            readOnlyChecklist: args.readOnlyChecklist,
+          ),
+          settings: settings,
+        );
+
+      case AppRouteNames.userTaskHistory:
+        final args = settings.arguments as UserTaskHistoryRouteArgs?;
+        if (args == null) {
+          return _missingArgsRoute(
+            routeName: AppRouteNames.userTaskHistory,
+            settings: settings,
+          );
+        }
+
+        return MaterialPageRoute(
+          builder: (_) =>
+              UserTaskHistoryScreen(targetUserId: args.targetUserId),
           settings: settings,
         );
 
@@ -102,10 +124,8 @@ class AppRouter {
         }
 
         return MaterialPageRoute(
-          builder: (_) => PetActivitiesScreen(
-            petId: args.petId,
-            petColor: args.petColor,
-          ),
+          builder: (_) =>
+              PetActivitiesScreen(petId: args.petId, petColor: args.petColor),
           settings: settings,
         );
 
@@ -136,7 +156,8 @@ class AppRouter {
       case AppRouteNames.welcome:
         final args = settings.arguments as WelcomeRouteArgs?;
         return MaterialPageRoute(
-          builder: (_) => WelcomeScreen(fromProfile: args?.fromProfile ?? false),
+          builder: (_) =>
+              WelcomeScreen(fromProfile: args?.fromProfile ?? false),
           settings: settings,
         );
 
@@ -147,10 +168,10 @@ class AppRouter {
         );
 
       //case AppRouteNames.mainLayout:
-        //return MaterialPageRoute(
-          //builder: (_) => const MainLayout(),
-          //settings: settings,
-        //);
+      //return MaterialPageRoute(
+      //builder: (_) => const MainLayout(),
+      //settings: settings,
+      //);
 
       case AppRouteNames.diet:
         return MaterialPageRoute(
@@ -233,12 +254,14 @@ class AppRouter {
     bool rootNavigator = false,
     TO? result,
   }) {
-    return Navigator.of(context, rootNavigator: rootNavigator)
-        .pushReplacementNamed<T, TO>(
-          routeName,
-          arguments: arguments,
-          result: result,
-        );
+    return Navigator.of(
+      context,
+      rootNavigator: rootNavigator,
+    ).pushReplacementNamed<T, TO>(
+      routeName,
+      arguments: arguments,
+      result: result,
+    );
   }
 
   static Future<T?> navigateAndRemoveUntil<T extends Object?>(
@@ -248,12 +271,14 @@ class AppRouter {
     bool rootNavigator = false,
     RoutePredicate? predicate,
   }) {
-    return Navigator.of(context, rootNavigator: rootNavigator)
-        .pushNamedAndRemoveUntil<T>(
-          routeName,
-          predicate ?? (route) => false,
-          arguments: arguments,
-        );
+    return Navigator.of(
+      context,
+      rootNavigator: rootNavigator,
+    ).pushNamedAndRemoveUntil<T>(
+      routeName,
+      predicate ?? (route) => false,
+      arguments: arguments,
+    );
   }
 
   static Route<dynamic> _missingArgsRoute({
@@ -265,9 +290,7 @@ class AppRouter {
       builder: (_) {
         return Scaffold(
           appBar: AppBar(title: const Text('Navigation error')),
-          body: Center(
-            child: Text('Missing arguments for route: $routeName'),
-          ),
+          body: Center(child: Text('Missing arguments for route: $routeName')),
         );
       },
     );

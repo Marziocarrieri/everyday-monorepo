@@ -49,6 +49,7 @@ class RouteAccessPolicy {
         return true;
 
       case AppRouteNames.memberActivities:
+      case AppRouteNames.userTaskHistory:
         return role != AppRole.PERSONNEL;
 
       case AppRouteNames.createHousehold:

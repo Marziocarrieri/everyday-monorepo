@@ -7,12 +7,14 @@ class TaskSubtaskList extends StatelessWidget {
   final List<Subtask> subtasks;
   final Color statusColor;
   final ValueChanged<Subtask> onToggle;
+  final bool readOnly;
 
   const TaskSubtaskList({
     super.key,
     required this.subtasks,
     required this.statusColor,
     required this.onToggle,
+    this.readOnly = false,
   });
 
   @override
@@ -41,7 +43,7 @@ class TaskSubtaskList extends StatelessWidget {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => onToggle(subtask),
+                    onTap: readOnly ? null : () => onToggle(subtask),
                     child: Icon(
                       subtask.isDone
                           ? Icons.check_box_rounded

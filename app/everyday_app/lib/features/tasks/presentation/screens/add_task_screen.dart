@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:everyday_app/core/app_context.dart';
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
 import 'package:everyday_app/features/household/data/models/household_room.dart';
@@ -15,6 +16,8 @@ import '../providers/task_providers.dart';
 // ==========================================
 class AddTaskScreen extends StatefulWidget {
   final Set<String>? assignedMemberIds;
+  final String? preselectedAssigneeUserId;
+  final bool supervisionCreationMode;
   final bool personalOnly;
   final TaskWithDetails? initialTask;
   final DateTime? initialDate;
@@ -22,6 +25,8 @@ class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({
     super.key,
     this.assignedMemberIds,
+    this.preselectedAssigneeUserId,
+    this.supervisionCreationMode = false,
     this.initialDate,
     this.personalOnly = false,
     this.initialTask,
@@ -35,7 +40,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   final Map<String, List<String>> _suggestedTasks = {
-    'Kids Management': ['School Drop-off / Pick-up', 'After-School Activities', 'Pediatric Check-ups'],
+    'Kids Management': [
+      'School Drop-off / Pick-up',
+      'After-School Activities',
+      'Pediatric Check-ups',
+    ],
     'Home Management': ['Home Repairs', 'Car Maintenance'],
     'Personal Care': ['Beauty Appointment', 'Mental Health Check'],
   };
@@ -59,9 +68,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       builder: (context) => AddTaskSheet(
         initialTitle: initialTitle,
         assignedMemberIds: widget.assignedMemberIds,
+        preselectedAssigneeUserId: widget.preselectedAssigneeUserId,
+        supervisionCreationMode: widget.supervisionCreationMode,
         personalOnly: widget.personalOnly,
         initialTask: widget.initialTask,
         initialDate: widget.initialDate,
+        closeParentOnSave: true,
       ),
     );
   }
@@ -83,7 +95,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           children: [
             // --- HEADER PREMIUM ---
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 20.0,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -95,15 +110,33 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: colorSafeAzzurro.withValues(alpha: 0.1), width: 1),
+                        border: Border.all(
+                          color: colorSafeAzzurro.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
                         boxShadow: [
-                          BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))
+                          BoxShadow(
+                            color: colorSafeAzzurro.withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
                         ],
                       ),
-                      child: Icon(Icons.arrow_back_ios_new_rounded, color: colorSafeAzzurro, size: 20),
+                      child: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: colorSafeAzzurro,
+                        size: 20,
+                      ),
                     ),
                   ),
-                  Text('Add a Task', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: colorSafeAzzurro)),
+                  Text(
+                    'Add a Task',
+                    style: GoogleFonts.poppins(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: colorSafeAzzurro,
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => _openTaskSheet(),
                     child: Container(
@@ -112,12 +145,23 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: colorSafeAzzurro.withValues(alpha: 0.1), width: 1),
+                        border: Border.all(
+                          color: colorSafeAzzurro.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
                         boxShadow: [
-                          BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))
+                          BoxShadow(
+                            color: colorSafeAzzurro.withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
                         ],
                       ),
-                      child: Icon(Icons.auto_awesome_rounded, color: colorSafeAzzurro, size: 24),
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: colorSafeAzzurro,
+                        size: 24,
+                      ),
                     ),
                   ),
                 ],
@@ -139,7 +183,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: Colors.white, width: 1.5),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 5))
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
                       ],
                     ),
                     child: Row(
@@ -149,13 +197,24 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             controller: _searchController,
                             decoration: InputDecoration(
                               hintText: 'Search templates...',
-                              hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.4), fontSize: 15),
+                              hintStyle: GoogleFonts.poppins(
+                                color: const Color(
+                                  0xFF3D342C,
+                                ).withValues(alpha: 0.4),
+                                fontSize: 15,
+                              ),
                               border: InputBorder.none,
                             ),
-                            style: GoogleFonts.poppins(color: const Color(0xFF3D342C)),
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFF3D342C),
+                            ),
                           ),
                         ),
-                        Icon(Icons.search_rounded, color: colorSafeAzzurro, size: 24),
+                        Icon(
+                          Icons.search_rounded,
+                          color: colorSafeAzzurro,
+                          size: 24,
+                        ),
                       ],
                     ),
                   ),
@@ -177,10 +236,21 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(entry.key,
-                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C))),
+                          Text(
+                            entry.key,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF3D342C),
+                            ),
+                          ),
                           const SizedBox(height: 12),
-                          ...entry.value.map((taskName) => _buildSuggestionPill(taskName, colorSafeAzzurro)),
+                          ...entry.value.map(
+                            (taskName) => _buildSuggestionPill(
+                              taskName,
+                              colorSafeAzzurro,
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -208,13 +278,24 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [colorSafeAzzurro.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.4)]),
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    colorSafeAzzurro.withValues(alpha: 0.15),
+                    Colors.white.withValues(alpha: 0.4),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  width: 1.5,
+                ),
                 boxShadow: [
-                  BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5))
+                  BoxShadow(
+                    color: colorSafeAzzurro.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
                 ],
               ),
               child: Row(
@@ -225,15 +306,29 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       color: Colors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))
+                        BoxShadow(
+                          color: colorSafeAzzurro.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
-                    child: Icon(Icons.check_circle_outline_rounded, color: colorSafeAzzurro, size: 20),
+                    child: Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: colorSafeAzzurro,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
-                    child: Text(taskName,
-                        style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C))),
+                    child: Text(
+                      taskName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF3D342C),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -251,17 +346,23 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 class AddTaskSheet extends ConsumerStatefulWidget {
   final String? initialTitle;
   final Set<String>? assignedMemberIds;
+  final String? preselectedAssigneeUserId;
+  final bool supervisionCreationMode;
   final bool personalOnly;
   final TaskWithDetails? initialTask;
   final DateTime? initialDate;
+  final bool closeParentOnSave;
 
   const AddTaskSheet({
     super.key,
     this.initialTitle,
     this.assignedMemberIds,
+    this.preselectedAssigneeUserId,
+    this.supervisionCreationMode = false,
     this.initialDate,
     this.personalOnly = false,
     this.initialTask,
+    this.closeParentOnSave = false,
   });
 
   @override
@@ -306,11 +407,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
         _checklistItems.add(_ChecklistDraft());
       } else {
         for (final subtask in initialTask.subtasks) {
-          _checklistItems.add(
-            _ChecklistDraft(
-              text: subtask.title,
-            ),
-          );
+          _checklistItems.add(_ChecklistDraft(text: subtask.title));
         }
       }
     }
@@ -327,7 +424,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: isError ? colorRed : getStatusColor('safe'),
@@ -361,7 +461,8 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
       setState(() {
         _rooms = rooms;
-        if (_selectedRoomId != null && _rooms.every((room) => room.id != _selectedRoomId)) {
+        if (_selectedRoomId != null &&
+            _rooms.every((room) => room.id != _selectedRoomId)) {
           _selectedRoomId = null;
         }
       });
@@ -404,9 +505,37 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
       _creationAccess = access;
       _selectedMemberIds.clear();
 
+      final preselectedAssigneeUserId = widget.preselectedAssigneeUserId;
+
+      if (widget.supervisionCreationMode) {
+        if (preselectedAssigneeUserId != null &&
+            preselectedAssigneeUserId.isNotEmpty) {
+          for (final member in access.assignableMembers) {
+            if (member.userId == preselectedAssigneeUserId) {
+              _selectedMemberIds.add(member.id);
+              break;
+            }
+          }
+        }
+
+        _isLoadingAccess = false;
+        return;
+      }
+
+      if (preselectedAssigneeUserId != null &&
+          preselectedAssigneeUserId.isNotEmpty) {
+        for (final member in access.assignableMembers) {
+          if (member.userId == preselectedAssigneeUserId) {
+            _selectedMemberIds.add(member.id);
+          }
+        }
+      }
+
       if (access.canAssignMultiple) {
         final initialSet = widget.assignedMemberIds;
-        if (initialSet != null && initialSet.isNotEmpty) {
+        if (_selectedMemberIds.isEmpty &&
+            initialSet != null &&
+            initialSet.isNotEmpty) {
           for (final member in access.assignableMembers) {
             if (initialSet.contains(member.id)) {
               _selectedMemberIds.add(member.id);
@@ -414,13 +543,25 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
           }
         }
       } else if (access.assignableMembers.isNotEmpty) {
-        _selectedMemberIds.add(access.assignableMembers.first.id);
+        if (_selectedMemberIds.isEmpty) {
+          _selectedMemberIds.add(access.assignableMembers.first.id);
+        }
       }
 
       if (widget.personalOnly && access.assignableMembers.isNotEmpty) {
+        final currentMembershipId = AppContext.instance.membershipId;
+        String? fallbackMembershipId;
+
+        for (final member in access.assignableMembers) {
+          if (member.id == currentMembershipId) {
+            fallbackMembershipId = member.id;
+            break;
+          }
+        }
+
         _selectedMemberIds
           ..clear()
-          ..add(access.assignableMembers.first.id);
+          ..add(fallbackMembershipId ?? access.assignableMembers.first.id);
       }
 
       _isLoadingAccess = false;
@@ -449,9 +590,16 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
     final memberIds = widget.personalOnly
         ? const <String>[]
+        : widget.supervisionCreationMode
+        ? _selectedMemberIds.toList()
         : access.canAssignMultiple
-            ? _selectedMemberIds.toList()
-            : access.assignableMembers.map((member) => member.id).toList();
+        ? _selectedMemberIds.toList()
+        : access.assignableMembers.map((member) => member.id).toList();
+
+    if (widget.supervisionCreationMode && memberIds.length != 1) {
+      _showPremiumSnackBar('Unable to resolve supervised assignee');
+      return;
+    }
 
     if (!widget.personalOnly && memberIds.isEmpty) {
       _showPremiumSnackBar('Select at least one assignee');
@@ -468,7 +616,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
         await _taskService.createTaskWithDetails(
           title: title,
           date: targetDate,
-          timeFrom: _startTime != null ? TimeOfDay.fromDateTime(_startTime!) : null,
+          timeFrom: _startTime != null
+              ? TimeOfDay.fromDateTime(_startTime!)
+              : null,
           timeTo: _endTime != null ? TimeOfDay.fromDateTime(_endTime!) : null,
           visibility: 'ALL',
           roomId: _selectedRoomId,
@@ -481,7 +631,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
           taskId: editingTask.task.id,
           title: title,
           date: targetDate,
-          timeFrom: _startTime != null ? TimeOfDay.fromDateTime(_startTime!) : null,
+          timeFrom: _startTime != null
+              ? TimeOfDay.fromDateTime(_startTime!)
+              : null,
           timeTo: _endTime != null ? TimeOfDay.fromDateTime(_endTime!) : null,
           visibility: editingTask.task.visibility,
           roomId: _selectedRoomId,
@@ -491,7 +643,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
       if (!mounted) return;
       Navigator.pop(context, true);
-      Navigator.pop(context, true);
+      if (widget.closeParentOnSave && mounted) {
+        Navigator.pop(context, true);
+      }
     } catch (error) {
       debugPrint('Error creating task: $error');
       _showPremiumSnackBar(error.toString());
@@ -505,18 +659,27 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   }
 
   // --- Picker Customizzati Date/Time ---
-  void _showIOSPicker({required Widget child, required VoidCallback onConfirm}) {
+  void _showIOSPicker({
+    required Widget child,
+    required VoidCallback onConfirm,
+  }) {
     showCupertinoModalPopup(
       context: context,
       builder: (BuildContext context) => Container(
         height: 280,
         padding: const EdgeInsets.only(top: 6.0),
-        margin: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5))
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
           ],
         ),
         child: SafeArea(
@@ -524,21 +687,41 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
           child: Column(
             children: [
               Container(
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 1))),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.grey.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     CupertinoButton(
-                      child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16)),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.poppins(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     CupertinoButton(
-                      child: Text('Done', style: GoogleFonts.poppins(color: colorOrange, fontWeight: FontWeight.w700, fontSize: 16)),
+                      child: Text(
+                        'Done',
+                        style: GoogleFonts.poppins(
+                          color: colorOrange,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
                       onPressed: () {
                         onConfirm();
                         Navigator.of(context).pop();
                       },
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -563,7 +746,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   }
 
   void _selectTime(bool isStart) {
-    DateTime tempTime = isStart ? (_startTime ?? DateTime.now()) : (_endTime ?? DateTime.now().add(const Duration(hours: 1)));
+    DateTime tempTime = isStart
+        ? (_startTime ?? DateTime.now())
+        : (_endTime ?? DateTime.now().add(const Duration(hours: 1)));
     _showIOSPicker(
       child: CupertinoDatePicker(
         initialDateTime: tempTime,
@@ -589,23 +774,37 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: Dialog(
             backgroundColor: Colors.white.withValues(alpha: 0.95),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32), side: const BorderSide(color: Colors.white, width: 2)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(32),
+              side: const BorderSide(color: Colors.white, width: 2),
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Select Room', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C))),
+                  Text(
+                    'Select Room',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF3D342C),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Divider(color: color.withValues(alpha: 0.2)),
-                  
+
                   ListTile(
                     title: Text(
                       'None',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
-                        color: _selectedRoomId == null ? color : const Color(0xFF3D342C).withValues(alpha: 0.5),
-                        fontWeight: _selectedRoomId == null ? FontWeight.w800 : FontWeight.w600,
+                        color: _selectedRoomId == null
+                            ? color
+                            : const Color(0xFF3D342C).withValues(alpha: 0.5),
+                        fontWeight: _selectedRoomId == null
+                            ? FontWeight.w800
+                            : FontWeight.w600,
                         fontSize: 18,
                       ),
                     ),
@@ -615,7 +814,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     },
                   ),
                   Divider(color: color.withValues(alpha: 0.1)),
-                  
+
                   ..._rooms.map((room) {
                     final isSelected = room.id == _selectedRoomId;
                     return Column(
@@ -625,8 +824,12 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                             room.name,
                             textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
-                              color: isSelected ? color : const Color(0xFF3D342C),
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                              color: isSelected
+                                  ? color
+                                  : const Color(0xFF3D342C),
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
                               fontSize: 18,
                             ),
                           ),
@@ -638,13 +841,13 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                         Divider(color: color.withValues(alpha: 0.1)),
                       ],
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
           ),
         );
-      }
+      },
     );
   }
 
@@ -662,33 +865,61 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   @override
   Widget build(BuildContext context) {
     final Color colorSafeAzzurro = getStatusColor('safe');
-    final selectedRoomExists = _selectedRoomId != null && _rooms.any((room) => room.id == _selectedRoomId);
+    final selectedRoomExists =
+        _selectedRoomId != null &&
+        _rooms.any((room) => room.id == _selectedRoomId);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0), 
+        filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
         child: Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.90),
-          padding: EdgeInsets.only(left: 24, right: 24, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.95), border: Border.all(color: Colors.white, width: 1.5)),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.90,
+          ),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.95),
+            border: Border.all(color: Colors.white, width: 1.5),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 50, height: 5, decoration: BoxDecoration(color: colorSafeAzzurro.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10))),
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: colorSafeAzzurro.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               const SizedBox(height: 24),
 
-              if (widget.assignedMemberIds != null && widget.assignedMemberIds!.isNotEmpty)
+              if (!widget.supervisionCreationMode &&
+                  widget.assignedMemberIds != null &&
+                  widget.assignedMemberIds!.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: colorOrange.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     'Assigning to ${widget.assignedMemberIds!.length} member(s)',
-                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: colorOrange),
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colorOrange,
+                    ),
                   ),
                 ),
 
@@ -700,7 +931,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     child: LinearProgressIndicator(
                       minHeight: 4,
                       backgroundColor: colorSafeAzzurro.withValues(alpha: 0.2),
-                      valueColor: AlwaysStoppedAnimation<Color>(colorSafeAzzurro),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colorSafeAzzurro,
+                      ),
                     ),
                   ),
                 )
@@ -708,20 +941,34 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: colorRed.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colorRed.withValues(alpha: 0.3), width: 1),
+                    border: Border.all(
+                      color: colorRed.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.lock_outline_rounded, color: colorRed, size: 20),
+                      Icon(
+                        Icons.lock_outline_rounded,
+                        color: colorRed,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Personnel members cannot create tasks.',
-                          style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: colorRed),
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colorRed,
+                          ),
                         ),
                       ),
                     ],
@@ -745,84 +992,144 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildGlassTextField(controller: _titleController, hint: 'Task Name', color: colorSafeAzzurro, isTitle: true),
+                      _buildGlassTextField(
+                        controller: _titleController,
+                        hint: 'Task Name',
+                        color: colorSafeAzzurro,
+                        isTitle: true,
+                      ),
                       const SizedBox(height: 20),
 
                       // STANZA
                       _buildRoomSelector(colorSafeAzzurro, selectedRoomExists),
                       const SizedBox(height: 24),
 
-                      if (!widget.personalOnly && !_isLoadingAccess && _creationAccess != null)
+                      if (!widget.personalOnly &&
+                          !widget.supervisionCreationMode &&
+                          !_isLoadingAccess &&
+                          _creationAccess != null)
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Assignees',
-                              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C)),
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF3D342C),
+                              ),
                             ),
                             const SizedBox(height: 12),
                             if (_creationAccess!.canAssignMultiple)
                               Wrap(
                                 spacing: 10,
                                 runSpacing: 10,
-                                children: _creationAccess!.assignableMembers.map((member) {
-                                  final isSelected = _selectedMemberIds.contains(member.id);
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedMemberIds.remove(member.id);
-                                        } else {
-                                          _selectedMemberIds.add(member.id);
-                                        }
-                                      });
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        color: isSelected ? colorSafeAzzurro : Colors.white,
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: isSelected ? colorSafeAzzurro : colorSafeAzzurro.withValues(alpha: 0.3),
-                                          width: 1.5,
-                                        ),
-                                        boxShadow: isSelected ? [BoxShadow(color: colorSafeAzzurro.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (isSelected) ...[
-                                            const Icon(Icons.check_rounded, color: Colors.white, size: 16),
-                                            const SizedBox(width: 6),
-                                          ],
-                                          Text(
-                                            member.profile?.name ?? member.id.substring(0, 6),
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: isSelected ? Colors.white : const Color(0xFF3D342C),
-                                            ),
+                                children: _creationAccess!.assignableMembers
+                                    .map((member) {
+                                      final isSelected = _selectedMemberIds
+                                          .contains(member.id);
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            if (isSelected) {
+                                              _selectedMemberIds.remove(
+                                                member.id,
+                                              );
+                                            } else {
+                                              _selectedMemberIds.add(member.id);
+                                            }
+                                          });
+                                        },
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 200,
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? colorSafeAzzurro
+                                                : Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? colorSafeAzzurro
+                                                  : colorSafeAzzurro.withValues(
+                                                      alpha: 0.3,
+                                                    ),
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: isSelected
+                                                ? [
+                                                    BoxShadow(
+                                                      color: colorSafeAzzurro
+                                                          .withValues(
+                                                            alpha: 0.3,
+                                                          ),
+                                                      blurRadius: 8,
+                                                      offset: const Offset(
+                                                        0,
+                                                        4,
+                                                      ),
+                                                    ),
+                                                  ]
+                                                : [],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (isSelected) ...[
+                                                const Icon(
+                                                  Icons.check_rounded,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 6),
+                                              ],
+                                              Text(
+                                                member.profile?.name ??
+                                                    member.id.substring(0, 6),
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isSelected
+                                                      ? Colors.white
+                                                      : const Color(0xFF3D342C),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    })
+                                    .toList(),
                               )
                             else
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: colorSafeAzzurro.withValues(alpha: 0.08),
+                                  color: colorSafeAzzurro.withValues(
+                                    alpha: 0.08,
+                                  ),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
                                   _creationAccess!.assignableMembers.isEmpty
                                       ? 'No assignable member found'
                                       : 'Assigned to ${_creationAccess!.assignableMembers.first.profile?.name ?? 'self'}',
-                                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C)),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF3D342C),
+                                  ),
                                 ),
                               ),
                             const SizedBox(height: 24),
@@ -834,19 +1141,51 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                         physics: const BouncingScrollPhysics(),
                         child: Row(
                           children: [
-                            _buildActionPill(icon: Icons.calendar_today_rounded, text: _selectedDate != null ? _formatDate(_selectedDate!) : 'Set Date', color: colorOrange, onTap: _selectDate),
+                            _buildActionPill(
+                              icon: Icons.calendar_today_rounded,
+                              text: _selectedDate != null
+                                  ? _formatDate(_selectedDate!)
+                                  : 'Set Date',
+                              color: colorOrange,
+                              onTap: _selectDate,
+                            ),
                             const SizedBox(width: 10),
-                            _buildActionPill(icon: Icons.access_time_rounded, text: _startTime != null ? TimeOfDay.fromDateTime(_startTime!).format(context) : 'Start Time', color: colorOrange, onTap: () => _selectTime(true)),
+                            _buildActionPill(
+                              icon: Icons.access_time_rounded,
+                              text: _startTime != null
+                                  ? TimeOfDay.fromDateTime(
+                                      _startTime!,
+                                    ).format(context)
+                                  : 'Start Time',
+                              color: colorOrange,
+                              onTap: () => _selectTime(true),
+                            ),
                             const SizedBox(width: 10),
-                            _buildActionPill(icon: Icons.access_time_filled_rounded, text: _endTime != null ? TimeOfDay.fromDateTime(_endTime!).format(context) : 'End Time', color: colorOrange, onTap: () => _selectTime(false)),
+                            _buildActionPill(
+                              icon: Icons.access_time_filled_rounded,
+                              text: _endTime != null
+                                  ? TimeOfDay.fromDateTime(
+                                      _endTime!,
+                                    ).format(context)
+                                  : 'End Time',
+                              color: colorOrange,
+                              onTap: () => _selectTime(false),
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 30),
 
-                      Text('Sub-tasks', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C))),
+                      Text(
+                        'Sub-tasks',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF3D342C),
+                        ),
+                      ),
                       const SizedBox(height: 12),
-                      
+
                       ..._checklistItems.asMap().entries.map((entry) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -868,9 +1207,16 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                                   decoration: BoxDecoration(
                                     color: colorRed.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: colorRed.withValues(alpha: 0.3), width: 1.5),
+                                    border: Border.all(
+                                      color: colorRed.withValues(alpha: 0.3),
+                                      width: 1.5,
+                                    ),
                                   ),
-                                  child: Icon(Icons.remove_rounded, color: colorRed, size: 24),
+                                  child: Icon(
+                                    Icons.remove_rounded,
+                                    color: colorRed,
+                                    size: 24,
+                                  ),
                                 ),
                               ),
                             ],
@@ -882,10 +1228,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                       Align(
                         alignment: Alignment.center,
                         child: _buildActionPill(
-                          icon: Icons.add_rounded, 
-                          text: 'Sub-task', 
-                          color: colorSafeAzzurro, 
-                          onTap: _addSubTask
+                          icon: Icons.add_rounded,
+                          text: 'Sub-task',
+                          color: colorSafeAzzurro,
+                          onTap: _addSubTask,
                         ),
                       ),
                       const SizedBox(height: 40),
@@ -903,16 +1249,28 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: colorSafeAzzurro,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     shadowColor: colorSafeAzzurro.withValues(alpha: 0.4),
                   ),
                   child: _isSaving
                       ? const SizedBox(
                           width: 24,
                           height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          ),
                         )
-                      : Text('Save Task', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+                      : Text(
+                          'Save Task',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -923,21 +1281,51 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     );
   }
 
-  Widget _buildGlassTextField({required TextEditingController controller, required String hint, required Color color, bool isTitle = false}) {
+  Widget _buildGlassTextField({
+    required TextEditingController controller,
+    required String hint,
+    required Color color,
+    bool isTitle = false,
+  }) {
     return Container(
       height: isTitle ? 65 : 55,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: isTitle ? color.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.6),
+        color: isTitle
+            ? color.withValues(alpha: 0.1)
+            : Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(isTitle ? 24 : 16),
-        border: Border.all(color: isTitle ? color.withValues(alpha: 0.4) : color.withValues(alpha: 0.2), width: 1.5),
-        boxShadow: isTitle ? [BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))] : [],
+        border: Border.all(
+          color: isTitle
+              ? color.withValues(alpha: 0.4)
+              : color.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+        boxShadow: isTitle
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ]
+            : [],
       ),
       child: Center(
         child: TextField(
           controller: controller,
-          style: GoogleFonts.poppins(fontSize: isTitle ? 20 : 16, fontWeight: isTitle ? FontWeight.w800 : FontWeight.w600, color: const Color(0xFF3D342C)),
-          decoration: InputDecoration(border: InputBorder.none, hintText: hint, hintStyle: GoogleFonts.poppins(color: const Color(0xFF3D342C).withValues(alpha: 0.4))),
+          style: GoogleFonts.poppins(
+            fontSize: isTitle ? 20 : 16,
+            fontWeight: isTitle ? FontWeight.w800 : FontWeight.w600,
+            color: const Color(0xFF3D342C),
+          ),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            hintText: hint,
+            hintStyle: GoogleFonts.poppins(
+              color: const Color(0xFF3D342C).withValues(alpha: 0.4),
+            ),
+          ),
         ),
       ),
     );
@@ -968,7 +1356,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
               child: Text(
                 displayText,
                 style: GoogleFonts.poppins(
-                  color: roomExists ? const Color(0xFF3D342C) : const Color(0xFF3D342C).withValues(alpha: 0.5),
+                  color: roomExists
+                      ? const Color(0xFF3D342C)
+                      : const Color(0xFF3D342C).withValues(alpha: 0.5),
                   fontWeight: roomExists ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 15,
                 ),
@@ -978,7 +1368,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
               SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(color)),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
               )
             else
               Icon(Icons.keyboard_arrow_down_rounded, color: color),
@@ -988,7 +1381,12 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     );
   }
 
-  Widget _buildActionPill({required IconData icon, required String text, required Color color, required VoidCallback onTap}) {
+  Widget _buildActionPill({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -997,14 +1395,27 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: color, size: 18),
             const SizedBox(width: 8),
-            Text(text, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: color)),
+            Text(
+              text,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
@@ -1015,5 +1426,6 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 class _ChecklistDraft {
   final TextEditingController controller;
 
-  _ChecklistDraft({String text = ''}) : controller = TextEditingController(text: text);
+  _ChecklistDraft({String text = ''})
+    : controller = TextEditingController(text: text);
 }

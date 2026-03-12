@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'dart:ui'; // Aggiunto per l'effetto Glassmorphism
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
-import 'package:everyday_app/core/app_router.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
 
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
@@ -13,60 +13,94 @@ import '../providers/task_providers.dart';
 import '../widgets/task_card.dart';
 import 'add_task_screen.dart';
 
-class DailyTaskScreen extends ConsumerStatefulWidget {
+class DailyTaskScreen extends ConsumerWidget {
   final DateTime date;
 
   const DailyTaskScreen({super.key, required this.date});
 
   @override
-  ConsumerState<DailyTaskScreen> createState() => _DailyTaskScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUser = ref.watch(currentUserProvider);
+    final targetUserId = currentUser?.id ?? AppContext.instance.userId ?? '';
+
+    return UserTaskTimelineScreen(
+      date: date,
+      targetUserId: targetUserId,
+      readOnlyChecklist: false,
+    );
+  }
 }
 
-class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
+class UserTaskTimelineScreen extends ConsumerStatefulWidget {
+  final DateTime date;
+  final String targetUserId;
+  final bool readOnlyChecklist;
+
+  const UserTaskTimelineScreen({
+    super.key,
+    required this.date,
+    required this.targetUserId,
+    this.readOnlyChecklist = false,
+  });
+
+  @override
+  ConsumerState<UserTaskTimelineScreen> createState() =>
+      _UserTaskTimelineScreenState();
+}
+
+class _UserTaskTimelineScreenState
+    extends ConsumerState<UserTaskTimelineScreen> {
   TaskService get _taskService => ref.read(taskServiceProvider);
 
   final Color themeColor = const Color(0xFF5A8B9E); // Colore Premium Azzurro
 
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  Future<void> _openAddTaskFlow() async {
+    final changed = await Navigator.of(context).pushNamed(
+      AppRouteNames.addTask,
+      arguments: AddTaskRouteArgs(initialDate: widget.date, personalOnly: true),
+    );
 
-  List<TaskWithDetails> _filterTasksForDay(List<TaskWithDetails> tasks) {
-    final membershipId = AppContext.instance.membershipId;
-    if (membershipId == null) {
-      return const [];
-    }
-
-    return tasks
-        .where((task) => _isSameDay(task.task.taskDate, widget.date))
-        .where(
-          (task) => task.assignments.any(
-            (assignment) => assignment.memberId == membershipId,
+    if (changed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Task saved successfully',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
           ),
-        )
-        .toList();
-  }
-
-  void _refreshTasksStream() {
-    ref.invalidate(tasksStreamProvider);
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: themeColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _toggleSubtask({
     required String subtaskId,
     required bool isDone,
   }) async {
+    if (widget.readOnlyChecklist) {
+      return;
+    }
+
     try {
       await _taskService.setSubtaskDone(subtaskId: subtaskId, isDone: isDone);
-      _refreshTasksStream();
     } catch (error) {
       debugPrint('Error toggling subtask: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString(), style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          content: Text(
+            error.toString(),
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFFF28482),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       );
     }
@@ -76,6 +110,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
     required String assignmentId,
     required bool isDone,
   }) async {
+    if (widget.readOnlyChecklist) {
+      return;
+    }
+
     final nextStatus = isDone ? 'DONE' : 'TODO';
 
     try {
@@ -83,16 +121,20 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
         assignmentId: assignmentId,
         status: nextStatus,
       );
-      _refreshTasksStream();
     } catch (error) {
       debugPrint('Error toggling assignment status: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString(), style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          content: Text(
+            error.toString(),
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFFF28482),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       );
     }
@@ -102,20 +144,26 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
     required String assignmentId,
     required String note,
   }) async {
+    if (widget.readOnlyChecklist) {
+      return;
+    }
+
     final saved = await _taskService.addPersonnelNote(
       assignmentId: assignmentId,
       note: note,
     );
 
     if (!mounted) return;
-    if (saved) {
-      _refreshTasksStream();
-    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          saved ? 'Note saved successfully' : 'Notes not available yet on this environment',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+          saved
+              ? 'Note saved successfully'
+              : 'Notes not available yet on this environment',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: themeColor,
@@ -125,10 +173,14 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
   }
 
   Future<void> _openEditTask(TaskWithDetails task) async {
+    if (widget.readOnlyChecklist) {
+      return;
+    }
+
     final changed = await showModalBottomSheet<bool>(
       context: context,
-      isScrollControlled: true, 
-      backgroundColor: Colors.transparent, 
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => AddTaskSheet(
         initialDate: task.task.taskDate,
         personalOnly: true,
@@ -136,8 +188,20 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
       ),
     );
 
-    if (changed == true) {
-      _refreshTasksStream();
+    if (changed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Task updated successfully',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: themeColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      );
     }
   }
 
@@ -158,30 +222,47 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
-                  BoxShadow(color: const Color(0xFFF28482).withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
+                  BoxShadow(
+                    color: const Color(0xFFF28482).withValues(alpha: 0.2),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
                 ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 60, height: 60,
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
                       color: const Color(0xFFF28482).withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF28482), size: 30),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFF28482),
+                      size: 30,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     'Delete Task',
-                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C)),
+                    style: GoogleFonts.poppins(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF3D342C),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Are you sure you want to delete this task? This action cannot be undone.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.6)),
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF3D342C).withValues(alpha: 0.6),
+                    ),
                   ),
                   const SizedBox(height: 30),
                   Row(
@@ -194,10 +275,24 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFF3D342C).withValues(alpha: 0.1), width: 1.5),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF3D342C,
+                                ).withValues(alpha: 0.1),
+                                width: 1.5,
+                              ),
                             ),
                             child: Center(
-                              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.7))),
+                              child: Text(
+                                'Cancel',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(
+                                    0xFF3D342C,
+                                  ).withValues(alpha: 0.7),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -211,10 +306,25 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFF28482),
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: const Color(0xFFF28482).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFF28482,
+                                  ).withValues(alpha: 0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Center(
-                              child: Text('Delete', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                              child: Text(
+                                'Delete',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -240,10 +350,15 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
       if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString(), style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          content: Text(
+            error.toString(),
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFFF28482),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       );
       return false;
@@ -252,12 +367,17 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tasksAsync = ref.watch(tasksStreamProvider);
+    final tasksAsync = ref.watch(
+      userTaskTimelineProvider(
+        UserTaskTimelineQuery(
+          date: widget.date,
+          targetUserId: widget.targetUserId,
+        ),
+      ),
+    );
     final roomsAsync = ref.watch(taskRoomsProvider);
     final roomNamesById = roomsAsync.maybeWhen(
-      data: (rooms) => {
-        for (final room in rooms) room.id: room.name,
-      },
+      data: (rooms) => {for (final room in rooms) room.id: room.name},
       orElse: () => const <String, String>{},
     );
     final formattedDate = DateFormat('dd MMM, yyyy').format(widget.date);
@@ -266,8 +386,12 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [Color(0xFFF6F9FA), Color(0xFFE3EDF2)], // Sfondo Premium App
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFF6F9FA),
+              Color(0xFFE3EDF2),
+            ], // Sfondo Premium App
           ),
         ),
         child: SafeArea(
@@ -275,7 +399,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 20.0,
+                ),
                 child: _buildHeader(formattedDate),
               ),
               Expanded(
@@ -298,10 +425,14 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFFF28482,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(0xFFF28482).withValues(alpha: 0.3),
+                                color: const Color(
+                                  0xFFF28482,
+                                ).withValues(alpha: 0.3),
                               ),
                             ),
                             child: Row(
@@ -327,8 +458,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
                           ),
                         ),
                         data: (tasks) {
-                          final visibleTasks = _filterTasksForDay(tasks);
-                          if (visibleTasks.isEmpty) {
+                          if (tasks.isEmpty) {
                             return _buildEmptyState();
                           }
 
@@ -339,9 +469,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
                               bottom: 40.0,
                             ),
                             physics: const BouncingScrollPhysics(),
-                            itemCount: visibleTasks.length,
+                            itemCount: tasks.length,
                             itemBuilder: (context, index) {
-                              final task = visibleTasks[index];
+                              final task = tasks[index];
                               return TaskCard(
                                 key: ValueKey(task.task.id),
                                 taskWithDetails: task,
@@ -350,6 +480,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
                                 onSaveNote: _saveNote,
                                 onEditTask: _openEditTask,
                                 onConfirmDeleteTask: _deleteTask,
+                                targetUserId: widget.targetUserId,
+                                readOnlyChecklist: widget.readOnlyChecklist,
                                 roomName: task.task.roomId != null
                                     ? roomNamesById[task.task.roomId!]
                                     : null,
@@ -376,47 +508,70 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
-            width: 48, height: 48,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Colors.white, shape: BoxShape.circle,
-              border: Border.all(color: themeColor.withValues(alpha: 0.1), width: 1),
-              boxShadow: [BoxShadow(color: themeColor.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: themeColor.withValues(alpha: 0.1),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: themeColor.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            child: Icon(Icons.arrow_back_ios_new_rounded, color: themeColor, size: 20),
+            child: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: themeColor,
+              size: 20,
+            ),
           ),
         ),
         Column(
           children: [
             Text(
               'Daily Task',
-              style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: themeColor, letterSpacing: -0.5),
+              style: GoogleFonts.poppins(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: themeColor,
+                letterSpacing: -0.5,
+              ),
             ),
             Text(
-              formattedDate, 
-              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.5)),
+              formattedDate,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF3D342C).withValues(alpha: 0.5),
+              ),
             ),
           ],
         ),
         GestureDetector(
-          onTap: () async {
-            final changed = await AppRouter.navigate(
-              context,
-              AppRouteNames.addTask,
-              arguments: AddTaskRouteArgs(
-                initialDate: widget.date,
-                personalOnly: true,
-              ),
-            );
-            if (changed == true) {
-              _refreshTasksStream();
-            }
-          },
+          onTap: _openAddTaskFlow,
           child: Container(
-            width: 48, height: 48,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Colors.white, shape: BoxShape.circle,
-              border: Border.all(color: themeColor.withValues(alpha: 0.1), width: 1),
-              boxShadow: [BoxShadow(color: themeColor.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: themeColor.withValues(alpha: 0.1),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: themeColor.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: Icon(Icons.add_rounded, color: themeColor, size: 28),
           ),
@@ -444,7 +599,11 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> {
                 color: themeColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.assignment_turned_in_rounded, size: 48, color: themeColor.withValues(alpha: 0.7)),
+              child: Icon(
+                Icons.assignment_turned_in_rounded,
+                size: 48,
+                color: themeColor.withValues(alpha: 0.7),
+              ),
             ),
             const SizedBox(height: 24),
             Text(
