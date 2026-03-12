@@ -1,3 +1,4 @@
+// TODO migrate to features/household
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +9,7 @@ import 'package:everyday_app/features/household/data/models/household_room.dart'
 import 'package:everyday_app/features/household/data/services/home_configuration_service.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/household/presentation/providers/household_providers.dart';
+import 'package:everyday_app/core/app_context.dart'; // Assicurati che questo import ci sia
 
 class YourHomeScreen extends ConsumerStatefulWidget {
   const YourHomeScreen({super.key});
@@ -36,6 +38,12 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   final Color primaryColor = const Color(0xFF5A8B9E);
   final Color accentColor = const Color(0xFFF4A261);
   final Color errorColor = const Color(0xFFF28482);
+
+  // --- CONTROLLO RUOLO: Ritorna true solo se l'utente è HOST ---
+  bool get _isHost {
+    final role = AppContext.instance.activeMembership?.role;
+    return role?.toUpperCase() == 'HOST';
+  }
 
   String _formatRoomTypeLabel(String rawType) {
     final normalized = rawType.trim().replaceAll('_', ' ');
@@ -115,6 +123,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     required String floorId,
     String? roomType,
   }) async {
+    if (!_isHost) return; // Blocco di sicurezza extra
+
     final householdId = ref.read(currentHouseholdIdProvider);
     if (householdId == null || householdId.isEmpty) {
       return;
@@ -142,6 +152,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   }
 
   Future<void> _addFloor(String floorName) async {
+    if (!_isHost) return; // Blocco di sicurezza extra
+
     final householdId = ref.read(currentHouseholdIdProvider);
     if (householdId == null || householdId.isEmpty) {
       return;
@@ -181,6 +193,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   }
 
   Future<void> _removeRoom(String id) async {
+    if (!_isHost) return; // Blocco di sicurezza extra
+
     final householdId = ref.read(currentHouseholdIdProvider);
     if (householdId == null || householdId.isEmpty) {
       return;
@@ -206,6 +220,11 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Forza la disattivazione dell'edit mode se l'utente non è host (caso estremo)
+    if (!_isHost && _isEditMode) {
+      _isEditMode = false;
+    }
+
     final householdId = ref.watch(currentHouseholdIdProvider);
     if (householdId == null || householdId.isEmpty) {
       return _buildScaffoldBody(isLoading: false);
@@ -234,8 +253,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
             final visibleRooms = selectedFloorId == null
                 ? const <HouseholdRoom>[]
                 : rooms
-                      .where((room) => room.floorId == selectedFloorId)
-                      .toList();
+                    .where((room) => room.floorId == selectedFloorId)
+                    .toList();
 
             return _buildScaffoldBody(
               isLoading: false,
@@ -291,51 +310,54 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // PULSANTE EDIT ROOMS
-                            GestureDetector(
-                              onTap: () =>
-                                  setState(() => _isEditMode = !_isEditMode),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _isEditMode
-                                      ? errorColor.withValues(alpha: 0.1)
-                                      : Colors.white.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: _isEditMode
-                                        ? errorColor.withValues(alpha: 0.4)
-                                        : primaryColor.withValues(alpha: 0.2),
-                                    width: 1.5,
+                            // PULSANTE EDIT ROOMS (VISIBILE SOLO ALL'HOST)
+                            if (_isHost)
+                              GestureDetector(
+                                onTap: () =>
+                                    setState(() => _isEditMode = !_isEditMode),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 10,
                                   ),
-                                  boxShadow: _isEditMode
-                                      ? []
-                                      : [
-                                          BoxShadow(
-                                            color: primaryColor.withValues(
-                                              alpha: 0.05,
+                                  decoration: BoxDecoration(
+                                    color: _isEditMode
+                                        ? errorColor.withValues(alpha: 0.1)
+                                        : Colors.white.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: _isEditMode
+                                          ? errorColor.withValues(alpha: 0.4)
+                                          : primaryColor.withValues(alpha: 0.2),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: _isEditMode
+                                        ? []
+                                        : [
+                                            BoxShadow(
+                                              color: primaryColor.withValues(
+                                                alpha: 0.05,
+                                              ),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 3),
                                             ),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 3),
-                                          ),
-                                        ],
-                                ),
-                                child: Text(
-                                  _isEditMode ? 'Done' : 'Edit Rooms',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: _isEditMode
-                                        ? errorColor
-                                        : primaryColor,
+                                          ],
+                                  ),
+                                  child: Text(
+                                    _isEditMode ? 'Done' : 'Edit Rooms',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: _isEditMode
+                                          ? errorColor
+                                          : primaryColor,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              )
+                            else
+                              const SizedBox(), // Spazio vuoto per mantenere il selettore piano a destra
 
                             // SELETTORE PIANO
                             GestureDetector(
@@ -437,38 +459,38 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                         child: CircularProgressIndicator(color: primaryColor),
                       )
                     : (selectedFloorId == null
-                          ? _buildNoFloorsState()
-                          : visibleRooms.isEmpty
-                          ? _buildNoRoomsState(
-                              selectedFloorName: selectedFloorName,
-                              selectedFloorId: selectedFloorId,
-                            )
-                          : GridView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24.0,
-                                vertical: 10.0,
-                              ),
-                              physics: const BouncingScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2, // 2 colonne
-                                    crossAxisSpacing: 16,
-                                    mainAxisSpacing: 16,
-                                    childAspectRatio: 1.0, // Quadrati perfetti
-                                  ),
-                              // Numero di stanze + 1 per il bottone "Aggiungi"
-                              itemCount: visibleRooms.length + 1,
-                              itemBuilder: (context, index) {
-                                if (index == visibleRooms.length) {
-                                  return _buildAddRoomCard(
-                                    selectedFloorId: selectedFloorId,
-                                    selectedFloorName: selectedFloorName,
-                                  );
-                                }
-                                final room = visibleRooms[index];
-                                return _buildRoomCard(room);
-                              },
-                            )),
+                        ? _buildNoFloorsState()
+                        : visibleRooms.isEmpty && !_isHost // Se è vuoto e NON sei host
+                            ? _buildNoRoomsState(
+                                selectedFloorName: selectedFloorName,
+                                selectedFloorId: selectedFloorId,
+                              )
+                            : GridView.builder(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24.0,
+                                  vertical: 10.0,
+                                ),
+                                physics: const BouncingScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2, // 2 colonne
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: 1.0, // Quadrati perfetti
+                                ),
+                                // Se è HOST aggiunge 1 per la card "+", sennò mostra solo le stanze
+                                itemCount: visibleRooms.length + (_isHost ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (_isHost && index == visibleRooms.length) {
+                                    return _buildAddRoomCard(
+                                      selectedFloorId: selectedFloorId,
+                                      selectedFloorName: selectedFloorName,
+                                    );
+                                  }
+                                  final room = visibleRooms[index];
+                                  return _buildRoomCard(room);
+                                },
+                              )),
               ),
             ],
           ),
@@ -611,8 +633,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
           ),
         ),
 
-        // Badge "Rimuovi" (visibile solo se hai premuto "Edit Rooms")
-        if (_isEditMode)
+        // Badge "Rimuovi" (visibile solo se hai premuto "Edit Rooms" e sei HOST)
+        if (_isEditMode && _isHost)
           Positioned(
             top: 0,
             right: 0,
@@ -780,7 +802,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
               ...floors.asMap().entries.map((entry) {
                 final index = entry.key;
                 final floor = entry.value;
-                final isLast = index == floors.length - 1;
+                // È l'ultimo se non sono l'host. Se sono l'host c'è il bottone "Add" dopo.
+                final isLast = !_isHost && index == floors.length - 1;
 
                 return _buildFloorOption(
                   context,
@@ -790,36 +813,38 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                 );
               }),
 
-              const SizedBox(height: 6),
-              Container(
-                height: 1,
-                color: const Color(0xFF3D342C).withValues(alpha: 0.08),
-              ),
-              const SizedBox(height: 6),
-
-              GestureDetector(
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _openAddFloorFlow();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Row(
-                    children: [
-                      Icon(Icons.add_rounded, color: primaryColor),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Add floor',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: primaryColor,
+              // Tasto Aggiungi Piano visibile solo all'HOST
+              if (_isHost) ...[
+                const SizedBox(height: 6),
+                Container(
+                  height: 1,
+                  color: const Color(0xFF3D342C).withValues(alpha: 0.08),
+                ),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _openAddFloorFlow();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_rounded, color: primaryColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add floor',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: primaryColor,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         );
@@ -876,7 +901,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     );
   }
 
-  // --- MODAL: SCELTA TIPO STANZA (STILE VETRO/PREMIUM DA IMMAGINE) ---
+  // --- MODAL: SCELTA TIPO STANZA ---
   void _showRoomTypePickerModal(
     BuildContext context,
     Function(String?) onSelected,
@@ -977,9 +1002,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     );
   }
 
-  // ==========================================
-  // MODAL: AGGIUNGI NUOVO PIANO (Floor)
-  // ==========================================
+  // --- MODAL: AGGIUNGI NUOVO PIANO (Floor) ---
   Future<String?> _showAddFloorModal(BuildContext context) {
     final floorNameController = TextEditingController();
 
@@ -1106,9 +1129,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     );
   }
 
-  // ==========================================
-  // MODAL: AGGIUNGI NUOVA STANZA (Room)
-  // ==========================================
+  // --- MODAL: AGGIUNGI NUOVA STANZA (Room) ---
   Future<_NewRoomData?> _showAddRoomModal(
     BuildContext context, {
     required String selectedFloorName,
@@ -1230,7 +1251,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                         ),
                         const SizedBox(height: 10),
 
-                        // --- NUOVO SELETTORE TIPO STANZA (SIMILE A ADD_TASK) ---
+                        // --- SELETTORE TIPO STANZA ---
                         GestureDetector(
                           onTap: () {
                             _showRoomTypePickerModal(context, (
@@ -1378,7 +1399,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Start by adding the first floor\nof your beautiful home.',
+              // Messaggio diverso in base al ruolo!
+              _isHost
+                  ? 'Start by adding the first floor\nof your beautiful home.'
+                  : 'Your host hasn\'t added\nany floors yet.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 15,
@@ -1386,46 +1410,50 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                 color: const Color(0xFF3D342C).withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 32),
-            GestureDetector(
-              onTap: _openAddFloorFlow,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: primaryColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryColor.withValues(alpha: 0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Add Floor',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+            
+            // Bottone per aggiungere visibile solo all'HOST
+            if (_isHost) ...[
+              const SizedBox(height: 32),
+              GestureDetector(
+                onTap: _openAddFloorFlow,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Add Floor',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -1469,7 +1497,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Add your first room to $selectedFloorName.',
+              // Messaggio diverso in base al ruolo!
+              _isHost
+                  ? 'Add your first room to $selectedFloorName.'
+                  : 'There are no rooms on this floor yet.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 15,
@@ -1477,57 +1508,61 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                 color: const Color(0xFF3D342C).withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 32),
-            GestureDetector(
-              onTap: () async {
-                final newRoom = await _showAddRoomModal(
-                  context,
-                  selectedFloorName: selectedFloorName,
-                );
-                if (newRoom == null || newRoom.name.trim().isEmpty) return;
-                await _addRoom(
-                  roomName: newRoom.name.trim(),
-                  floorId: selectedFloorId,
-                  roomType: newRoom.roomType,
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: primaryColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryColor.withValues(alpha: 0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Add Room',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+            
+            // Bottone per aggiungere visibile solo all'HOST
+            if (_isHost) ...[
+              const SizedBox(height: 32),
+              GestureDetector(
+                onTap: () async {
+                  final newRoom = await _showAddRoomModal(
+                    context,
+                    selectedFloorName: selectedFloorName,
+                  );
+                  if (newRoom == null || newRoom.name.trim().isEmpty) return;
+                  await _addRoom(
+                    roomName: newRoom.name.trim(),
+                    floorId: selectedFloorId,
+                    roomType: newRoom.roomType,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Add Room',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),

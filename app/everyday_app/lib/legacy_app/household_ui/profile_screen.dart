@@ -1458,6 +1458,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final nickname = _activeMembership?.nickname;
     final role = _activeMembership?.role ?? 'Member';
     final isHost = role.toUpperCase() == 'HOST';
+    
+    // --- VARIABILE AGGIUNTA PER IL PERSONNEL ---
+    final isPersonnel = role.toUpperCase() == 'PERSONNEL'; 
+    
     final avatarUrl = _activeMembership?.avatarUrl;
 
     final displayName = (nickname != null && nickname.trim().isNotEmpty)
@@ -1578,8 +1582,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                                 border: InputBorder.none,
                                                 contentPadding:
                                                     EdgeInsets.symmetric(
-                                                      vertical: 12,
-                                                    ),
+                                                  vertical: 12,
+                                                ),
                                               ),
                                               style: GoogleFonts.poppins(
                                                 fontSize: 22,
@@ -1658,24 +1662,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       child: ClipOval(
                                         child:
                                             avatarUrl != null &&
-                                                avatarUrl.isNotEmpty
-                                            ? Image.network(
-                                                _cacheBustedAvatarUrl(
-                                                  avatarUrl,
-                                                ),
-                                                fit: BoxFit.cover,
-                                                errorBuilder:
-                                                    (
-                                                      _,
-                                                      error,
-                                                      stackTrace,
-                                                    ) => Center(
-                                                      child: Text(
-                                                        _initialFromName(
-                                                          displayName,
-                                                        ),
-                                                        style:
-                                                            GoogleFonts.poppins(
+                                                    avatarUrl.isNotEmpty
+                                                ? Image.network(
+                                                    _cacheBustedAvatarUrl(
+                                                      avatarUrl,
+                                                    ),
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder:
+                                                        (
+                                                          _,
+                                                          error,
+                                                          stackTrace,
+                                                        ) => Center(
+                                                          child: Text(
+                                                            _initialFromName(
+                                                              displayName,
+                                                            ),
+                                                            style:
+                                                                GoogleFonts.poppins(
                                                               fontSize: 26,
                                                               fontWeight:
                                                                   FontWeight
@@ -1683,19 +1687,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                                               color:
                                                                   Colors.white,
                                                             ),
+                                                          ),
+                                                        ),
+                                                  )
+                                                : Center(
+                                                    child: Text(
+                                                      _initialFromName(displayName),
+                                                      style: GoogleFonts.poppins(
+                                                        fontSize: 26,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Colors.white,
                                                       ),
                                                     ),
-                                              )
-                                            : Center(
-                                                child: Text(
-                                                  _initialFromName(displayName),
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 26,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
                                                   ),
-                                                ),
-                                              ),
                                       ),
                                     ),
                                     if (_isUploadingAvatar)
@@ -1759,19 +1763,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ),
                                 child: _editingNickname
                                     ? (_isSavingNickname
-                                          ? const SizedBox(
-                                              width: 14,
-                                              height: 14,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
-                                              ),
-                                            )
-                                          : const Icon(
-                                              Icons.check_rounded,
+                                        ? const SizedBox(
+                                            width: 14,
+                                            height: 14,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
                                               color: Colors.white,
-                                              size: 14,
-                                            ))
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.check_rounded,
+                                            color: Colors.white,
+                                            size: 14,
+                                          ))
                                     : const Icon(
                                         Icons.edit_outlined,
                                         color: Color(0xFF3D342C),
@@ -1787,14 +1791,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const SizedBox(height: 32),
 
                     // BOTTONI PREMIUM
-                    _buildPremiumMenuButton(
-                      icon: Icons.fastfood_outlined,
-                      text: 'Your Diet',
-                      onTap: () {
-                        Navigator.of(context).pushNamed(AppRouteNames.diet);
-                      },
-                    ),
-                    const SizedBox(height: 16),
+                    // --- LOGICA NASCOSTA PER PERSONNEL ---
+                    if (!isPersonnel) ...[
+                      _buildPremiumMenuButton(
+                        icon: Icons.fastfood_outlined,
+                        text: 'Your Diet',
+                        onTap: () {
+                          Navigator.of(context).pushNamed(AppRouteNames.diet);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     _buildPremiumMenuButton(
                       icon: Icons.receipt_long_rounded,
                       text: 'Your Home',
@@ -1824,55 +1832,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     Row(
                       children: [
-                        // Bottone Invite
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: _handleInviteMember,
-                            child: Container(
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: const Color(
-                                    0xFF5A8B9E,
-                                  ).withValues(alpha: 0.3),
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
+                        // Bottone Invite (MOSTRATO SOLO SE NON SEI PERSONNEL)
+                        if (!isPersonnel) ...[
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _handleInviteMember,
+                              child: Container(
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
                                     color: const Color(
                                       0xFF5A8B9E,
-                                    ).withValues(alpha: 0.05),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    ).withValues(alpha: 0.3),
+                                    width: 1.5,
                                   ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.person_add_alt_1_rounded,
-                                    color: Color(0xFF5A8B9E),
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Invite',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF5A8B9E),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF5A8B9E,
+                                      ).withValues(alpha: 0.05),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.person_add_alt_1_rounded,
+                                      color: Color(0xFF5A8B9E),
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Invite',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF5A8B9E),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Bottone Leave/Delete
+                          const SizedBox(width: 16),
+                        ],
+                        
+                        // Bottone Leave/Delete (MOSTRATO A TUTTI)
                         Expanded(
                           child: GestureDetector(
                             onTap: _handleHouseholdSettingsAction,
@@ -1922,6 +1933,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                           ),
                         ),
+
+                        // --- TRUCCHETTO: Spazio vuoto per il Personnel ---
+                        // Previene che il bottone Leave si allarghi su tutta la riga
+                        if (isPersonnel) ...[
+                          const SizedBox(width: 16),
+                          const Spacer(),
+                        ],
                       ],
                     ),
                     const SizedBox(
