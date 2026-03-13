@@ -10,6 +10,7 @@ class Task {
   final String? timeTo;
   final String repeatRule; // 'DAILY', 'WEEKLY', 'MONTHLY'
   final String visibility; // 'ALL', 'HOST_ONLY'...
+  final String? createdBy; // household_member id of creator
 
   Task({
     required this.id,
@@ -22,6 +23,7 @@ class Task {
     this.timeTo,
     required this.repeatRule,
     required this.visibility,
+    this.createdBy,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,7 @@ class Task {
       timeTo: json['time_to'],
       repeatRule: json['repeat_rule'] ?? 'NONE',
       visibility: json['visibility'] ?? 'ALL',
+      createdBy: json['created_by'] as String?,
     );
   }
 }

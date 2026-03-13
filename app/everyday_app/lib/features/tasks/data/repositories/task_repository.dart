@@ -373,6 +373,56 @@ class TaskRepository {
           }, onError: handleError);
     }
 
+    final taskRealtimeChannel = supabase
+        .channel('schema-db-changes:tasks:$householdId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'tasks',
+          callback: (payload) {
+            Future<void>(() async {
+              if (disposed) {
+                return;
+              }
+
+              final deletedTaskId = payload.oldRecord['id'] as String?;
+              if (deletedTaskId == null) {
+                return;
+              }
+
+              final scopedTaskIds = currentTaskIds().toSet();
+              if (!scopedTaskIds.contains(deletedTaskId)) {
+                return;
+              }
+
+              final freshTasks = await supabase
+                  .from('tasks')
+                  .select('*')
+                  .eq('household_id', householdId);
+
+              if (disposed) {
+                return;
+              }
+
+              latestTaskRows = List<Map<String, dynamic>>.from(freshTasks)
+                  .map((row) => Map<String, dynamic>.from(row))
+                  .toList(growable: false);
+
+              await ensureDetailSubscriptions();
+              await refreshSubtaskCache();
+              await refreshAssignmentCache();
+
+              emitLatestSnapshot(
+                source: 'task_delete_realtime_event',
+                taskId: deletedTaskId,
+              );
+            }).catchError((Object error, StackTrace stackTrace) {
+              handleError(error, stackTrace);
+            });
+          },
+        )
+        .subscribe();
+
     final taskSubscription = supabase
         .from('tasks')
         .stream(primaryKey: ['id'])
@@ -394,6 +444,7 @@ class TaskRepository {
     controller.onCancel = () async {
       disposed = true;
       await taskSubscription.cancel();
+      await supabase.removeChannel(taskRealtimeChannel);
       await supabase.removeChannel(subtaskRealtimeChannel);
       await assignmentSubscription?.cancel();
       await controller.close();

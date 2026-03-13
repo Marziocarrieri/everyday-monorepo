@@ -121,13 +121,29 @@ class _TaskCardState extends State<TaskCard> {
         widget.interactionMode == TaskInteractionMode.standard;
   }
 
+  /// Returns true when the current user has ownership-based edit permission:
+  /// - personnel can never edit
+  /// - others can edit only their own tasks (matched via membership id)
+  bool get _canEditByPermission {
+    final role =
+        (AppContext.instance.activeMembership?.role ?? '').toLowerCase();
+    if (role == 'personnel') return false;
+    final membershipId = AppContext.instance.membershipId;
+    return membershipId != null &&
+        widget.taskWithDetails.task.createdBy == membershipId;
+  }
+
   bool get _canDeleteTask {
     return !widget.readOnlyChecklist &&
-        widget.interactionMode == TaskInteractionMode.standard;
+        widget.interactionMode == TaskInteractionMode.standard &&
+        _canEditByPermission;
   }
 
   bool get _canEditTaskMetadata {
     if (widget.readOnlyChecklist) {
+      return false;
+    }
+    if (!_canEditByPermission) {
       return false;
     }
 

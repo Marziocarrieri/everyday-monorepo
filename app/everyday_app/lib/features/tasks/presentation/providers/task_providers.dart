@@ -54,6 +54,7 @@ Task _copyTask(Task task) {
     timeTo: task.timeTo,
     repeatRule: task.repeatRule,
     visibility: task.visibility,
+    createdBy: task.createdBy,
   );
 }
 

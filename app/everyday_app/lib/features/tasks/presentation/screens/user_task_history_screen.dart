@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
@@ -158,6 +159,9 @@ class UserTaskHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final householdId = ref.watch(currentHouseholdIdProvider);
+    final isPersonnel =
+        (AppContext.instance.activeMembership?.role ?? '').toLowerCase() ==
+        'personnel';
     final tasksAsync = ref.watch(tasksStreamProvider);
     final roomsAsync = ref.watch(taskRoomsProvider);
     final roomNamesById = roomsAsync.maybeWhen(
@@ -186,6 +190,7 @@ class UserTaskHistoryScreen extends ConsumerWidget {
                 child: _buildHeader(
                   context: context,
                   onAddTask: () => _openAddTask(context),
+                  showAddButton: !isPersonnel,
                 ),
               ),
               Expanded(
@@ -261,6 +266,7 @@ class UserTaskHistoryScreen extends ConsumerWidget {
   Widget _buildHeader({
     required BuildContext context,
     required VoidCallback onAddTask,
+    bool showAddButton = true,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -280,10 +286,13 @@ class UserTaskHistoryScreen extends ConsumerWidget {
             ),
           ),
         ),
-        GestureDetector(
-          onTap: onAddTask,
-          child: _buildHeaderIcon(Icons.add_rounded),
-        ),
+        if (showAddButton)
+          GestureDetector(
+            onTap: onAddTask,
+            child: _buildHeaderIcon(Icons.add_rounded),
+          )
+        else
+          const SizedBox(width: 48, height: 48),
       ],
     );
   }
