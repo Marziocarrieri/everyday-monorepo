@@ -159,9 +159,12 @@ class UserTaskHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final householdId = ref.watch(currentHouseholdIdProvider);
-    final isPersonnel =
-        (AppContext.instance.activeMembership?.role ?? '').toLowerCase() ==
-        'personnel';
+    
+    // --- NUOVO CONTROLLO RUOLO: Blocca Cohost e Personnel ---
+    final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
+    final cleanRole = role.replaceAll('-', '').replaceAll('_', '').replaceAll(' ', '');
+    final isCohostOrPersonnel = cleanRole == 'COHOST' || cleanRole == 'PERSONNEL';
+
     final tasksAsync = ref.watch(tasksStreamProvider);
     final roomsAsync = ref.watch(taskRoomsProvider);
     final roomNamesById = roomsAsync.maybeWhen(
@@ -190,7 +193,8 @@ class UserTaskHistoryScreen extends ConsumerWidget {
                 child: _buildHeader(
                   context: context,
                   onAddTask: () => _openAddTask(context),
-                  showAddButton: !isPersonnel,
+                  // Nascondi il bottone se è Cohost o Personnel
+                  showAddButton: !isCohostOrPersonnel,
                 ),
               ),
               Expanded(

@@ -24,6 +24,14 @@ class _PetsScreenState extends State<PetsScreen> {
   bool _isLoading = false;
   String? _error;
 
+  // --- CONTROLLO RUOLO ---
+  bool get _isPersonnel {
+    final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
+    // Pulisco la stringa per sicurezza
+    final cleanRole = role.replaceAll('-', '').replaceAll('_', '').replaceAll(' ', '');
+    return cleanRole == 'PERSONNEL';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +75,9 @@ class _PetsScreenState extends State<PetsScreen> {
 
   // --- FUNZIONE ELIMINA PET ---
   Future<bool> _confirmDeletePet(Pet pet) async {
+    // Sicurezza aggiuntiva: se è Personnel blocca l'azione
+    if (_isPersonnel) return false;
+
     // 1. Mostriamo il Dialog in Vetro per confermare
     final confirmed = await showDialog<bool>(
       context: context,
@@ -223,10 +234,15 @@ class _PetsScreenState extends State<PetsScreen> {
                         letterSpacing: 0.5
                       ),
                     ),
-                    GestureDetector(
-                      onTap: _openAddPetSheet, // <--- APRE IL POPUP
-                      child: _buildHeaderIcon(Icons.add_rounded),
-                    ),
+                    // VISIBILE SOLO SE NON SEI PERSONNEL
+                    if (!_isPersonnel)
+                      GestureDetector(
+                        onTap: _openAddPetSheet, // <--- APRE IL POPUP
+                        child: _buildHeaderIcon(Icons.add_rounded),
+                      )
+                    else 
+                      // Spazio vuoto per mantenere centrato il titolo
+                      const SizedBox(width: 48), 
                   ],
                 ),
               ),
@@ -251,7 +267,8 @@ class _PetsScreenState extends State<PetsScreen> {
                                     // --- DISMISSIBLE PER LO SWIPE TO DELETE ---
                                     child: Dismissible(
                                       key: ValueKey(pet.id),
-                                      direction: DismissDirection.endToStart,
+                                      // SE SEI PERSONNEL, LO SWIPE È DISABILITATO
+                                      direction: _isPersonnel ? DismissDirection.none : DismissDirection.endToStart,
                                       confirmDismiss: (_) async {
                                         return await _confirmDeletePet(pet);
                                       },
@@ -307,7 +324,8 @@ class _PetsScreenState extends State<PetsScreen> {
               border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
             ),
             child: Icon(
-              Icons.add_rounded,
+              // Se è personnel metto un'icona vuota invece del più
+              _isPersonnel ? Icons.pets : Icons.add_rounded,
               size: 64,
               color: Colors.white.withValues(alpha: 0.5),
             ),
@@ -323,7 +341,10 @@ class _PetsScreenState extends State<PetsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add your furry friends to track\ntheir activities and care.',
+            // Testo diverso in base al ruolo
+            _isPersonnel 
+               ? 'There are no pets added to this home yet.'
+               : 'Add your furry friends to track\ntheir activities and care.',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               fontSize: 15,
@@ -331,21 +352,25 @@ class _PetsScreenState extends State<PetsScreen> {
               color: Colors.white.withValues(alpha: 0.7),
             ),
           ),
-          const SizedBox(height: 40),
-          Icon(
-            Icons.arrow_upward_rounded,
-            color: Colors.white.withValues(alpha: 0.4),
-            size: 32,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap the + button to add one',
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.5),
+          
+          // NASCONDO LA FRECCIA E L'ISTRUZIONE SE L'UTENTE E' PERSONNEL
+          if (!_isPersonnel) ...[
+            const SizedBox(height: 40),
+            Icon(
+              Icons.arrow_upward_rounded,
+              color: Colors.white.withValues(alpha: 0.4),
+              size: 32,
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap the + button to add one',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+          ]
         ],
       ),
     );

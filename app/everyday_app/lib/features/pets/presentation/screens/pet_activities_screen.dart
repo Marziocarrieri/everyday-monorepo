@@ -25,6 +25,13 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   
   final Color brandBlue = const Color(0xFF5A8B9E);
 
+  // --- CONTROLLO RUOLO ---
+  bool get _isPersonnel {
+    final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
+    final cleanRole = role.replaceAll('-', '').replaceAll('_', '').replaceAll(' ', '');
+    return cleanRole == 'PERSONNEL';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,7 +60,7 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
       setState(() {
         _error = error.toString();
       });
-      debugPrint('UI Error loading members: $error');
+      debugPrint('UI Error loading activities: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -64,6 +71,9 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   }
 
   Future<bool> _confirmDeleteActivity(PetActivity activity) async {
+    // Sicurezza: blocca l'eliminazione se è Personnel
+    if (_isPersonnel) return false;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -209,10 +219,15 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
                     'Activities', 
                     style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)
                   ),
-                  GestureDetector(
-                    onTap: _openAddActivitySheet,
-                    child: _buildHeaderIcon(Icons.add_rounded),
-                  ),
+                  // Mostra il tasto '+' SOLO se NON è personnel
+                  if (!_isPersonnel)
+                    GestureDetector(
+                      onTap: _openAddActivitySheet,
+                      child: _buildHeaderIcon(Icons.add_rounded),
+                    )
+                  else
+                    // Spazio vuoto per mantenere il titolo "Activities" al centro
+                    const SizedBox(width: 48), 
                 ],
               ),
             ),
@@ -234,7 +249,8 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
                                 
                                 return Dismissible(
                                   key: ValueKey(activity.id), // Aggiornato per usare l'id univoco
-                                  direction: DismissDirection.endToStart,
+                                  // Se è Personnel disabilita lo swipe
+                                  direction: _isPersonnel ? DismissDirection.none : DismissDirection.endToStart,
                                   confirmDismiss: (_) async {
                                     return await _confirmDeleteActivity(activity);
                                   },
@@ -287,20 +303,31 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
             ),
-            child: Icon(Icons.add_rounded, size: 64, color: Colors.white.withValues(alpha: 0.5)),
+            child: Icon(
+              // Cambia icona se è personnel
+              _isPersonnel ? Icons.pets : Icons.add_rounded, 
+              size: 64, 
+              color: Colors.white.withValues(alpha: 0.5)
+            ),
           ),
           const SizedBox(height: 24),
           Text('No Activities Yet', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
           const SizedBox(height: 8),
           Text(
-            'Track walks, vet visits,\nor feeding times here.',
+            // Cambia testo se è personnel
+            _isPersonnel 
+              ? 'There are no recorded activities\nfor this pet yet.'
+              : 'Track walks, vet visits,\nor feeding times here.',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.7)),
           ),
-          const SizedBox(height: 40),
-          Icon(Icons.arrow_upward_rounded, color: Colors.white.withValues(alpha: 0.4), size: 32),
-          const SizedBox(height: 8),
-          Text('Tap the + button to add one', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.5))),
+          // Nascondi la freccia e il testo "+ button" se è personnel
+          if (!_isPersonnel) ...[
+            const SizedBox(height: 40),
+            Icon(Icons.arrow_upward_rounded, color: Colors.white.withValues(alpha: 0.4), size: 32),
+            const SizedBox(height: 8),
+            Text('Tap the + button to add one', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.5))),
+          ]
         ],
       ),
     );
