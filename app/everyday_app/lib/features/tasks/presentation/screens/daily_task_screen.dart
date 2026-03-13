@@ -62,14 +62,19 @@ class _UserTaskTimelineScreenState
 
   @override
   void dispose() {
-    // Invalidate the provider using a local ref captured before disposal.
-    // We read the container directly to avoid using ref after dispose.
     try {
       ref.invalidate(tasksStreamProvider);
     } catch (_) {
       // ref may already be invalidated if the widget tree is torn down
     }
     super.dispose();
+  }
+
+  // --- CONTROLLO RUOLO: VERIFICA SE L'UTENTE E' PERSONNEL ---
+  bool get _isPersonnel {
+    final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
+    final cleanRole = role.replaceAll('-', '').replaceAll('_', '').replaceAll(' ', '');
+    return cleanRole == 'PERSONNEL';
   }
 
   Future<void> _openAddTaskFlow() async {
@@ -432,7 +437,11 @@ class _UserTaskTimelineScreenState
                   horizontal: 24.0,
                   vertical: 20.0,
                 ),
-                child: _buildHeader(formattedDate),
+                child: _buildHeader(
+                  formattedDate: formattedDate,
+                  // NASCONDE IL BOTTONE SE L'UTENTE E' PERSONNEL
+                  showAddButton: !_isPersonnel,
+                ),
               ),
               Expanded(
                 child: Column(
@@ -530,7 +539,10 @@ class _UserTaskTimelineScreenState
     );
   }
 
-  Widget _buildHeader(String formattedDate) {
+  Widget _buildHeader({
+    required String formattedDate,
+    bool showAddButton = true, // Parametro aggiunto per controllare la visibilità
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -582,29 +594,33 @@ class _UserTaskTimelineScreenState
             ),
           ],
         ),
-        GestureDetector(
-          onTap: _openAddTaskFlow,
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: themeColor.withValues(alpha: 0.1),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: themeColor.withValues(alpha: 0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+        if (showAddButton)
+          GestureDetector(
+            onTap: _openAddTaskFlow,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: themeColor.withValues(alpha: 0.1),
+                  width: 1,
                 ),
-              ],
+                boxShadow: [
+                  BoxShadow(
+                    color: themeColor.withValues(alpha: 0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.add_rounded, color: themeColor, size: 28),
             ),
-            child: Icon(Icons.add_rounded, color: themeColor, size: 28),
-          ),
-        ),
+          )
+        else
+          // Spazio vuoto per mantenere centrato il titolo
+          const SizedBox(width: 48, height: 48),
       ],
     );
   }
