@@ -9,6 +9,47 @@ import 'package:everyday_app/features/household/data/models/household_room.dart'
 import '../../../../shared/repositories/supabase_client.dart';
 
 class TaskRepository {
+  StreamController<List<TaskWithDetails>>? _activeWatchTasksController;
+  Stream<List<TaskWithDetails>>? _activeWatchTasksStream;
+  StreamSubscription<List<Map<String, dynamic>>>? _activeTaskSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _activeAssignmentSubscription;
+  RealtimeChannel? _activeSubtaskRealtimeChannel;
+  RealtimeChannel? _activeTaskRealtimeChannel;
+  String? _activeWatchHouseholdId;
+  String? _lastSnapshotSignature;
+
+  void _clearActiveWatchState() {
+    _activeWatchTasksController = null;
+    _activeWatchTasksStream = null;
+    _activeTaskSubscription = null;
+    _activeAssignmentSubscription = null;
+    _activeSubtaskRealtimeChannel = null;
+    _activeTaskRealtimeChannel = null;
+    _activeWatchHouseholdId = null;
+    _lastSnapshotSignature = null;
+  }
+
+  Future<void> _disposeActiveWatch({
+    StreamController<List<TaskWithDetails>>? controller,
+    StreamSubscription<List<Map<String, dynamic>>>? taskSubscription,
+    StreamSubscription<List<Map<String, dynamic>>>? assignmentSubscription,
+    RealtimeChannel? taskRealtimeChannel,
+    RealtimeChannel? subtaskRealtimeChannel,
+    bool closeController = true,
+  }) async {
+    await taskSubscription?.cancel();
+    await assignmentSubscription?.cancel();
+    if (taskRealtimeChannel != null) {
+      await supabase.removeChannel(taskRealtimeChannel);
+    }
+    if (subtaskRealtimeChannel != null) {
+      await supabase.removeChannel(subtaskRealtimeChannel);
+    }
+    if (closeController && controller != null && !controller.isClosed) {
+      await controller.close();
+    }
+  }
+
   bool _isMissingColumnError(Object error, String columnName) {
     final message = error.toString().toLowerCase();
     return message.contains(columnName.toLowerCase()) &&
@@ -121,13 +162,48 @@ class TaskRepository {
   }
 
   Stream<List<TaskWithDetails>> watchTasks(String householdId) {
-    final controller = StreamController<List<TaskWithDetails>>();
+    final existingController = _activeWatchTasksController;
+    final existingStream = _activeWatchTasksStream;
+    if (existingController != null &&
+        !existingController.isClosed &&
+        existingStream != null &&
+        _activeWatchHouseholdId == householdId) {
+      return existingStream;
+    }
+
+    if (existingController != null ||
+        _activeTaskSubscription != null ||
+        _activeAssignmentSubscription != null ||
+        _activeSubtaskRealtimeChannel != null ||
+        _activeTaskRealtimeChannel != null) {
+      final staleController = _activeWatchTasksController;
+      final staleTaskSubscription = _activeTaskSubscription;
+      final staleAssignmentSubscription = _activeAssignmentSubscription;
+      final staleTaskRealtimeChannel = _activeTaskRealtimeChannel;
+      final staleSubtaskRealtimeChannel = _activeSubtaskRealtimeChannel;
+      _clearActiveWatchState();
+      unawaited(
+        _disposeActiveWatch(
+          controller: staleController,
+          taskSubscription: staleTaskSubscription,
+          assignmentSubscription: staleAssignmentSubscription,
+          taskRealtimeChannel: staleTaskRealtimeChannel,
+          subtaskRealtimeChannel: staleSubtaskRealtimeChannel,
+        ),
+      );
+    }
+
+    late final StreamController<List<TaskWithDetails>> controller;
     List<Map<String, dynamic>> latestTaskRows = const [];
     List<Map<String, dynamic>> latestSubtaskRows = const [];
     List<Map<String, dynamic>> latestAssignmentRows = const [];
     Set<String> watchedTaskIds = <String>{};
+    StreamSubscription<List<Map<String, dynamic>>>? taskSubscription;
     StreamSubscription<List<Map<String, dynamic>>>? assignmentSubscription;
+    RealtimeChannel? subtaskRealtimeChannel;
+    RealtimeChannel? taskRealtimeChannel;
     var disposed = false;
+    var started = false;
 
     List<String> currentTaskIds() {
       return latestTaskRows
@@ -208,6 +284,13 @@ class TaskRepository {
           .toList(growable: false);
 
       if (taskRows.isEmpty) {
+        if (_lastSnapshotSignature == '') {
+          if (kDebugMode) {
+            debugPrint('TASK SNAPSHOT SKIPPED duplicate emission');
+          }
+          return;
+        }
+        _lastSnapshotSignature = '';
         controller.add(<TaskWithDetails>[]);
         return;
       }
@@ -215,6 +298,13 @@ class TaskRepository {
       final taskIds = currentTaskIds();
 
       if (taskIds.isEmpty) {
+        if (_lastSnapshotSignature == '') {
+          if (kDebugMode) {
+            debugPrint('TASK SNAPSHOT SKIPPED duplicate emission');
+          }
+          return;
+        }
+        _lastSnapshotSignature = '';
         controller.add(<TaskWithDetails>[]);
         return;
       }
@@ -259,6 +349,35 @@ class TaskRepository {
           })
           .toList(growable: false);
 
+      final sortedTaskDetails = taskDetails.toList(growable: false)
+        ..sort((left, right) => left.task.id.compareTo(right.task.id));
+      final signature = sortedTaskDetails
+          .map((taskWithDetails) {
+            final sortedSubtasks = taskWithDetails.subtasks.toList(
+              growable: false,
+            )..sort((left, right) => left.id.compareTo(right.id));
+            final sortedAssignments = taskWithDetails.assignments.toList(
+              growable: false,
+            )..sort((left, right) => left.id.compareTo(right.id));
+            final subtaskSignature = sortedSubtasks
+                .map((subtask) => '${subtask.id}:${subtask.isDone ? 1 : 0}')
+                .join(',');
+            final assignmentSignature = sortedAssignments
+                .map((assignment) => '${assignment.id}:${assignment.status}')
+                .join(',');
+            return '${taskWithDetails.task.id}|$subtaskSignature|$assignmentSignature';
+          })
+          .join('#');
+
+      if (signature == _lastSnapshotSignature) {
+        if (kDebugMode) {
+          debugPrint('TASK SNAPSHOT SKIPPED duplicate emission');
+        }
+        return;
+      }
+
+      _lastSnapshotSignature = signature;
+
       if (kDebugMode) {
         debugPrint(
           'TASK REPO EMIT source=$source tasks=${taskDetails.length} scoped_task_ids=${taskIdSet.length} task_id=${taskId ?? '-'} subtask_id=${subtaskId ?? '-'}',
@@ -284,53 +403,6 @@ class TaskRepository {
       controller.addError(error, stackTrace);
     }
 
-    final subtaskRealtimeChannel = supabase
-        .channel('schema-db-changes:subtask:$householdId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'subtask',
-          callback: (payload) {
-            Future<void>(() async {
-              if (disposed) {
-                return;
-              }
-
-              final affectedTaskId =
-                  (payload.newRecord['task_id'] ?? payload.oldRecord['task_id'])
-                      as String?;
-              if (affectedTaskId == null) {
-                return;
-              }
-
-              final scopedTaskIds = currentTaskIds().toSet();
-              if (!scopedTaskIds.contains(affectedTaskId)) {
-                return;
-              }
-
-              final affectedSubtaskId =
-                  (payload.newRecord['id'] ?? payload.oldRecord['id'])
-                      as String?;
-
-              if (kDebugMode) {
-                debugPrint(
-                  'SUBTASK REALTIME EVENT event=${payload.eventType} task_id=$affectedTaskId subtask_id=${affectedSubtaskId ?? '-'}',
-                );
-              }
-
-              await refreshSubtaskCache(taskIdsOverride: scopedTaskIds);
-              emitLatestSnapshot(
-                source: 'subtask_realtime_event',
-                taskId: affectedTaskId,
-                subtaskId: affectedSubtaskId,
-              );
-            }).catchError((Object error, StackTrace stackTrace) {
-              handleError(error, stackTrace);
-            });
-          },
-        )
-        .subscribe();
-
     Future<void> ensureDetailSubscriptions() async {
       if (disposed) {
         return;
@@ -346,6 +418,7 @@ class TaskRepository {
 
       await assignmentSubscription?.cancel();
       assignmentSubscription = null;
+      _activeAssignmentSubscription = null;
 
       if (watchedTaskIds.isEmpty) {
         latestSubtaskRows = const [];
@@ -365,90 +438,187 @@ class TaskRepository {
               latestAssignmentRows = rows
                   .map((row) => Map<String, dynamic>.from(row))
                   .toList(growable: false);
+              if (scopedTaskIds.isEmpty) {
+                emitLatestSnapshot(source: 'assignment_stream');
+                return;
+              }
               await refreshAssignmentCache(taskIdsOverride: scopedTaskIds);
               emitLatestSnapshot(source: 'assignment_stream');
             }).catchError((Object error, StackTrace stackTrace) {
               handleError(error, stackTrace);
             });
           }, onError: handleError);
+      _activeAssignmentSubscription = assignmentSubscription;
     }
 
-    final taskRealtimeChannel = supabase
-        .channel('schema-db-changes:tasks:$householdId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.delete,
-          schema: 'public',
-          table: 'tasks',
-          callback: (payload) {
+    Future<void> disposeCurrentWatch() async {
+      if (disposed) {
+        return;
+      }
+
+      disposed = true;
+      if (identical(_activeWatchTasksController, controller)) {
+        _clearActiveWatchState();
+      }
+
+      await _disposeActiveWatch(
+        controller: controller,
+        taskSubscription: taskSubscription,
+        assignmentSubscription: assignmentSubscription,
+        taskRealtimeChannel: taskRealtimeChannel,
+        subtaskRealtimeChannel: subtaskRealtimeChannel,
+      );
+    }
+
+    Future<void> startWatch() async {
+      if (started || disposed) {
+        return;
+      }
+
+      started = true;
+      subtaskRealtimeChannel = supabase
+          .channel('schema-db-changes:subtask:$householdId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'subtask',
+            callback: (payload) {
+              Future<void>(() async {
+                if (disposed) {
+                  return;
+                }
+
+                final affectedTaskId =
+                    (payload.newRecord['task_id'] ??
+                            payload.oldRecord['task_id'])
+                        as String?;
+                if (affectedTaskId == null) {
+                  return;
+                }
+
+                final scopedTaskIds = currentTaskIds().toSet();
+                if (!scopedTaskIds.contains(affectedTaskId)) {
+                  return;
+                }
+
+                final affectedSubtaskId =
+                    (payload.newRecord['id'] ?? payload.oldRecord['id'])
+                        as String?;
+
+                if (kDebugMode) {
+                  debugPrint(
+                    'SUBTASK REALTIME EVENT event=${payload.eventType} task_id=$affectedTaskId subtask_id=${affectedSubtaskId ?? '-'}',
+                  );
+                }
+
+                await refreshSubtaskCache(taskIdsOverride: scopedTaskIds);
+                emitLatestSnapshot(
+                  source: 'subtask_realtime_event',
+                  taskId: affectedTaskId,
+                  subtaskId: affectedSubtaskId,
+                );
+              }).catchError((Object error, StackTrace stackTrace) {
+                handleError(error, stackTrace);
+              });
+            },
+          )
+          .subscribe();
+      _activeSubtaskRealtimeChannel = subtaskRealtimeChannel;
+
+      taskRealtimeChannel = supabase
+          .channel('schema-db-changes:tasks:$householdId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.delete,
+            schema: 'public',
+            table: 'tasks',
+            callback: (payload) {
+              Future<void>(() async {
+                if (disposed) {
+                  return;
+                }
+
+                final deletedTaskId = payload.oldRecord['id'] as String?;
+                if (deletedTaskId == null) {
+                  return;
+                }
+
+                final scopedTaskIds = currentTaskIds().toSet();
+                if (!scopedTaskIds.contains(deletedTaskId)) {
+                  return;
+                }
+
+                final freshTasks = await supabase
+                    .from('tasks')
+                    .select('*')
+                    .eq('household_id', householdId);
+
+                if (disposed) {
+                  return;
+                }
+
+                latestTaskRows = List<Map<String, dynamic>>.from(freshTasks)
+                    .map((row) => Map<String, dynamic>.from(row))
+                    .toList(growable: false);
+
+                await ensureDetailSubscriptions();
+                if (watchedTaskIds.isEmpty) {
+                  return;
+                }
+                await refreshSubtaskCache(taskIdsOverride: watchedTaskIds);
+                await refreshAssignmentCache(taskIdsOverride: watchedTaskIds);
+
+                emitLatestSnapshot(
+                  source: 'task_delete_realtime_event',
+                  taskId: deletedTaskId,
+                );
+              }).catchError((Object error, StackTrace stackTrace) {
+                handleError(error, stackTrace);
+              });
+            },
+          )
+          .subscribe();
+      _activeTaskRealtimeChannel = taskRealtimeChannel;
+
+      taskSubscription = supabase
+          .from('tasks')
+          .stream(primaryKey: ['id'])
+          .eq('household_id', householdId)
+          .listen((rows) {
             Future<void>(() async {
-              if (disposed) {
-                return;
-              }
-
-              final deletedTaskId = payload.oldRecord['id'] as String?;
-              if (deletedTaskId == null) {
-                return;
-              }
-
-              final scopedTaskIds = currentTaskIds().toSet();
-              if (!scopedTaskIds.contains(deletedTaskId)) {
-                return;
-              }
-
-              final freshTasks = await supabase
-                  .from('tasks')
-                  .select('*')
-                  .eq('household_id', householdId);
-
-              if (disposed) {
-                return;
-              }
-
-              latestTaskRows = List<Map<String, dynamic>>.from(freshTasks)
+              latestTaskRows = rows
                   .map((row) => Map<String, dynamic>.from(row))
                   .toList(growable: false);
-
               await ensureDetailSubscriptions();
-              await refreshSubtaskCache();
-              await refreshAssignmentCache();
-
-              emitLatestSnapshot(
-                source: 'task_delete_realtime_event',
-                taskId: deletedTaskId,
-              );
+              if (watchedTaskIds.isEmpty) {
+                return;
+              }
+              await refreshSubtaskCache(taskIdsOverride: watchedTaskIds);
+              await refreshAssignmentCache(taskIdsOverride: watchedTaskIds);
+              emitLatestSnapshot(source: 'tasks_stream');
             }).catchError((Object error, StackTrace stackTrace) {
               handleError(error, stackTrace);
             });
-          },
-        )
-        .subscribe();
+          }, onError: handleError);
+      _activeTaskSubscription = taskSubscription;
+    }
 
-    final taskSubscription = supabase
-        .from('tasks')
-        .stream(primaryKey: ['id'])
-        .eq('household_id', householdId)
-        .listen((rows) {
-          Future<void>(() async {
-            latestTaskRows = rows
-                .map((row) => Map<String, dynamic>.from(row))
-                .toList(growable: false);
-            await ensureDetailSubscriptions();
-            await refreshSubtaskCache(taskIdsOverride: watchedTaskIds);
-            await refreshAssignmentCache(taskIdsOverride: watchedTaskIds);
-            emitLatestSnapshot(source: 'tasks_stream');
-          }).catchError((Object error, StackTrace stackTrace) {
-            handleError(error, stackTrace);
-          });
-        }, onError: handleError);
+    controller = StreamController<List<TaskWithDetails>>.broadcast(
+      onListen: () {
+        Future<void>(() async {
+          await startWatch();
+        }).catchError((Object error, StackTrace stackTrace) {
+          handleError(error, stackTrace);
+        });
+      },
+      onCancel: () async {
+        await disposeCurrentWatch();
+      },
+    );
 
-    controller.onCancel = () async {
-      disposed = true;
-      await taskSubscription.cancel();
-      await supabase.removeChannel(taskRealtimeChannel);
-      await supabase.removeChannel(subtaskRealtimeChannel);
-      await assignmentSubscription?.cancel();
-      await controller.close();
-    };
+    _activeWatchTasksController = controller;
+    _activeWatchTasksStream = controller.stream;
+    _activeWatchHouseholdId = householdId;
+    _lastSnapshotSignature = null;
 
     return controller.stream;
   }
