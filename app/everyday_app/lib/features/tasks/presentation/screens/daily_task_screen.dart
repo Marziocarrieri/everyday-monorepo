@@ -54,6 +54,14 @@ class _UserTaskTimelineScreenState
 
   final Color themeColor = const Color(0xFF5A8B9E); // Colore Premium Azzurro
 
+  @override
+  void dispose() {
+    Future.microtask(() {
+      ref.invalidate(tasksStreamProvider);
+    });
+    super.dispose();
+  }
+
   Future<void> _openAddTaskFlow() async {
     final changed = await Navigator.of(context).pushNamed(
       AppRouteNames.addTask,
