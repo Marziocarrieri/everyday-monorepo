@@ -28,6 +28,10 @@ class FamilyScreen extends ConsumerWidget {
     final currentUserId = AppContext.instance.userId;
     final membersAsync = ref.watch(householdMembersStreamProvider);
 
+    // --- CONTROLLO RUOLO ---
+    final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
+    final isHost = role == 'HOST';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -35,18 +39,24 @@ class FamilyScreen extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
           child: Column(
             children: [
-              // HEADER PREMIUM BLOCCATO
+              // HEADER PREMIUM DINAMICO IN BASE AL RUOLO
               SizedBox(
                 height: 48,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Tasto Sinistro: Pets (se Host), Back (se Cohost/Personnel)
                     _buildHeaderIcon(
-                      Icons.pets,
+                      isHost ? Icons.pets : Icons.arrow_back_ios_new_rounded,
                       onTap: () {
-                        Navigator.of(context).pushNamed(AppRouteNames.pets);
+                        if (isHost) {
+                          Navigator.of(context).pushNamed(AppRouteNames.pets);
+                        } else {
+                          Navigator.pop(context);
+                        }
                       },
                     ),
+
                     Text(
                       'Family',
                       style: GoogleFonts.poppins(
@@ -56,10 +66,17 @@ class FamilyScreen extends ConsumerWidget {
                         letterSpacing: 0.5,
                       ),
                     ),
+
+                    // Tasto Destro: Add (se Host), Pets (se Cohost/Personnel)
                     _buildHeaderIcon(
-                      Icons.add_rounded,
-                      onTap: () =>
-                          _openMemberSelectionSheet(context, membersAsync),
+                      isHost ? Icons.add_rounded : Icons.pets,
+                      onTap: () {
+                        if (isHost) {
+                          _openMemberSelectionSheet(context, membersAsync);
+                        } else {
+                          Navigator.of(context).pushNamed(AppRouteNames.pets);
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -74,10 +91,10 @@ class FamilyScreen extends ConsumerWidget {
                   error: (error, _) => Center(child: Text('Error: $error')),
                   data: (members) {
                     final familyMembers = members.where((member) {
-                      final role = member.role.toUpperCase();
-                      final isFamilyRole = role == 'HOST' || role == 'COHOST';
-                      final isCurrentUser =
-                          currentUserId != null &&
+                      final memberRole = member.role.toUpperCase();
+                      final isFamilyRole =
+                          memberRole == 'HOST' || memberRole == 'COHOST';
+                      final isCurrentUser = currentUserId != null &&
                           member.userId == currentUserId;
                       return isFamilyRole && !isCurrentUser;
                     }).toList();

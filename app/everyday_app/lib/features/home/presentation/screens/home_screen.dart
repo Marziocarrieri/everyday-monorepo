@@ -19,6 +19,12 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(homeDailyTasksProvider);
     final currentUserId = AppContext.instance.userId;
+    
+    // Recupero il ruolo dell'utente
+    final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
+    
+    // CONTROLLO ESATTO SUL DATABASE: Usa 'COHOST'
+    final isCohostOrPersonnel = role == 'COHOST' || role == 'PERSONNEL';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -30,7 +36,15 @@ class HomeScreen extends ConsumerWidget {
             children: [
               SizedBox(height: 48, child: _buildHeader(context)),
               const SizedBox(height: 40),
+              
+              // Card dei Task (Visibile a tutti)
               _buildDailyTaskCard(context, tasksAsync, currentUserId),
+              
+              // Spazio condizionale
+              if (isCohostOrPersonnel) const SizedBox(height: 24),
+              
+              // Card Family (Visibile solo a Co-host e Personnel)
+              if (isCohostOrPersonnel) _buildFamilyAccessCard(context),
             ],
           ),
         ),
@@ -60,7 +74,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
 
-        // Tasto Notifiche (da collegare in futuro)
+        // TASTO NOTIFICHE (da collegare in futuro)
         GestureDetector(
           onTap: () {
             /* Futura pagina notifiche */
@@ -94,7 +108,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // --- CARD PREMIUM ---
+  // --- CARD PREMIUM TASK ---
   Widget _buildDailyTaskCard(
     BuildContext context,
     AsyncValue<List<TaskWithDetails>> tasksAsync,
@@ -151,6 +165,81 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  // --- NUOVA CARD: ACCESSO VELOCE ALLA FAMILY (STILE UTILITIES) ---
+  Widget _buildFamilyAccessCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pushNamed(AppRouteNames.cohostFamily);
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32), // Curvatura Premium
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
+          child: Container(
+            height: 130, // Altezza coerente con Utilities
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFFF4A261).withValues(alpha: 0.2), 
+                  Colors.white.withValues(alpha: 0.5)
+                ],
+              ),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.2), // Riflesso
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFF4A261).withValues(alpha: 0.08), // Ombra morbida arancione
+                  blurRadius: 30, offset: const Offset(0, 15)
+                )
+              ],
+            ),
+            child: Row(
+              children: [
+                // Il "dischetto" bianco di vetro per l'icona
+                Container(
+                  width: 60, height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05), 
+                        blurRadius: 10, 
+                        offset: const Offset(0, 4)
+                      )
+                    ]
+                  ),
+                  child: const Icon(Icons.people_alt_rounded, color: Color(0xFF5A8B9E), size: 32),
+                ),
+                const SizedBox(width: 24),
+                // Il testo "Family Hub"
+                Expanded(
+                  child: Text(
+                    'Family Hub', 
+                    style: GoogleFonts.poppins(
+                      fontSize: 20, 
+                      fontWeight: FontWeight.w700, 
+                      color: const Color(0xFF3D342C),
+                      letterSpacing: -0.5, // Look moderno
+                    )
+                  ),
+                ),
+                // Freccina elegante
+                Icon(
+                  Icons.chevron_right_rounded, 
+                  color: const Color(0xFF5A8B9E).withValues(alpha: 0.5), 
+                  size: 32
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- TASTO AI PREMIUM ---
   Widget _buildAIButton() {
     return ClipRRect(
@@ -196,21 +285,19 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// --- POPUP CALENDARIO STILE LIQUID GLASS (Design coerente) ---
+// --- POPUP CALENDARIO STILE LIQUID GLASS ---
 void _showCalendarPopup(BuildContext context) {
   DateTime focusedDay = DateTime.now();
   DateTime? selectedDay = DateTime.now();
 
   final Color colorAzzurro = const Color(0xFF5A8B9E); // Il tuo azzurro core
-  final Color colorOrange = const Color(
-    0xFFF4A261,
-  ); // L'arancione del progresso card
+  final Color colorOrange =
+      const Color(0xFFF4A261); // L'arancione del progresso card
 
   showDialog(
     context: context,
-    barrierColor: colorAzzurro.withValues(
-      alpha: 0.15,
-    ), // Overlay azzurrino leggero
+    barrierColor:
+        colorAzzurro.withValues(alpha: 0.15), // Overlay azzurrino leggero
     builder: (context) {
       return BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8), // Sfoca la Home dietro
@@ -241,8 +328,7 @@ void _showCalendarPopup(BuildContext context) {
                       firstDay: DateTime.utc(2020, 1, 1),
                       lastDay: DateTime.utc(2030, 12, 31),
                       focusedDay: focusedDay,
-                      selectedDayPredicate: (day) =>
-                          isSameDay(selectedDay, day),
+                      selectedDayPredicate: (day) => isSameDay(selectedDay, day),
 
                       // --- HEADER STILE FIGMA + APP ---
                       headerStyle: HeaderStyle(

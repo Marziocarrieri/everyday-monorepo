@@ -9,7 +9,7 @@ import 'package:everyday_app/features/household/data/models/household_room.dart'
 import 'package:everyday_app/features/household/data/services/home_configuration_service.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/household/presentation/providers/household_providers.dart';
-import 'package:everyday_app/core/app_context.dart'; // Assicurati che questo import ci sia
+import 'package:everyday_app/core/app_context.dart'; 
 
 class YourHomeScreen extends ConsumerStatefulWidget {
   const YourHomeScreen({super.key});
@@ -1251,7 +1251,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                         ),
                         const SizedBox(height: 10),
 
-                        // --- SELETTORE TIPO STANZA ---
+                        // --- NUOVO SELETTORE TIPO STANZA ---
                         GestureDetector(
                           onTap: () {
                             _showRoomTypePickerModal(context, (

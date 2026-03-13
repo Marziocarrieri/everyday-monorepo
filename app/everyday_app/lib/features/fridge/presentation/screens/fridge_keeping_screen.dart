@@ -277,9 +277,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           ),
         ),
       ),
-      // --- IL BOTTONE È TORNATO: FLUTTUANTE, PICCOLO E CENTRATO ---
-      floatingActionButton: _buildFloatingAddButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      // NESSUN FLOATING ACTION BUTTON! Il bottone è integrato nelle liste.
     );
   }
 
@@ -592,11 +590,15 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
-      // Spazio sufficiente per far scorrere l'ultimo elemento sopra il FAB
-      padding: const EdgeInsets.only(bottom: 120), 
-      itemCount: items.length,
+      padding: const EdgeInsets.only(bottom: 40), 
+      itemCount: items.length + 1, // +1 per il bottone "+" alla fine
       separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
+        // Se siamo all'ultimo indice, mostriamo il bottoncino centrale
+        if (index == items.length) {
+          return _buildInlineAddButton();
+        }
+
         final item = items[index];
         return Dismissible(
           key: ValueKey(item.id),
@@ -698,19 +700,31 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     PantryService pantryService,
   ) {
     if (items.isEmpty) return _buildEmptyState();
-    return GridView.builder(
+
+    // Usiamo una CustomScrollView per poter mettere il bottone alla fine della griglia
+    return CustomScrollView(
       physics: const BouncingScrollPhysics(),
-      // Spazio sufficiente per far scorrere gli elementi sopra il FAB
-      padding: const EdgeInsets.only(bottom: 120), 
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.80,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) =>
-          _buildSmallGridCard(items[index], pantryService),
+      slivers: [
+        SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.1, // Card più compatte e basse!
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => _buildSmallGridCard(items[index], pantryService),
+            childCount: items.length,
+          ),
+        ),
+        // Aggiungiamo il bottoncino sotto la griglia
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 20.0, bottom: 40.0),
+            child: _buildInlineAddButton(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -751,10 +765,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   child: Icon(
                     Icons.kitchen_outlined,
                     color: iconColor,
-                    size: 24,
+                    size: 22, // Ridotto un po' per la card compatta
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Text(
                   item.name,
                   textAlign: TextAlign.center,
@@ -775,6 +789,36 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
   }
 
+  // --- BOTTONE AGGIUNGI (In linea, scorre con gli elementi) ---
+  Widget _buildInlineAddButton() {
+    return Center(
+      child: GestureDetector(
+        onTap: () => _showAddElementModal(context),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          width: 56, 
+          height: 56,
+          decoration: BoxDecoration(
+            color: primaryColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withValues(alpha: 0.4),
+                blurRadius: 15,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.add_rounded,
+            color: Colors.white,
+            size: 32,
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- EMPTY STATE MAGICO ---
   Widget _buildEmptyState() {
     return Center(
@@ -784,7 +828,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withValues(alpha: 0.5),
               shape: BoxShape.circle,
               border: Border.all(color: primaryColor.withValues(alpha: 0.2), width: 2),
             ),
@@ -805,7 +849,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap the + button to add\ngroceries to this area.',
+            'Tap the + button below to add\ngroceries to this area.',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               fontSize: 15,
@@ -813,6 +857,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               color: darkTextColor.withValues(alpha: 0.6),
             ),
           ),
+          const SizedBox(height: 32),
+          _buildInlineAddButton(), // Bottone mostrato anche quando è vuoto
         ],
       ),
     );
@@ -834,35 +880,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     }
   }
 
-  // ==========================================
-  // FLOATING ACTION BUTTON (PULITO E CENTRATO)
-  // ==========================================
 
-  Widget _buildFloatingAddButton() {
-    return GestureDetector(
-      onTap: () => _showAddElementModal(context),
-      child: Container(
-        width: 65, 
-        height: 65,
-        decoration: BoxDecoration(
-          color: primaryColor,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: primaryColor.withValues(alpha: 0.4),
-              blurRadius: 15,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.add_rounded,
-          color: Colors.white,
-          size: 32,
-        ),
-      ),
-    );
-  }
+  // ==========================================
+  // MODAL ADD ELEMENT
+  // ==========================================
 
   Future<void> _showAddElementModal(BuildContext context) async {
     nameController.clear();
@@ -1086,7 +1107,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 }
 
 // ==========================================
-// COMPONENTE: POPUP DETTAGLIO/MODIFICA
+// COMPONENTE: POPUP DETTAGLIO/MODIFICA 
 // ==========================================
 class FridgeItemDetailSheet extends StatefulWidget {
   const FridgeItemDetailSheet({
