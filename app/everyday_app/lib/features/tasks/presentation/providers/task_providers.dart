@@ -12,6 +12,7 @@ import 'package:everyday_app/shared/models/user.dart';
 
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
+import '../../utils/task_temporal_ordering.dart';
 
 DateTime _copyDateTime(DateTime value) {
   return DateTime.fromMillisecondsSinceEpoch(
@@ -205,7 +206,8 @@ final taskServiceProvider = Provider<TaskService>((ref) {
 
 final dailyTasksProvider = FutureProvider<List<TaskWithDetails>>((ref) async {
   final taskService = ref.watch(taskServiceProvider);
-  return taskService.getTasksAssignedToCurrentMember();
+  final tasks = await taskService.getTasksAssignedToCurrentMember();
+  return sortTasksByTemporalOrder(tasks);
 });
 
 final tasksStreamProvider = StreamProvider<List<TaskWithDetails>>((ref) {
@@ -217,7 +219,7 @@ final tasksStreamProvider = StreamProvider<List<TaskWithDetails>>((ref) {
 
   final repository = ref.watch(taskRepositoryProvider);
   return repository.watchTasks(householdId).map((tasks) {
-    final copiedTasks = _copyTaskList(tasks);
+    final copiedTasks = sortTasksByTemporalOrder(_copyTaskList(tasks));
     if (kDebugMode) {
       final taskSignatures = copiedTasks
           .map(

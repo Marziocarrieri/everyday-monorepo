@@ -18,6 +18,7 @@ class AddTaskScreen extends StatefulWidget {
   final Set<String>? assignedMemberIds;
   final String? preselectedAssigneeUserId;
   final bool supervisionCreationMode;
+  final bool multiAssignMode;
   final bool personalOnly;
   final TaskWithDetails? initialTask;
   final DateTime? initialDate;
@@ -27,6 +28,7 @@ class AddTaskScreen extends StatefulWidget {
     this.assignedMemberIds,
     this.preselectedAssigneeUserId,
     this.supervisionCreationMode = false,
+    this.multiAssignMode = false,
     this.initialDate,
     this.personalOnly = false,
     this.initialTask,
@@ -70,6 +72,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         assignedMemberIds: widget.assignedMemberIds,
         preselectedAssigneeUserId: widget.preselectedAssigneeUserId,
         supervisionCreationMode: widget.supervisionCreationMode,
+        multiAssignMode: widget.multiAssignMode,
         personalOnly: widget.personalOnly,
         initialTask: widget.initialTask,
         initialDate: widget.initialDate,
@@ -348,6 +351,7 @@ class AddTaskSheet extends ConsumerStatefulWidget {
   final Set<String>? assignedMemberIds;
   final String? preselectedAssigneeUserId;
   final bool supervisionCreationMode;
+  final bool multiAssignMode;
   final bool personalOnly;
   final TaskWithDetails? initialTask;
   final DateTime? initialDate;
@@ -359,6 +363,7 @@ class AddTaskSheet extends ConsumerStatefulWidget {
     this.assignedMemberIds,
     this.preselectedAssigneeUserId,
     this.supervisionCreationMode = false,
+    this.multiAssignMode = false,
     this.initialDate,
     this.personalOnly = false,
     this.initialTask,
@@ -392,10 +397,12 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   void initState() {
     super.initState();
     final initialTask = widget.initialTask;
+    final now = DateTime.now();
+    final localToday = DateTime(now.year, now.month, now.day);
     _titleController = TextEditingController(
       text: initialTask?.task.title ?? widget.initialTitle ?? '',
     );
-    _selectedDate = initialTask?.task.taskDate ?? widget.initialDate;
+    _selectedDate = initialTask?.task.taskDate ?? widget.initialDate ?? localToday;
 
     if (initialTask != null) {
       _selectedRoomId = initialTask.task.roomId;
@@ -514,6 +521,20 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
             if (member.userId == preselectedAssigneeUserId) {
               _selectedMemberIds.add(member.id);
               break;
+            }
+          }
+        }
+
+        _isLoadingAccess = false;
+        return;
+      }
+
+      if (widget.multiAssignMode) {
+        final initialSet = widget.assignedMemberIds;
+        if (initialSet != null && initialSet.isNotEmpty) {
+          for (final member in access.assignableMembers) {
+            if (initialSet.contains(member.id)) {
+              _selectedMemberIds.add(member.id);
             }
           }
         }
@@ -1006,6 +1027,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
                       if (!widget.personalOnly &&
                           !widget.supervisionCreationMode &&
+                          !widget.multiAssignMode &&
                           !_isLoadingAccess &&
                           _creationAccess != null)
                         Column(

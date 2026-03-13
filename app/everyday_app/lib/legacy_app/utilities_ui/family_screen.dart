@@ -333,9 +333,24 @@ class SelectFamilyMemberSheet extends StatefulWidget {
 class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
   final Set<String> _selectedMemberIds = {};
 
+  bool _isAssignableRole(String role) {
+    final normalized = role.toUpperCase().replaceAll('_', '');
+    return normalized == 'HOST' || normalized == 'COHOST';
+  }
+
+  List<HouseholdMember> _assignableMembers(List<HouseholdMember> members) {
+    return members
+        .where((member) => _isAssignableRole(member.role))
+        .toList(growable: false);
+  }
+
   bool get _isAllSelected {
-    final list = widget.members.value ?? [];
-    return _selectedMemberIds.length == list.length;
+    final list = _assignableMembers(widget.members.value ?? []);
+    final assignableIds = list.map((member) => member.id).toSet();
+    final selectedAssignableCount = _selectedMemberIds
+        .where((memberId) => assignableIds.contains(memberId))
+        .length;
+    return list.isNotEmpty && selectedAssignableCount == list.length;
   }
 
   void _toggleSelection(String id) {
@@ -353,11 +368,15 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
 
     if (list == null) return;
 
+    final assignable = _assignableMembers(list);
+
     setState(() {
       if (_isAllSelected) {
         _selectedMemberIds.clear();
       } else {
-        _selectedMemberIds.addAll(list.map((m) => m.id));
+        _selectedMemberIds
+          ..clear()
+          ..addAll(assignable.map((m) => m.id));
       }
     });
   }
@@ -392,6 +411,14 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
               child: Text('Error loading members: $err'),
             ),
             data: (membersList) {
+              final assignableMembers = _assignableMembers(membersList);
+              final assignableIds = assignableMembers
+                  .map((member) => member.id)
+                  .toSet();
+              final selectedAssignableIds = _selectedMemberIds
+                  .where((memberId) => assignableIds.contains(memberId))
+                  .toSet();
+
               // 'membersList' is now your actual List<HouseholdMember>
               return Column(
                 mainAxisSize: MainAxisSize.min,
@@ -446,8 +473,8 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                   const SizedBox(height: 24),
 
                   // Map through the actual membersList objects
-                  ...membersList.map((member) {
-                    final isSelected = _selectedMemberIds.contains(
+                  ...assignableMembers.map((member) {
+                    final isSelected = selectedAssignableIds.contains(
                       member.id,
                     ); // Changed from member['id']
                     return GestureDetector(
@@ -528,16 +555,29 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                     );
                   }),
 
+                  if (assignableMembers.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'No host/cohost members available',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ),
+
                   const SizedBox(height: 30),
 
                   GestureDetector(
-                    onTap: _selectedMemberIds.isEmpty
+                    onTap: selectedAssignableIds.isEmpty
                         ? null
                         : () {
                             String? preselectedAssigneeUserId;
-                            if (_selectedMemberIds.length == 1) {
-                              for (final member in membersList) {
-                                if (_selectedMemberIds.contains(member.id)) {
+                            if (selectedAssignableIds.length == 1) {
+                              for (final member in assignableMembers) {
+                                if (selectedAssignableIds.contains(member.id)) {
                                   preselectedAssigneeUserId = member.userId;
                                   break;
                                 }
@@ -548,7 +588,8 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                             Navigator.of(context).pushNamed(
                               AppRouteNames.addTask,
                               arguments: AddTaskRouteArgs(
-                                assignedMemberIds: _selectedMemberIds,
+                                assignedMemberIds: selectedAssignableIds,
+                                multiAssignMode: true,
                                 preselectedAssigneeUserId:
                                     preselectedAssigneeUserId,
                               ),
@@ -559,11 +600,11 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                       width: double.infinity,
                       height: 60,
                       decoration: BoxDecoration(
-                        color: _selectedMemberIds.isEmpty
+                        color: selectedAssignableIds.isEmpty
                             ? Colors.grey.withValues(alpha: 0.5)
                             : brandBlue,
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: _selectedMemberIds.isEmpty
+                        boxShadow: selectedAssignableIds.isEmpty
                             ? []
                             : [
                                 BoxShadow(

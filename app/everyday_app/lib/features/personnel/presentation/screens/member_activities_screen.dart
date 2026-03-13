@@ -1,5 +1,6 @@
 import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
 import 'package:everyday_app/features/tasks/data/repositories/task_repository.dart';
+import 'package:everyday_app/features/tasks/utils/task_temporal_ordering.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -46,11 +47,12 @@ class _MemberActivitiesScreenState extends State<MemberActivitiesScreen> {
 
     try {
       final tasks = await _taskRepository.getTasksForUserId(widget.memberId);
+      final orderedTasks = sortTasksByTemporalOrder(tasks);
 
       if (!mounted) return;
       
       setState(() {
-        _activities = tasks;
+        _activities = orderedTasks;
       });
     } catch (error) {
       if (!mounted) return;
@@ -111,17 +113,36 @@ class _MemberActivitiesScreenState extends State<MemberActivitiesScreen> {
             
             // --- LISTA ATTIVITÀ A FISARMONICA (Liquid Glass) ---    
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 40.0),
-                physics: const BouncingScrollPhysics(),
-                itemCount: _activities.length,
-                itemBuilder: (context, index) {
-                  return ExpandableDateCard(
-                    taskWithDetails: _activities[index],
-                    color: widget.themeColor,
-                  );
-                },
-              ),
+              child: _isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(color: widget.themeColor),
+                    )
+                  : _error != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFF28482),
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 40.0),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _activities.length,
+                      itemBuilder: (context, index) {
+                        return ExpandableDateCard(
+                          taskWithDetails: _activities[index],
+                          color: widget.themeColor,
+                        );
+                      },
+                    ),
             ),
           ],
         ),

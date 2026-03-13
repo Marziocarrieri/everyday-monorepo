@@ -47,6 +47,7 @@ class AddTaskRouteArgs {
   final Set<String>? assignedMemberIds;
   final String? preselectedAssigneeUserId;
   final bool supervisionCreationMode;
+  final bool multiAssignMode;
   final DateTime? initialDate;
   final bool personalOnly;
   final Object? initialTask;
@@ -55,6 +56,7 @@ class AddTaskRouteArgs {
     this.assignedMemberIds,
     this.preselectedAssigneeUserId,
     this.supervisionCreationMode = false,
+    this.multiAssignMode = false,
     this.initialDate,
     this.personalOnly = false,
     this.initialTask,

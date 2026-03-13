@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,6 +16,7 @@ class TaskRepository {
   StreamSubscription<List<Map<String, dynamic>>>? _activeAssignmentSubscription;
   RealtimeChannel? _activeSubtaskRealtimeChannel;
   RealtimeChannel? _activeTaskRealtimeChannel;
+  RealtimeChannel? _activeAssignmentRealtimeChannel;
   String? _activeWatchHouseholdId;
   String? _lastSnapshotSignature;
 
@@ -25,6 +27,7 @@ class TaskRepository {
     _activeAssignmentSubscription = null;
     _activeSubtaskRealtimeChannel = null;
     _activeTaskRealtimeChannel = null;
+    _activeAssignmentRealtimeChannel = null;
     _activeWatchHouseholdId = null;
     _lastSnapshotSignature = null;
   }
@@ -35,6 +38,7 @@ class TaskRepository {
     StreamSubscription<List<Map<String, dynamic>>>? assignmentSubscription,
     RealtimeChannel? taskRealtimeChannel,
     RealtimeChannel? subtaskRealtimeChannel,
+    RealtimeChannel? assignmentRealtimeChannel,
     bool closeController = true,
   }) async {
     await taskSubscription?.cancel();
@@ -44,6 +48,9 @@ class TaskRepository {
     }
     if (subtaskRealtimeChannel != null) {
       await supabase.removeChannel(subtaskRealtimeChannel);
+    }
+    if (assignmentRealtimeChannel != null) {
+      await supabase.removeChannel(assignmentRealtimeChannel);
     }
     if (closeController && controller != null && !controller.isClosed) {
       await controller.close();
@@ -181,6 +188,7 @@ class TaskRepository {
       final staleAssignmentSubscription = _activeAssignmentSubscription;
       final staleTaskRealtimeChannel = _activeTaskRealtimeChannel;
       final staleSubtaskRealtimeChannel = _activeSubtaskRealtimeChannel;
+      final staleAssignmentRealtimeChannel = _activeAssignmentRealtimeChannel;
       _clearActiveWatchState();
       unawaited(
         _disposeActiveWatch(
@@ -189,11 +197,13 @@ class TaskRepository {
           assignmentSubscription: staleAssignmentSubscription,
           taskRealtimeChannel: staleTaskRealtimeChannel,
           subtaskRealtimeChannel: staleSubtaskRealtimeChannel,
+          assignmentRealtimeChannel: staleAssignmentRealtimeChannel,
         ),
       );
     }
 
     late final StreamController<List<TaskWithDetails>> controller;
+    final watchInstanceId = DateTime.now().microsecondsSinceEpoch.toString();
     List<Map<String, dynamic>> latestTaskRows = const [];
     List<Map<String, dynamic>> latestSubtaskRows = const [];
     List<Map<String, dynamic>> latestAssignmentRows = const [];
@@ -202,8 +212,36 @@ class TaskRepository {
     StreamSubscription<List<Map<String, dynamic>>>? assignmentSubscription;
     RealtimeChannel? subtaskRealtimeChannel;
     RealtimeChannel? taskRealtimeChannel;
+    RealtimeChannel? assignmentRealtimeChannel;
     var disposed = false;
     var started = false;
+    var lifecycleVersion = 0;
+
+    void logWatchEvent(
+      String event, {
+      Map<String, Object?> details = const {},
+    }) {
+      if (!kDebugMode) {
+        return;
+      }
+
+      final payload = <String, Object?>{
+        'event': event,
+        'watch_id': watchInstanceId,
+        'household_id': householdId,
+        'lifecycle_version': lifecycleVersion,
+        'disposed': disposed,
+        'started': started,
+        'has_listener': controller.hasListener,
+        'tasks_cached': latestTaskRows.length,
+        'assignments_cached': latestAssignmentRows.length,
+        'subtasks_cached': latestSubtaskRows.length,
+        'watched_task_ids': watchedTaskIds.length,
+      };
+      payload.addAll(details);
+
+      debugPrint('TASK_WATCH ${jsonEncode(payload)}');
+    }
 
     List<String> currentTaskIds() {
       return latestTaskRows
@@ -276,6 +314,13 @@ class TaskRepository {
       String? subtaskId,
     }) {
       if (disposed || controller.isClosed) {
+        logWatchEvent(
+          'emit_skipped_closed_or_disposed',
+          details: <String, Object?>{
+            'source': source,
+            'reason': disposed ? 'disposed' : 'controller_closed',
+          },
+        );
         return;
       }
 
@@ -285,11 +330,28 @@ class TaskRepository {
 
       if (taskRows.isEmpty) {
         if (_lastSnapshotSignature == '') {
-          if (kDebugMode) {
-            debugPrint('TASK SNAPSHOT SKIPPED duplicate emission');
-          }
+          logWatchEvent(
+            'emit_skipped_duplicate_signature',
+            details: <String, Object?>{
+              'source': source,
+              'reason': 'empty_signature_duplicate',
+              'signature': '',
+              'is_empty_snapshot': true,
+            },
+          );
           return;
         }
+
+        logWatchEvent(
+          'emit_snapshot',
+          details: <String, Object?>{
+            'source': source,
+            'signature': '',
+            'is_empty_snapshot': true,
+            'tasks_received': 0,
+            'assignments_received': latestAssignmentRows.length,
+          },
+        );
         _lastSnapshotSignature = '';
         controller.add(<TaskWithDetails>[]);
         return;
@@ -299,11 +361,28 @@ class TaskRepository {
 
       if (taskIds.isEmpty) {
         if (_lastSnapshotSignature == '') {
-          if (kDebugMode) {
-            debugPrint('TASK SNAPSHOT SKIPPED duplicate emission');
-          }
+          logWatchEvent(
+            'emit_skipped_duplicate_signature',
+            details: <String, Object?>{
+              'source': source,
+              'reason': 'task_ids_empty_signature_duplicate',
+              'signature': '',
+              'is_empty_snapshot': true,
+            },
+          );
           return;
         }
+
+        logWatchEvent(
+          'emit_snapshot',
+          details: <String, Object?>{
+            'source': source,
+            'signature': '',
+            'is_empty_snapshot': true,
+            'tasks_received': taskRows.length,
+            'assignments_received': latestAssignmentRows.length,
+          },
+        );
         _lastSnapshotSignature = '';
         controller.add(<TaskWithDetails>[]);
         return;
@@ -385,13 +464,34 @@ class TaskRepository {
           .join('#');
 
       if (signature == _lastSnapshotSignature) {
-        if (kDebugMode) {
-          debugPrint('TASK SNAPSHOT SKIPPED duplicate emission');
-        }
+        logWatchEvent(
+          'emit_skipped_duplicate_signature',
+          details: <String, Object?>{
+            'source': source,
+            'reason': 'signature_duplicate',
+            'signature': signature,
+            'is_empty_snapshot': false,
+            'tasks_received': taskRows.length,
+            'assignments_received': latestAssignmentRows.length,
+          },
+        );
         return;
       }
 
       _lastSnapshotSignature = signature;
+
+      logWatchEvent(
+        'emit_snapshot',
+        details: <String, Object?>{
+          'source': source,
+          'signature': signature,
+          'is_empty_snapshot': taskDetails.isEmpty,
+          'tasks_received': taskRows.length,
+          'assignments_received': latestAssignmentRows.length,
+          'task_id': taskId,
+          'subtask_id': subtaskId,
+        },
+      );
 
       if (kDebugMode) {
         debugPrint(
@@ -412,8 +512,21 @@ class TaskRepository {
 
     void handleError(Object error, StackTrace stackTrace) {
       if (disposed || controller.isClosed) {
+        logWatchEvent(
+          'error_ignored_closed_or_disposed',
+          details: <String, Object?>{
+            'error': error.toString(),
+          },
+        );
         return;
       }
+
+      logWatchEvent(
+        'error_forwarded',
+        details: <String, Object?>{
+          'error': error.toString(),
+        },
+      );
 
       controller.addError(error, stackTrace);
     }
@@ -426,10 +539,23 @@ class TaskRepository {
       final nextTaskIds = currentTaskIds().toSet();
       final hasActiveSubscriptions = assignmentSubscription != null;
       if (setEquals(nextTaskIds, watchedTaskIds) && hasActiveSubscriptions) {
+        logWatchEvent(
+          'assignment_scope_unchanged',
+          details: <String, Object?>{
+            'task_ids': nextTaskIds.length,
+          },
+        );
         return;
       }
 
       watchedTaskIds = nextTaskIds;
+
+      logWatchEvent(
+        'assignment_scope_updated',
+        details: <String, Object?>{
+          'task_ids': watchedTaskIds.length,
+        },
+      );
 
       await assignmentSubscription?.cancel();
       assignmentSubscription = null;
@@ -438,6 +564,12 @@ class TaskRepository {
       if (watchedTaskIds.isEmpty) {
         latestSubtaskRows = const [];
         latestAssignmentRows = const [];
+        logWatchEvent(
+          'assignment_scope_empty',
+          details: <String, Object?>{
+            'reason': 'no_task_ids',
+          },
+        );
         emitLatestSnapshot(source: 'task_scope_empty');
         return;
       }
@@ -450,6 +582,13 @@ class TaskRepository {
           .inFilter('task_id', scopedTaskIds)
           .listen((rows) {
             Future<void>(() async {
+              logWatchEvent(
+                'assignment_stream_rows_received',
+                details: <String, Object?>{
+                  'rows': rows.length,
+                },
+              );
+
               latestAssignmentRows = rows
                   .map((row) => Map<String, dynamic>.from(row))
                   .toList(growable: false);
@@ -472,6 +611,7 @@ class TaskRepository {
       }
 
       disposed = true;
+      logWatchEvent('dispose_watch_start');
       if (identical(_activeWatchTasksController, controller)) {
         _clearActiveWatchState();
       }
@@ -482,15 +622,72 @@ class TaskRepository {
         assignmentSubscription: assignmentSubscription,
         taskRealtimeChannel: taskRealtimeChannel,
         subtaskRealtimeChannel: subtaskRealtimeChannel,
+        assignmentRealtimeChannel: assignmentRealtimeChannel,
       );
+
+      logWatchEvent('dispose_watch_complete');
+    }
+
+    Future<void> scheduleDisposeCurrentWatch() async {
+      final expectedVersion = ++lifecycleVersion;
+      logWatchEvent(
+        'dispose_watch_scheduled',
+        details: <String, Object?>{
+          'expected_version': expectedVersion,
+        },
+      );
+      await Future<void>.microtask(() {});
+
+      if (disposed || controller.isClosed) {
+        logWatchEvent(
+          'dispose_watch_skipped',
+          details: <String, Object?>{
+            'reason': disposed ? 'already_disposed' : 'controller_closed',
+            'expected_version': expectedVersion,
+          },
+        );
+        return;
+      }
+
+      if (expectedVersion != lifecycleVersion) {
+        logWatchEvent(
+          'dispose_watch_skipped',
+          details: <String, Object?>{
+            'reason': 'lifecycle_version_changed',
+            'expected_version': expectedVersion,
+            'actual_version': lifecycleVersion,
+          },
+        );
+        return;
+      }
+
+      if (controller.hasListener) {
+        logWatchEvent(
+          'dispose_watch_skipped',
+          details: <String, Object?>{
+            'reason': 'listener_recovered',
+            'expected_version': expectedVersion,
+          },
+        );
+        return;
+      }
+
+      await disposeCurrentWatch();
     }
 
     Future<void> startWatch() async {
       if (started || disposed) {
+        logWatchEvent(
+          'start_watch_skipped',
+          details: <String, Object?>{
+            'reason': started ? 'already_started' : 'disposed',
+          },
+        );
         return;
       }
 
       started = true;
+      logWatchEvent('start_watch');
       subtaskRealtimeChannel = supabase
           .channel('schema-db-changes:subtask:$householdId')
           .onPostgresChanges(
@@ -499,6 +696,13 @@ class TaskRepository {
             table: 'subtask',
             callback: (payload) {
               Future<void>(() async {
+                logWatchEvent(
+                  'subtask_realtime_payload',
+                  details: <String, Object?>{
+                    'event_type': payload.eventType.name,
+                  },
+                );
+
                 if (disposed) {
                   return;
                 }
@@ -543,12 +747,23 @@ class TaskRepository {
       taskRealtimeChannel = supabase
           .channel('schema-db-changes:tasks:$householdId')
           .onPostgresChanges(
-            event: PostgresChangeEvent.delete,
+            event: PostgresChangeEvent.all,
             schema: 'public',
             table: 'tasks',
             callback: (payload) {
               Future<void>(() async {
+                logWatchEvent(
+                  'tasks_realtime_payload',
+                  details: <String, Object?>{
+                    'event_type': payload.eventType.name,
+                  },
+                );
+
                 if (disposed) {
+                  return;
+                }
+
+                if (payload.eventType != PostgresChangeEvent.delete) {
                   return;
                 }
 
@@ -594,15 +809,97 @@ class TaskRepository {
           .subscribe();
       _activeTaskRealtimeChannel = taskRealtimeChannel;
 
+      assignmentRealtimeChannel = supabase
+          .channel('schema-db-changes:task-assignment:$householdId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'task_assignment',
+            callback: (payload) {
+              Future<void>(() async {
+                logWatchEvent(
+                  'assignment_realtime_payload',
+                  details: <String, Object?>{
+                    'event_type': payload.eventType.name,
+                  },
+                );
+
+                if (disposed) {
+                  return;
+                }
+
+                final affectedTaskId =
+                    (payload.newRecord['task_id'] ??
+                            payload.oldRecord['task_id'])
+                        as String?;
+                if (affectedTaskId == null) {
+                  return;
+                }
+
+                final scopedTaskIds = currentTaskIds().toSet();
+                if (!scopedTaskIds.contains(affectedTaskId)) {
+                  return;
+                }
+
+                await refreshAssignmentCache(taskIdsOverride: scopedTaskIds);
+                emitLatestSnapshot(
+                  source: 'assignment_realtime_event',
+                  taskId: affectedTaskId,
+                );
+              }).catchError((Object error, StackTrace stackTrace) {
+                handleError(error, stackTrace);
+              });
+            },
+          )
+          .subscribe();
+      _activeAssignmentRealtimeChannel = assignmentRealtimeChannel;
+
       taskSubscription = supabase
           .from('tasks')
           .stream(primaryKey: ['id'])
           .eq('household_id', householdId)
           .listen((rows) {
             Future<void>(() async {
+              logWatchEvent(
+                'tasks_stream_rows_received',
+                details: <String, Object?>{
+                  'rows': rows.length,
+                },
+              );
+
               latestTaskRows = rows
                   .map((row) => Map<String, dynamic>.from(row))
                   .toList(growable: false);
+
+              if (latestTaskRows.isEmpty) {
+                final freshTasks = await supabase
+                    .from('tasks')
+                    .select('*')
+                    .eq('household_id', householdId);
+
+                if (disposed) {
+                  return;
+                }
+
+                final refreshedRows = List<Map<String, dynamic>>.from(
+                  freshTasks,
+                ).map((row) => Map<String, dynamic>.from(row)).toList(
+                  growable: false,
+                );
+
+                if (refreshedRows.isNotEmpty) {
+                  logWatchEvent(
+                    'tasks_stream_empty_suppressed',
+                    details: <String, Object?>{
+                      'refreshed_rows': refreshedRows.length,
+                    },
+                  );
+                  latestTaskRows = refreshedRows;
+                } else {
+                  logWatchEvent('tasks_stream_empty_confirmed');
+                }
+              }
+
               await ensureDetailSubscriptions();
               if (watchedTaskIds.isEmpty) {
                 return;
@@ -619,6 +916,13 @@ class TaskRepository {
 
     controller = StreamController<List<TaskWithDetails>>.broadcast(
       onListen: () {
+        lifecycleVersion++;
+        logWatchEvent(
+          'controller_on_listen',
+          details: <String, Object?>{
+            'lifecycle_version_after_increment': lifecycleVersion,
+          },
+        );
         Future<void>(() async {
           await startWatch();
         }).catchError((Object error, StackTrace stackTrace) {
@@ -626,7 +930,8 @@ class TaskRepository {
         });
       },
       onCancel: () async {
-        await disposeCurrentWatch();
+        logWatchEvent('controller_on_cancel');
+        await scheduleDisposeCurrentWatch();
       },
     );
 

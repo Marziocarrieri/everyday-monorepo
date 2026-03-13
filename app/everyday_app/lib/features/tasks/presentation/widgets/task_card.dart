@@ -123,14 +123,27 @@ class _TaskCardState extends State<TaskCard> {
 
   /// Returns true when the current user has ownership-based edit permission:
   /// - personnel can never edit
-  /// - others can edit only their own tasks (matched via membership id)
+  /// - host can edit only tasks they created
+  /// - cohost can edit only tasks they created and are self-assigned to
   bool get _canEditByPermission {
-    final role =
+    final roleRaw =
         (AppContext.instance.activeMembership?.role ?? '').toLowerCase();
+    final role = roleRaw.replaceAll('_', '');
     if (role == 'personnel') return false;
+
     final membershipId = AppContext.instance.membershipId;
-    return membershipId != null &&
-        widget.taskWithDetails.task.createdBy == membershipId;
+    if (membershipId == null ||
+        widget.taskWithDetails.task.createdBy != membershipId) {
+      return false;
+    }
+
+    if (role == 'cohost') {
+      return widget.taskWithDetails.assignments.any(
+        (assignment) => assignment.memberId == membershipId,
+      );
+    }
+
+    return true;
   }
 
   bool get _canDeleteTask {

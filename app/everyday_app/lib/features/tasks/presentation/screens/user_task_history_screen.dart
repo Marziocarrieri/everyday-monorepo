@@ -7,6 +7,7 @@ import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
 import 'package:everyday_app/features/tasks/presentation/providers/task_providers.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/add_task_screen.dart';
 import 'package:everyday_app/features/tasks/presentation/widgets/task_card.dart';
+import 'package:everyday_app/features/tasks/utils/task_temporal_ordering.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,34 +24,16 @@ class UserTaskHistoryScreen extends ConsumerWidget {
     );
   }
 
-  int _startTimeMinutes(TaskWithDetails task) {
-    final rawTime = task.task.timeFrom;
-    if (rawTime == null || rawTime.isEmpty) {
-      return -1;
-    }
-
-    final chunks = rawTime.split(':');
-    if (chunks.length < 2) {
-      return -1;
-    }
-
-    final hour = int.tryParse(chunks[0]);
-    final minute = int.tryParse(chunks[1]);
-    if (hour == null || minute == null) {
-      return -1;
-    }
-
-    return (hour * 60) + minute;
-  }
-
   List<_HistoryDayGroup> _buildGroupedHistory({
     required String householdId,
     required List<TaskWithDetails> tasks,
   }) {
-    final filtered = tasks
+    final filtered = sortTasksByTemporalOrder(
+      tasks
         .where((task) => task.task.householdId == householdId)
         .where(_isAssignedToTargetUser)
-        .toList();
+        .toList(),
+    );
 
     final grouped = <DateTime, List<TaskWithDetails>>{};
 
@@ -63,18 +46,7 @@ class UserTaskHistoryScreen extends ConsumerWidget {
     final orderedDays = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return orderedDays.map((day) {
-      final dayTasks = grouped[day]!
-        ..sort((left, right) {
-          final rightStart = _startTimeMinutes(right);
-          final leftStart = _startTimeMinutes(left);
-
-          final byStartTime = rightStart.compareTo(leftStart);
-          if (byStartTime != 0) {
-            return byStartTime;
-          }
-
-          return right.task.taskDate.compareTo(left.task.taskDate);
-        });
+      final dayTasks = grouped[day]!;
 
       return _HistoryDayGroup(day: day, tasks: dayTasks);
     }).toList();

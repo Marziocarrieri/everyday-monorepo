@@ -62,11 +62,6 @@ class _UserTaskTimelineScreenState
 
   @override
   void dispose() {
-    try {
-      ref.invalidate(tasksStreamProvider);
-    } catch (_) {
-      // ref may already be invalidated if the widget tree is torn down
-    }
     super.dispose();
   }
 

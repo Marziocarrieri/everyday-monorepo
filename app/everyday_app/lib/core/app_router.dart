@@ -37,6 +37,7 @@ class AppRouter {
             assignedMemberIds: args?.assignedMemberIds,
             preselectedAssigneeUserId: args?.preselectedAssigneeUserId,
             supervisionCreationMode: args?.supervisionCreationMode ?? false,
+            multiAssignMode: args?.multiAssignMode ?? false,
             initialDate: args?.initialDate,
             personalOnly: args?.personalOnly ?? false,
             initialTask: initialTask is TaskWithDetails ? initialTask : null,
