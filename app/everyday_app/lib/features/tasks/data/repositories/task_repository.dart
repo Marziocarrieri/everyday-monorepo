@@ -353,6 +353,18 @@ class TaskRepository {
         ..sort((left, right) => left.task.id.compareTo(right.task.id));
       final signature = sortedTaskDetails
           .map((taskWithDetails) {
+            final task = taskWithDetails.task;
+            final taskCoreSig =
+                '${task.id}'
+                '|${task.title}'
+                '|${task.taskDate.toIso8601String()}'
+                '|${task.timeFrom ?? '-'}'
+                '|${task.timeTo ?? '-'}'
+                '|${task.description ?? '-'}'
+                '|${task.roomId ?? '-'}'
+                '|${task.repeatRule}'
+                '|${task.visibility}'
+                '|${task.createdBy ?? '-'}';
             final sortedSubtasks = taskWithDetails.subtasks.toList(
               growable: false,
             )..sort((left, right) => left.id.compareTo(right.id));
@@ -363,9 +375,12 @@ class TaskRepository {
                 .map((subtask) => '${subtask.id}:${subtask.isDone ? 1 : 0}')
                 .join(',');
             final assignmentSignature = sortedAssignments
-                .map((assignment) => '${assignment.id}:${assignment.status}')
+                .map(
+                  (assignment) =>
+                      '${assignment.id}:${assignment.status}:${assignment.note ?? '-'}',
+                )
                 .join(',');
-            return '${taskWithDetails.task.id}|$subtaskSignature|$assignmentSignature';
+            return '$taskCoreSig|$subtaskSignature|$assignmentSignature';
           })
           .join('#');
 

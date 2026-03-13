@@ -50,15 +50,25 @@ class UserTaskTimelineScreen extends ConsumerStatefulWidget {
 
 class _UserTaskTimelineScreenState
     extends ConsumerState<UserTaskTimelineScreen> {
-  TaskService get _taskService => ref.read(taskServiceProvider);
+  late final TaskService _taskService;
 
   final Color themeColor = const Color(0xFF5A8B9E); // Colore Premium Azzurro
 
   @override
+  void initState() {
+    super.initState();
+    _taskService = ref.read(taskServiceProvider);
+  }
+
+  @override
   void dispose() {
-    Future.microtask(() {
+    // Invalidate the provider using a local ref captured before disposal.
+    // We read the container directly to avoid using ref after dispose.
+    try {
       ref.invalidate(tasksStreamProvider);
-    });
+    } catch (_) {
+      // ref may already be invalidated if the widget tree is torn down
+    }
     super.dispose();
   }
 
@@ -93,6 +103,7 @@ class _UserTaskTimelineScreenState
       return;
     }
 
+    if (!mounted) return;
     final optimisticOverrides = ref.read(
       optimisticSubtaskOverridesProvider.notifier,
     );
@@ -101,7 +112,11 @@ class _UserTaskTimelineScreenState
     try {
       await _taskService.setSubtaskDone(subtaskId: subtaskId, isDone: isDone);
     } catch (error) {
-      optimisticOverrides.clearOverride(subtaskId);
+      if (mounted) {
+        ref
+            .read(optimisticSubtaskOverridesProvider.notifier)
+            .clearOverride(subtaskId);
+      }
       debugPrint('Error toggling subtask: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
