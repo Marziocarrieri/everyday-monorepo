@@ -16,15 +16,35 @@ class Pet {
   });
 
   factory Pet.fromJson(Map<String, dynamic> json) {
+    final id = _asString(json['id']);
+    final householdId = _asString(json['household_id']);
+    final name = _asString(json['name']);
+
+    if (id.isEmpty || householdId.isEmpty || name.isEmpty) {
+      throw const FormatException('Invalid pet row');
+    }
+
     return Pet(
-      id: json['id'],
-      householdId: json['household_id'],
-      name: json['name'],
-      species: json['species'],
+      id: id,
+      householdId: householdId,
+      name: name,
+      species: _asNullableString(json['species']),
       //breed: json['breed'],
       //birthdate: json['birthdate'] != null 
           //? DateTime.parse(json['birthdate']) 
           //: null,
     );
+  }
+
+  static String _asString(dynamic value) {
+    if (value == null) return '';
+    return value.toString().trim();
+  }
+
+  static String? _asNullableString(dynamic value) {
+    if (value == null) return null;
+    final normalized = value.toString().trim();
+    if (normalized.isEmpty) return null;
+    return normalized;
   }
 }

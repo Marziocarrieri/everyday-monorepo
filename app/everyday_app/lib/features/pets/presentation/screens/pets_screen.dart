@@ -1,31 +1,27 @@
 // TODO migrate to features/pets
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/pets/data/models/pet.dart';
 import 'package:everyday_app/features/pets/data/repositories/pets_repository.dart';
+import 'package:everyday_app/features/pets/presentation/providers/pets_providers.dart';
 
 
-class PetsScreen extends StatefulWidget {
+class PetsScreen extends ConsumerStatefulWidget {
   const PetsScreen({super.key});
 
   @override
-  State<PetsScreen> createState() => _PetsScreenState();
+  ConsumerState<PetsScreen> createState() => _PetsScreenState();
 }
 
-class _PetsScreenState extends State<PetsScreen> {
+class _PetsScreenState extends ConsumerState<PetsScreen> {
   // Sfondo Azzurro Premium (Tema Invertito)
-  final Color invertedBgColor = const Color(0xFF5A8B9E); 
-  final PetRepository _petRepository = PetRepository();
-  StreamSubscription<List<Pet>>? _petsSubscription;
-  List<Pet> _pets = [];
-  bool _isLoading = false;
-  String? _error;
+  final Color invertedBgColor = const Color(0xFF5A8B9E);
 
   // --- CONTROLLO RUOLO ---
   bool get _isPersonnel {
@@ -33,53 +29,6 @@ class _PetsScreenState extends State<PetsScreen> {
     // Pulisco la stringa per sicurezza
     final cleanRole = role.replaceAll('-', '').replaceAll('_', '').replaceAll(' ', '');
     return cleanRole == 'PERSONNEL';
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _subscribePets();
-  }
-
-  Future<void> _subscribePets() async {
-    if (!mounted) return;
-    
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final householdId = AppContext.instance.requireHouseholdId();
-
-      await _petsSubscription?.cancel();
-      _petsSubscription = _petRepository.watchPets(householdId).listen(
-        (pets) {
-          if (!mounted) return;
-          setState(() {
-            _pets = pets;
-            _isLoading = false;
-            _error = null;
-          });
-        },
-        onError: (Object error, StackTrace stackTrace) {
-          if (!mounted) return;
-          setState(() {
-            _error = error.toString();
-            _isLoading = false;
-          });
-          debugPrint('UI Error loading pets stream: $error');
-        },
-      );
-    } catch (error) {
-      if (!mounted) return;
-      
-      setState(() {
-        _error = error.toString();
-        _isLoading = false;
-      });
-      debugPrint('UI Error loading members: $error');
-    }
   }
 
   // --- FUNZIONE ELIMINA PET ---
@@ -178,7 +127,8 @@ class _PetsScreenState extends State<PetsScreen> {
 
     try {
       // CHIAMIAMO IL DATABASE PER L'ELIMINAZIONE REALE
-      await _petRepository.deletePet(pet.id);
+      final petRepository = ref.read(petRepositoryProvider);
+      await petRepository.deletePet(pet.id);
       return true;
     } catch (error) {
       if (!mounted) return false;
@@ -207,13 +157,22 @@ class _PetsScreenState extends State<PetsScreen> {
   }
 
   @override
-  void dispose() {
-    _petsSubscription?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final householdId = ref.watch(currentHouseholdIdProvider);
+    if (householdId == null || householdId.isEmpty) {
+      return Scaffold(
+        backgroundColor: invertedBgColor,
+        body: Center(
+          child: Text(
+            'Household context not ready',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    final petsAsync = ref.watch(petsStreamProvider(householdId));
+
     return Scaffold(
       backgroundColor: invertedBgColor, 
       body: SafeArea(
@@ -256,45 +215,60 @@ class _PetsScreenState extends State<PetsScreen> {
 
               // --- LISTA ANIMALI / EMPTY STATE ---
               Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white)) // Loading Bianco
-                    : _error != null
-                        ? Center(child: Text('Error: $_error', style: GoogleFonts.poppins(color: Colors.white))) 
-                        : _pets.isEmpty
-                            ? _buildEmptyState() // <--- MAGICO EMPTY STATE
-                            : ListView.builder(
-                                physics: const BouncingScrollPhysics(),
-                                itemCount: _pets.length,
-                                itemBuilder: (context, index) {
-                                  final pet = _pets[index];
-                                  
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 20.0),
-                                    // --- DISMISSIBLE PER LO SWIPE TO DELETE ---
-                                    child: Dismissible(
-                                      key: ValueKey(pet.id),
-                                      // SE SEI PERSONNEL, LO SWIPE È DISABILITATO
-                                      direction: _isPersonnel ? DismissDirection.none : DismissDirection.endToStart,
-                                      confirmDismiss: (_) async {
-                                        return await _confirmDeletePet(pet);
-                                      },
-                                      background: Container(
-                                        alignment: Alignment.centerRight,
-                                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF28482),
-                                          borderRadius: BorderRadius.circular(32),
-                                        ),
-                                        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
-                                      ),
-                                      child: _buildInvertedPetCard(
-                                        pet,
-                                        const Color(0xFFF4A261),
-                                      ),
-                                    ),
-                                  );
-                                },
+                child: petsAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
+                  error: (error, _) => Center(
+                    child: Text(
+                      'Error: $error',
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
+                  ),
+                  data: (pets) {
+                    if (pets.isEmpty) {
+                      return _buildEmptyState();
+                    }
+
+                    return ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: pets.length,
+                      itemBuilder: (context, index) {
+                        final pet = pets[index];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20.0),
+                          child: Dismissible(
+                            key: ValueKey(pet.id),
+                            direction: _isPersonnel
+                                ? DismissDirection.none
+                                : DismissDirection.endToStart,
+                            confirmDismiss: (_) async {
+                              return await _confirmDeletePet(pet);
+                            },
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF28482),
+                                borderRadius: BorderRadius.circular(32),
                               ),
+                              child: const Icon(
+                                Icons.delete_outline_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                            child: _buildInvertedPetCard(
+                              pet,
+                              const Color(0xFFF4A261),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),

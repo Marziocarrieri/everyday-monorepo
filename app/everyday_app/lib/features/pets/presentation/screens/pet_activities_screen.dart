@@ -1,31 +1,25 @@
 // TODO migrate to features/pets
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:everyday_app/features/pets/data/repositories/pets_activities_repository.dart'; 
 import 'package:everyday_app/features/pets/data/models/pet_activity.dart'; 
 import 'package:everyday_app/core/app_context.dart';
+import 'package:everyday_app/features/pets/presentation/providers/pets_providers.dart';
 import 'package:everyday_app/shared/utils/date_utils.dart';
 
-class PetActivitiesScreen extends StatefulWidget {
+class PetActivitiesScreen extends ConsumerStatefulWidget {
   final String petId;
   final Color petColor; 
   const PetActivitiesScreen({super.key, required this.petId, required this.petColor});
 
   @override
-  State<PetActivitiesScreen> createState() => _PetActivitiesScreenState();
+  ConsumerState<PetActivitiesScreen> createState() => _PetActivitiesScreenState();
 }
 
-class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
-  List<PetActivity> _activities = [];
-  final PetActivitiesRepository _activityRepository = PetActivitiesRepository();
-  StreamSubscription<List<PetActivity>>? _activitiesSubscription;
-  bool _isLoading = false;
-  String? _error;
-  
+class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
   final Color brandBlue = const Color(0xFF5A8B9E);
 
   // --- CONTROLLO RUOLO ---
@@ -33,53 +27,6 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
     final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
     final cleanRole = role.replaceAll('-', '').replaceAll('_', '').replaceAll(' ', '');
     return cleanRole == 'PERSONNEL';
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _subscribeActivities();
-  }
-
-  Future<void> _subscribeActivities() async {
-    if (!mounted) return;
-    
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      await _activitiesSubscription?.cancel();
-      _activitiesSubscription = _activityRepository
-          .watchActivities(widget.petId)
-          .listen(
-            (activities) {
-              if (!mounted) return;
-              setState(() {
-                _activities = activities;
-                _isLoading = false;
-                _error = null;
-              });
-            },
-            onError: (Object error, StackTrace stackTrace) {
-              if (!mounted) return;
-              setState(() {
-                _error = error.toString();
-                _isLoading = false;
-              });
-              debugPrint('UI Error loading activities stream: $error');
-            },
-          );
-    } catch (error) {
-      if (!mounted) return;
-      
-      setState(() {
-        _error = error.toString();
-        _isLoading = false;
-      });
-      debugPrint('UI Error loading activities: $error');
-    }
   }
 
   Future<bool> _confirmDeleteActivity(PetActivity activity) async {
@@ -176,7 +123,8 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
 
     try {
       // 1. CHIAMIAMO IL DATABASE PER L'ELIMINAZIONE VERA!
-      await _activityRepository.deleteActivity(activity.id);
+      final repository = ref.read(petActivitiesRepositoryProvider);
+      await repository.deleteActivity(activity.id);
       
       return true;
     } catch (error) {
@@ -205,13 +153,9 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   }
 
   @override
-  void dispose() {
-    _activitiesSubscription?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final activitiesAsync = ref.watch(petActivitiesStreamProvider(widget.petId));
+
     return Scaffold(
       backgroundColor: brandBlue,
       body: SafeArea(
@@ -245,43 +189,62 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
             const SizedBox(height: 10),
             
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                  : _error != null
-                      ? Center(child: Text('Error: $_error', style: GoogleFonts.poppins(color: Colors.white)))
-                      : _activities.isEmpty
-                          ? _buildEmptyState()
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 40.0),
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: _activities.length,
-                              itemBuilder: (context, index) {
-                                final activity = _activities[index];
-                                
-                                return Dismissible(
-                                  key: ValueKey(activity.id), // Aggiornato per usare l'id univoco
-                                  // Se è Personnel disabilita lo swipe
-                                  direction: _isPersonnel ? DismissDirection.none : DismissDirection.endToStart,
-                                  confirmDismiss: (_) async {
-                                    return await _confirmDeleteActivity(activity);
-                                  },
-                                  background: Container(
-                                    margin: const EdgeInsets.only(bottom: 24.0),
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF28482),
-                                      borderRadius: BorderRadius.circular(32),
-                                    ),
-                                    child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
-                                  ),
-                                  child: ExpandableInvertedDateCard(
-                                    activity: activity, 
-                                    color: brandBlue, 
-                                  ),
-                                );
-                              },
-                            ),
+              child: activitiesAsync.when(
+                loading: () =>
+                    const Center(child: CircularProgressIndicator(color: Colors.white)),
+                error: (error, _) => Center(
+                  child: Text(
+                    'Error: $error',
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
+                ),
+                data: (activities) {
+                  if (activities.isEmpty) {
+                    return _buildEmptyState();
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(
+                      left: 24.0,
+                      right: 24.0,
+                      bottom: 40.0,
+                    ),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: activities.length,
+                    itemBuilder: (context, index) {
+                      final activity = activities[index];
+
+                      return Dismissible(
+                        key: ValueKey(activity.id),
+                        direction: _isPersonnel
+                            ? DismissDirection.none
+                            : DismissDirection.endToStart,
+                        confirmDismiss: (_) async {
+                          return await _confirmDeleteActivity(activity);
+                        },
+                        background: Container(
+                          margin: const EdgeInsets.only(bottom: 24.0),
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF28482),
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        child: ExpandableInvertedDateCard(
+                          activity: activity,
+                          color: brandBlue,
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
