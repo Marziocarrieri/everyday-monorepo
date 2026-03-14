@@ -145,6 +145,7 @@ class PetActivitiesRepository {
     late final StreamController<List<PetActivity>> controller;
     StreamSubscription<List<Map<String, dynamic>>>? snapshotSubscription;
     RealtimeChannel? deleteRealtimeChannel;
+    RealtimeChannel? updateRealtimeChannel;
     var disposed = false;
     var started = false;
     var activeListeners = 0;
@@ -209,9 +210,8 @@ class PetActivitiesRepository {
           .toList(growable: false)
         ..sort((left, right) => left.id.compareTo(right.id));
 
-      final emittedSnapshot = List<PetActivity>.unmodifiable(
-        List<PetActivity>.from(nextActivities),
-      );
+      final newList = List<PetActivity>.from(nextActivities);
+      final emittedSnapshot = List<PetActivity>.unmodifiable(newList);
 
       if (kDebugMode) {
         if (lastLength != emittedSnapshot.length) {
@@ -229,6 +229,10 @@ class PetActivitiesRepository {
           'identity=${identityHashCode(emittedSnapshot)} '
           'length=${emittedSnapshot.length}',
         );
+
+        if (source == 'pet_activities_update_realtime') {
+          debugPrint('New list identity: ${identityHashCode(newList)}');
+        }
       }
 
       controller.add(emittedSnapshot);
@@ -243,6 +247,9 @@ class PetActivitiesRepository {
       await snapshotSubscription?.cancel();
       if (deleteRealtimeChannel != null) {
         await supabase.removeChannel(deleteRealtimeChannel!);
+      }
+      if (updateRealtimeChannel != null) {
+        await supabase.removeChannel(updateRealtimeChannel!);
       }
       if (!controller.isClosed) {
         await controller.close();
@@ -316,6 +323,77 @@ class PetActivitiesRepository {
                 stateById.remove(deletedId);
 
                 emitFromCache(source: 'pet_activities_delete_realtime');
+              },
+            )
+            .subscribe();
+
+        updateRealtimeChannel = supabase
+            .channel('schema-db-changes:pet-activities-update:$normalizedPetId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'pets_activities',
+              callback: (payload) {
+                if (payload.eventType != PostgresChangeEvent.update) {
+                  return;
+                }
+
+                final updatedId =
+                    _readString(payload.newRecord['id']) ??
+                    _readString(payload.oldRecord['id']);
+                if (updatedId == null) {
+                  return;
+                }
+
+                final newPetId =
+                    _readString(payload.newRecord['petId']) ??
+                    _readString(payload.newRecord['pet_id']);
+                final oldPetId =
+                    _readString(payload.oldRecord['petId']) ??
+                    _readString(payload.oldRecord['pet_id']);
+
+                final movedAwayFromCurrentPet =
+                    oldPetId == normalizedPetId &&
+                    newPetId != null &&
+                    newPetId != normalizedPetId;
+                if (movedAwayFromCurrentPet) {
+                  if (kDebugMode) {
+                    debugPrint('PET_ACTIVITY UPDATE realtime');
+                    debugPrint('Updated id: $updatedId');
+                  }
+                  stateById.remove(updatedId);
+                  emitFromCache(source: 'pet_activities_update_realtime');
+                  return;
+                }
+
+                final belongsToCurrentPet =
+                    newPetId == normalizedPetId ||
+                    (newPetId == null && oldPetId == normalizedPetId);
+                if (!belongsToCurrentPet) {
+                  return;
+                }
+
+                final previous = stateById[updatedId];
+                final merged = <String, dynamic>{};
+                if (previous != null) {
+                  merged.addAll(previous);
+                }
+                merged.addAll(Map<String, dynamic>.from(payload.newRecord));
+                merged['id'] = updatedId;
+                if (_readPetId(merged) == null) {
+                  merged['petId'] = normalizedPetId;
+                }
+
+                if (kDebugMode) {
+                  debugPrint('PET_ACTIVITY UPDATE realtime');
+                  debugPrint('Updated id: $updatedId');
+                }
+
+                upsertStateRow(
+                  merged,
+                  source: 'pet_activities_update_realtime',
+                );
+                emitFromCache(source: 'pet_activities_update_realtime');
               },
             )
             .subscribe();
@@ -427,5 +505,12 @@ class PetActivitiesRepository {
       debugPrint('Error deleting pet activity: $e');
       rethrow;
     }
+  }
+
+  Future<void> updateActivity(String id, Map<String, dynamic> data) async {
+    await supabase
+        .from('pets_activities')
+        .update(data)
+        .eq('id', id);
   }
 }

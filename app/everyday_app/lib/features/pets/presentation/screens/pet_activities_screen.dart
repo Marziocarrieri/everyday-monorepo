@@ -10,6 +10,7 @@ import 'package:everyday_app/features/pets/data/repositories/pets_activities_rep
 import 'package:everyday_app/features/pets/data/models/pet_activity.dart'; 
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/features/pets/presentation/providers/pets_providers.dart';
+import 'package:everyday_app/features/pets/presentation/widgets/pet_activity_card.dart';
 import 'package:everyday_app/shared/utils/date_utils.dart';
 
 class PetActivitiesScreen extends ConsumerStatefulWidget {
@@ -305,7 +306,7 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
                             size: 28,
                           ),
                         ),
-                        child: ExpandableInvertedDateCard(
+                        child: PetActivityCard(
                           activity: activity,
                           color: brandBlue,
                         ),

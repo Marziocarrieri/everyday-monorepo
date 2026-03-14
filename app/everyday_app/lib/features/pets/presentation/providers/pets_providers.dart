@@ -85,6 +85,8 @@ final petActivitiesRepositoryProvider = Provider<PetActivitiesRepository>((ref) 
   return PetActivitiesRepository();
 });
 
+final petsActivitiesRepositoryProvider = petActivitiesRepositoryProvider;
+
 final petsLocalRemovalProvider = StateNotifierProvider.family<
     PetsLocalRemovalNotifier,
     Set<String>,
