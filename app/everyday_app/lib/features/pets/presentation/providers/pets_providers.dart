@@ -15,24 +15,26 @@ final petActivitiesRepositoryProvider = Provider<PetActivitiesRepository>((ref) 
 
 final petsStreamProvider =
     StreamProvider.family<List<Pet>, String>((ref, householdId) {
-  if (householdId.trim().isEmpty) {
+  final normalizedHouseholdId = householdId.trim();
+  if (normalizedHouseholdId.isEmpty) {
     return const Stream<List<Pet>>.empty();
   }
 
   final repository = ref.watch(petRepositoryProvider);
   return repository
-      .watchPets(householdId)
+      .watchPets(normalizedHouseholdId)
       .map((pets) => List<Pet>.from(pets));
 });
 
 final petActivitiesStreamProvider =
     StreamProvider.family<List<PetActivity>, String>((ref, petId) {
-  if (petId.trim().isEmpty) {
+  final normalizedPetId = petId.trim();
+  if (normalizedPetId.isEmpty) {
     return const Stream<List<PetActivity>>.empty();
   }
 
   final repository = ref.watch(petActivitiesRepositoryProvider);
   return repository
-      .watchPetActivities(petId)
+      .watchPetActivities(normalizedPetId)
       .map((activities) => List<PetActivity>.from(activities));
 });

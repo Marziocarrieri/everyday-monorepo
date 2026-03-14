@@ -72,11 +72,20 @@ class PetActivitiesRepository {
   }
 
   Stream<List<PetActivity>> watchPetActivities(String petId) async* {
+    final normalizedPetId = petId.trim();
+    if (normalizedPetId.isEmpty) {
+      yield const <PetActivity>[];
+      return;
+    }
+
     String? lastSnapshotSignature;
+    var hasEmittedSnapshot = false;
     var previousRowSignaturesById = <String, String>{};
 
-    await for (final rows
-        in supabase.from('pets_activities').stream(primaryKey: ['id'])) {
+    await for (final rows in supabase
+        .from('pets_activities')
+        .stream(primaryKey: ['id'])
+        .eq('petId', normalizedPetId)) {
       final nextRowsById = <String, Map<String, dynamic>>{};
 
       for (final row in rows) {
@@ -97,7 +106,7 @@ class PetActivitiesRepository {
         ..addAll(nextRowsById);
 
       final filteredRows = _cachedActivitiesRowsById.values
-          .where((row) => _readPetId(row) == petId)
+          .where((row) => _readPetId(row) == normalizedPetId)
           .map((row) => Map<String, dynamic>.from(row))
           .toList(growable: false);
 
@@ -139,10 +148,11 @@ class PetActivitiesRepository {
       );
 
       final snapshotSignature = _buildSnapshotSignature(filteredRows);
-      if (snapshotSignature == lastSnapshotSignature) {
+      if (hasEmittedSnapshot && snapshotSignature == lastSnapshotSignature) {
         continue;
       }
       lastSnapshotSignature = snapshotSignature;
+      hasEmittedSnapshot = true;
 
       final newList = filteredRows
           .map((row) {
