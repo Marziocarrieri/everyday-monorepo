@@ -33,6 +33,20 @@ class PetActivitiesRepository {
     }
   }
 
+  Stream<List<PetActivity>> watchActivities(String petId) {
+    return supabase
+        .from('pets_activities')
+        .stream(primaryKey: ['id'])
+        .map((rows) {
+          final filteredRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .where((row) => row['petId'] == petId)
+              .toList();
+
+          return filteredRows.map(PetActivity.fromJson).toList();
+        });
+  }
+
   /// Inserisce una nuova attività per un pet nella tabella 'pets_activities'
   Future<void> insertActivity({
     required String houseHoldId,

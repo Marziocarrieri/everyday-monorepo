@@ -38,7 +38,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
   Future<void> _uploadPdf() async {
     final userId = AppContext.instance.userId;
-    final householdId = AppContext.instance.householdId;
+    final householdId = ref.read(currentHouseholdIdProvider);
     if (userId == null || householdId == null) return;
 
     final result = await FilePicker.platform.pickFiles(
@@ -82,7 +82,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
   Future<void> _removePdf(DietDocument currentDiet) async {
     final userId = AppContext.instance.userId;
-    final householdId = AppContext.instance.householdId;
+    final householdId = ref.read(currentHouseholdIdProvider);
     if (userId == null || householdId == null) return;
 
     try {

@@ -6,7 +6,7 @@ import '../../../../shared/repositories/supabase_client.dart';
 
 class FridgeRepository {
   Future<List<FridgeItem>> getItems(String householdId, AreaType area) async {
-    print('FRIDGE LOAD → household: $householdId');
+    debugPrint('FRIDGE LOAD → household: $householdId');
 
     final response = await supabase
         .from('pantry_item')
@@ -25,16 +25,46 @@ class FridgeRepository {
   }
 
   Stream<List<FridgeItem>> watchPantryItems(String householdId) {
+    final cachedRowsById = <String, Map<String, dynamic>>{};
+
     return supabase
         .from('pantry_item')
         .stream(primaryKey: ['id'])
         .map((rows) {
-          final filteredRows = rows
-              .map((row) => Map<String, dynamic>.from(row))
+          final nextRowsById = <String, Map<String, dynamic>>{};
+
+          for (final row in rows) {
+            final incoming = Map<String, dynamic>.from(row);
+            final id = incoming['id']?.toString();
+            if (id == null || id.isEmpty) {
+              continue;
+            }
+
+            final previous = cachedRowsById[id];
+            nextRowsById[id] = previous == null
+                ? incoming
+                : <String, dynamic>{...previous, ...incoming};
+          }
+
+          cachedRowsById
+            ..clear()
+            ..addAll(nextRowsById);
+
+          final filteredRows = cachedRowsById.values
               .where((row) => row['household_id'] == householdId)
               .toList();
 
-          return filteredRows.map(FridgeItem.fromJson).toList();
+          return filteredRows
+              .map((row) {
+                try {
+                  return FridgeItem.fromJson(row);
+                } catch (error) {
+                  debugPrint('Skipping invalid pantry stream row: $error');
+                  return null;
+                }
+              })
+              .whereType<FridgeItem>()
+              .toList();
         });
   }
 

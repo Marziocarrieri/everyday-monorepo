@@ -32,6 +32,20 @@ class PetRepository {
     }
   }
 
+  Stream<List<Pet>> watchPets(String householdId) {
+    return supabase
+        .from('pets')
+        .stream(primaryKey: ['id'])
+        .map((rows) {
+          final filteredRows = rows
+              .map((row) => Map<String, dynamic>.from(row))
+              .where((row) => row['household_id'] == householdId)
+              .toList();
+
+          return filteredRows.map(Pet.fromJson).toList();
+        });
+  }
+
   /// Crea un nuovo Pet
   Future<void> createPet({
     required String name,

@@ -1,4 +1,6 @@
 // TODO migrate to features/pets
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -20,6 +22,7 @@ class PetActivitiesScreen extends StatefulWidget {
 class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   List<PetActivity> _activities = [];
   final PetActivitiesRepository _activityRepository = PetActivitiesRepository();
+  StreamSubscription<List<PetActivity>>? _activitiesSubscription;
   bool _isLoading = false;
   String? _error;
   
@@ -35,10 +38,10 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
   @override
   void initState() {
     super.initState();
-    _loadActivities();
+    _subscribeActivities();
   }
 
-  Future<void> _loadActivities() async {
+  Future<void> _subscribeActivities() async {
     if (!mounted) return;
     
     setState(() {
@@ -47,26 +50,35 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
     });
 
     try {
-      final activities = await _activityRepository.getActivities(widget.petId);
-
-      if (!mounted) return;
-      
-      setState(() {
-        _activities = activities;
-      });
+      await _activitiesSubscription?.cancel();
+      _activitiesSubscription = _activityRepository
+          .watchActivities(widget.petId)
+          .listen(
+            (activities) {
+              if (!mounted) return;
+              setState(() {
+                _activities = activities;
+                _isLoading = false;
+                _error = null;
+              });
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              if (!mounted) return;
+              setState(() {
+                _error = error.toString();
+                _isLoading = false;
+              });
+              debugPrint('UI Error loading activities stream: $error');
+            },
+          );
     } catch (error) {
       if (!mounted) return;
       
       setState(() {
         _error = error.toString();
+        _isLoading = false;
       });
       debugPrint('UI Error loading activities: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     }
   }
 
@@ -165,11 +177,6 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
     try {
       // 1. CHIAMIAMO IL DATABASE PER L'ELIMINAZIONE VERA!
       await _activityRepository.deleteActivity(activity.id);
-
-      // 2. Se il database va a buon fine, togliamo l'elemento dalla schermata
-      setState(() {
-        _activities.removeWhere((a) => a.id == activity.id); 
-      });
       
       return true;
     } catch (error) {
@@ -193,10 +200,14 @@ class _PetActivitiesScreenState extends State<PetActivitiesScreen> {
     );
 
     if (result == true) {
-      setState(() {
-        _loadActivities();
-      });
+      debugPrint('Add activity completed');
     }
+  }
+
+  @override
+  void dispose() {
+    _activitiesSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -553,7 +564,13 @@ class _AddPetActivitySheetState extends State<AddPetActivitySheet> {
     DateTime tempTime = isStart ? (_startTime ?? DateTime.now()) : (_endTime ?? DateTime.now().add(const Duration(hours: 1)));
     _showIOSPicker(
       child: CupertinoDatePicker(initialDateTime: tempTime, mode: CupertinoDatePickerMode.time, onDateTimeChanged: (newTime) => tempTime = newTime),
-      onConfirm: () => setState(() { if (isStart) _startTime = tempTime; else _endTime = tempTime; }),
+      onConfirm: () => setState(() {
+        if (isStart) {
+          _startTime = tempTime;
+        } else {
+          _endTime = tempTime;
+        }
+      }),
     );
   }
 

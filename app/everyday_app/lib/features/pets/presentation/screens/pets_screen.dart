@@ -1,4 +1,6 @@
 // TODO migrate to features/pets
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -20,6 +22,7 @@ class _PetsScreenState extends State<PetsScreen> {
   // Sfondo Azzurro Premium (Tema Invertito)
   final Color invertedBgColor = const Color(0xFF5A8B9E); 
   final PetRepository _petRepository = PetRepository();
+  StreamSubscription<List<Pet>>? _petsSubscription;
   List<Pet> _pets = [];
   bool _isLoading = false;
   String? _error;
@@ -35,10 +38,10 @@ class _PetsScreenState extends State<PetsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPets();
+    _subscribePets();
   }
 
-  Future<void> _loadPets() async {
+  Future<void> _subscribePets() async {
     if (!mounted) return;
     
     setState(() {
@@ -47,29 +50,35 @@ class _PetsScreenState extends State<PetsScreen> {
     });
 
     try {
-      // Fetches the current active household ID from your AppContext
       final householdId = AppContext.instance.requireHouseholdId();
-      
-      final pets = await _petRepository.getPets(householdId);
 
-      if (!mounted) return;
-      
-      setState(() {
-        _pets = pets;
-      });
+      await _petsSubscription?.cancel();
+      _petsSubscription = _petRepository.watchPets(householdId).listen(
+        (pets) {
+          if (!mounted) return;
+          setState(() {
+            _pets = pets;
+            _isLoading = false;
+            _error = null;
+          });
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (!mounted) return;
+          setState(() {
+            _error = error.toString();
+            _isLoading = false;
+          });
+          debugPrint('UI Error loading pets stream: $error');
+        },
+      );
     } catch (error) {
       if (!mounted) return;
       
       setState(() {
         _error = error.toString();
+        _isLoading = false;
       });
       debugPrint('UI Error loading members: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     }
   }
 
@@ -170,12 +179,6 @@ class _PetsScreenState extends State<PetsScreen> {
     try {
       // CHIAMIAMO IL DATABASE PER L'ELIMINAZIONE REALE
       await _petRepository.deletePet(pet.id);
-      
-      // Rimuoviamo l'elemento dallo schermo
-      setState(() {
-        _pets.removeWhere((p) => p.id == pet.id);
-      });
-      
       return true;
     } catch (error) {
       if (!mounted) return false;
@@ -199,11 +202,14 @@ class _PetsScreenState extends State<PetsScreen> {
       builder: (context) => const AddPetSheet(),
     );
     if (result == true) {
-      debugPrint("Refresh della lista in corso...");
-      setState(() {
-        _loadPets();
-      });
+      debugPrint('Add pet completed');
     }
+  }
+
+  @override
+  void dispose() {
+    _petsSubscription?.cancel();
+    super.dispose();
   }
 
   @override

@@ -5,12 +5,33 @@ import '../../../../shared/repositories/supabase_client.dart';
 
 class HouseholdMemberRepository {
   Stream<List<HouseholdMember>> watchMembers(String householdId) {
+    final cachedRowsById = <String, Map<String, dynamic>>{};
+
     return supabase
         .from('household_member')
         .stream(primaryKey: ['id'])
-        .eq('household_id', householdId)
         .asyncMap((rows) async {
-          final membershipRows = rows
+          final nextRowsById = <String, Map<String, dynamic>>{};
+
+          for (final row in rows) {
+            final incoming = Map<String, dynamic>.from(row);
+            final id = incoming['id']?.toString();
+            if (id == null || id.isEmpty) {
+              continue;
+            }
+
+            final previous = cachedRowsById[id];
+            nextRowsById[id] = previous == null
+                ? incoming
+                : <String, dynamic>{...previous, ...incoming};
+          }
+
+          cachedRowsById
+            ..clear()
+            ..addAll(nextRowsById);
+
+          final membershipRows = cachedRowsById.values
+              .where((row) => row['household_id'] == householdId)
               .map((row) => Map<String, dynamic>.from(row))
               .toList();
 

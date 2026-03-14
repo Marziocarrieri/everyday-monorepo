@@ -20,39 +20,13 @@ final homeConfigurationRepositoryProvider =
 final floorsStreamProvider =
     StreamProvider.family<List<HouseholdFloor>, String>((ref, householdId) {
   final repository = ref.watch(homeConfigurationRepositoryProvider);
-  Set<String>? previousFloorIds;
-
-  return repository.watchFloors(householdId).map((floors) {
-    final currentFloorIds = floors.map((floor) => floor.id).toSet();
-    final didDeleteFloor = previousFloorIds != null &&
-        previousFloorIds!.difference(currentFloorIds).isNotEmpty;
-    previousFloorIds = currentFloorIds;
-
-    if (didDeleteFloor) {
-      Future.microtask(ref.invalidateSelf);
-    }
-
-    return floors;
-  });
+  return repository.watchFloors(householdId);
 });
 
 final roomsStreamProvider =
     StreamProvider.family<List<HouseholdRoom>, String>((ref, householdId) {
   final repository = ref.watch(homeConfigurationRepositoryProvider);
-  Set<String>? previousRoomIds;
-
-  return repository.watchRooms(householdId).map((rooms) {
-    final currentRoomIds = rooms.map((room) => room.id).toSet();
-    final didDeleteRoom = previousRoomIds != null &&
-        previousRoomIds!.difference(currentRoomIds).isNotEmpty;
-    previousRoomIds = currentRoomIds;
-
-    if (didDeleteRoom) {
-      Future.microtask(ref.invalidateSelf);
-    }
-
-    return rooms;
-  });
+  return repository.watchRooms(householdId);
 });
 
 final homeConfigurationStreamProvider =

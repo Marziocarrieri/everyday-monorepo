@@ -64,12 +64,32 @@ class HomeConfigurationRepository {
   }
 
   Stream<List<HouseholdFloor>> watchFloors(String householdId) {
+    final cachedRowsById = <String, Map<String, dynamic>>{};
+
     return supabase
         .from('household_floor')
         .stream(primaryKey: ['id'])
         .map((rows) {
-          final filteredRows = rows
-              .map((row) => Map<String, dynamic>.from(row))
+          final nextRowsById = <String, Map<String, dynamic>>{};
+
+          for (final row in rows) {
+            final incoming = Map<String, dynamic>.from(row);
+            final id = incoming['id']?.toString();
+            if (id == null || id.isEmpty) {
+              continue;
+            }
+
+            final previous = cachedRowsById[id];
+            nextRowsById[id] = previous == null
+                ? incoming
+                : <String, dynamic>{...previous, ...incoming};
+          }
+
+          cachedRowsById
+            ..clear()
+            ..addAll(nextRowsById);
+
+          final filteredRows = cachedRowsById.values
               .where((row) => row['household_id'] == householdId)
               .toList();
 
@@ -124,12 +144,32 @@ class HomeConfigurationRepository {
   }
 
   Stream<List<HouseholdRoom>> watchRooms(String householdId) {
+    final cachedRowsById = <String, Map<String, dynamic>>{};
+
     return supabase
         .from('household_room')
         .stream(primaryKey: ['id'])
         .map((rows) {
-          final filteredRows = rows
-              .map((row) => Map<String, dynamic>.from(row))
+          final nextRowsById = <String, Map<String, dynamic>>{};
+
+          for (final row in rows) {
+            final incoming = Map<String, dynamic>.from(row);
+            final id = incoming['id']?.toString();
+            if (id == null || id.isEmpty) {
+              continue;
+            }
+
+            final previous = cachedRowsById[id];
+            nextRowsById[id] = previous == null
+                ? incoming
+                : <String, dynamic>{...previous, ...incoming};
+          }
+
+          cachedRowsById
+            ..clear()
+            ..addAll(nextRowsById);
+
+          final filteredRows = cachedRowsById.values
               .where((row) => row['household_id'] == householdId)
               .toList();
 
