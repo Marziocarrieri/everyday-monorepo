@@ -708,6 +708,14 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     final quantity = int.tryParse(_quantityController.text.trim());
     if (quantity == null || quantity <= 0) return;
 
+    final hasNameChanged = name != widget.item.name;
+    final hasQuantityChanged = quantity != widget.item.quantity;
+    if (!hasNameChanged && !hasQuantityChanged) {
+      if (!mounted) return;
+      Navigator.pop(context, false);
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     final updated = ShoppingItem(
@@ -718,9 +726,20 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
       status: widget.item.status,
     );
 
-    await widget.shoppingService.updateItem(updated);
-    if (!mounted) return;
-    Navigator.pop(context, true);
+    try {
+      await widget.shoppingService.updateItem(updated);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override

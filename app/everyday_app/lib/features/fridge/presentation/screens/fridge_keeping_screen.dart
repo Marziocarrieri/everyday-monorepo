@@ -1160,14 +1160,17 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
 
   DateTime? _parseDateFromInput(String input) {
     final trimmed = input.trim();
-    if (trimmed.isEmpty || trimmed.toLowerCase() == 'none') return null;
+    if (trimmed.isEmpty || trimmed.toLowerCase() == 'none') {
+      return null;
+    }
     final parts = trimmed.split('/');
     if (parts.length == 3) {
       final day = int.tryParse(parts[0]);
       final month = int.tryParse(parts[1]);
       final year = int.tryParse(parts[2]);
-      if (day != null && month != null && year != null)
+      if (day != null && month != null && year != null) {
         return DateTime(year, month, day);
+      }
     }
     return DateTime.tryParse(trimmed);
   }
@@ -1186,10 +1189,12 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     if (weightText.isNotEmpty && weight == null) return;
     if (quantityText.isNotEmpty && quantity == null) return;
 
-    final selectedDate = dateText.isEmpty
-        ? _selectedDate
-        : _parseDateFromInput(dateText);
-    if (dateText.isNotEmpty && selectedDate == null) return;
+    final isDateUnset =
+      dateText.isEmpty || dateText.toLowerCase() == 'none';
+    final selectedDate = isDateUnset
+      ? null
+      : _parseDateFromInput(dateText);
+    if (!isDateUnset && selectedDate == null) return;
 
     final updatedItem = FridgeItem(
       id: widget.item.id,
@@ -1204,9 +1209,20 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     );
 
     setState(() => _isSaving = true);
-    await widget.pantryService.updateItem(updatedItem);
-    if (!mounted) return;
-    Navigator.of(context).pop(true);
+    try {
+      await widget.pantryService.updateItem(updatedItem);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
