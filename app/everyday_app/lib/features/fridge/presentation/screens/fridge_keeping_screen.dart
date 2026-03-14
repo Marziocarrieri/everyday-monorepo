@@ -30,8 +30,36 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   bool _isListView = true;
 
   // Colori Brand per coerenza
-  final Color primaryColor = const Color(0xFF5A8B9E);
+  final Color primaryColor = const Color(0xFF5A8B9E); // Azzurro
+  final Color warningColor = const Color(0xFFF4A261); // Giallo/Arancio
+  final Color expiredColor = const Color(0xFFF28482); // Rosso
   final Color darkTextColor = const Color(0xFF3D342C);
+
+  // --- LOGICA COLORE SCADENZA ---
+  Color _getItemColor(FridgeItem item) {
+    if (item.expirationDate == null) {
+      return getStatusColor('safe'); // Azzurro base se non c'è data
+    }
+
+    final now = DateTime.now();
+    // Azzero l'orario per fare un confronto pulito tra i giorni
+    final today = DateTime(now.year, now.month, now.day);
+    final expDate = DateTime(
+      item.expirationDate!.year,
+      item.expirationDate!.month,
+      item.expirationDate!.day,
+    );
+
+    final difference = expDate.difference(today).inDays;
+
+    if (difference <= 0) {
+      return expiredColor; // Scaduto oggi o in passato -> Rosso
+    } else if (difference <= 2) {
+      return warningColor; // Scade tra 1 o 2 giorni -> Giallo
+    } else {
+      return getStatusColor('safe'); // Tutto ok -> Azzurro
+    }
+  }
 
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
@@ -266,6 +294,14 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     final filteredItems = items
                         .where((item) => item.area == _selectedCategory)
                         .toList();
+
+                    // Ordina la lista mettendo prima quelli scaduti/in scadenza
+                    filteredItems.sort((a, b) {
+                      if (a.expirationDate == null && b.expirationDate == null) return 0;
+                      if (a.expirationDate == null) return 1;
+                      if (b.expirationDate == null) return -1;
+                      return a.expirationDate!.compareTo(b.expirationDate!);
+                    });
 
                     return _isListView
                         ? _buildGlassList(filteredItems, pantryService)
@@ -632,9 +668,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   }
 
   Widget _buildListItem(FridgeItem item, PantryService pantryService) {
-    Color iconColor = getStatusColor('safe');
+    Color iconColor = _getItemColor(item); // USO LA NUOVA LOGICA!
+    
     return GestureDetector(
-      onTap: () => _showItemDetailModal(item, pantryService),
+      onTap: () => _showItemDetailModal(item, pantryService, iconColor),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
@@ -646,8 +683,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               color: Colors.white.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: primaryColor.withValues(alpha: 0.1),
-                width: 1.2,
+                color: iconColor.withValues(alpha: 0.3), // Bordo col colore di stato
+                width: 1.5,
               ),
             ),
             child: Row(
@@ -659,7 +696,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: iconColor.withValues(alpha: 0.2),
+                        color: iconColor.withValues(alpha: 0.3), // Ombra col colore di stato
                         blurRadius: 10,
                         offset: const Offset(0, 5),
                       ),
@@ -729,9 +766,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   }
 
   Widget _buildSmallGridCard(FridgeItem item, PantryService pantryService) {
-    Color iconColor = getStatusColor('safe');
+    Color iconColor = _getItemColor(item); // USO LA NUOVA LOGICA!
+
     return GestureDetector(
-      onTap: () => _showItemDetailModal(item, pantryService),
+      onTap: () => _showItemDetailModal(item, pantryService, iconColor),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
@@ -742,8 +780,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               color: Colors.white.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: primaryColor.withValues(alpha: 0.1),
-                width: 1.2,
+                color: iconColor.withValues(alpha: 0.3), // Bordo col colore di stato
+                width: 1.5,
               ),
             ),
             child: Column(
@@ -756,7 +794,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: iconColor.withValues(alpha: 0.2),
+                        color: iconColor.withValues(alpha: 0.3), // Ombra col colore di stato
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -867,13 +905,14 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   Future<void> _showItemDetailModal(
     FridgeItem item,
     PantryService pantryService,
+    Color itemColor, // Aggiunto per passare il colore calcolato
   ) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) =>
-          FridgeItemDetailSheet(item: item, pantryService: pantryService),
+          FridgeItemDetailSheet(item: item, pantryService: pantryService, itemColor: itemColor,),
     );
     if (result == true && mounted) {
       _showSuccessSnackBar('Item updated');
@@ -1114,9 +1153,11 @@ class FridgeItemDetailSheet extends StatefulWidget {
     super.key,
     required this.item,
     required this.pantryService,
+    required this.itemColor, // Il colore dinamico
   });
   final FridgeItem item;
   final PantryService pantryService;
+  final Color itemColor;
 
   @override
   State<FridgeItemDetailSheet> createState() => _FridgeItemDetailSheetState();
@@ -1227,7 +1268,8 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final itemColor = getStatusColor('safe');
+    // Uso il colore che mi è stato passato dal padre (rosso, giallo o azzurro)
+    final itemColor = widget.itemColor;
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),

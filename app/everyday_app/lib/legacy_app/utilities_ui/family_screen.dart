@@ -28,9 +28,13 @@ class FamilyScreen extends ConsumerWidget {
     final currentUserId = AppContext.instance.userId;
     final membersAsync = ref.watch(householdMembersStreamProvider);
 
-    // --- CONTROLLO RUOLO ---
+    // --- CONTROLLO RUOLI ---
     final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
     final isHost = role == 'HOST';
+    
+    // Pulisco la stringa per controllare il Personnel con sicurezza
+    final cleanRole = role.replaceAll('-', '').replaceAll('_', '').replaceAll(' ', '');
+    final isPersonnel = cleanRole == 'PERSONNEL';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -120,6 +124,7 @@ class FamilyScreen extends ConsumerWidget {
                                 : '?',
                             color: const Color(0xFFF4A261),
                             role: member.role,
+                            isPersonnel: isPersonnel, // Passiamo il ruolo alla card!
                           ),
                         );
                       },
@@ -171,113 +176,110 @@ class FamilyScreen extends ConsumerWidget {
     required String role,
     required String initial,
     required Color color,
+    required bool isPersonnel, // Nuovo parametro
   }) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).pushNamed(
-          AppRouteNames.userTaskHistory,
-          arguments: UserTaskHistoryRouteArgs(targetUserId: userId),
-        );
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
-          child: Container(
-            height: 120,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  color.withValues(alpha: 0.2),
-                  Colors.white.withValues(alpha: 0.5),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.08),
-                  blurRadius: 30,
-                  offset: const Offset(0, 15),
-                ),
+    
+    // Il widget base della Card (separato dal GestureDetector)
+    Widget cardContent = ClipRRect(
+      borderRadius: BorderRadius.circular(32),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
+        child: Container(
+          height: 120,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: 0.2),
+                Colors.white.withValues(alpha: 0.5),
               ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3D342C),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF3D342C,
-                                ).withValues(alpha: 0.2),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              initial,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.8),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.08),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3D342C),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF3D342C).withValues(alpha: 0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            initial,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: const Color(0xFF3D342C),
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.3,
-                                ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF3D342C),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                role,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: const Color(0xFF3D342C),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              role,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF3D342C),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
+              ),
+              
+              // SE NON È PERSONNEL: Mostra la linea e la scritta "View Activity"
+              if (!isPersonnel) ...[
                 Container(
                   width: 1,
                   margin: const EdgeInsets.symmetric(vertical: 20),
@@ -309,10 +311,26 @@ class FamilyScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ),
+    );
+
+    // SE È PERSONNEL: Restituisci la card NON CLICCABILE
+    if (isPersonnel) {
+      return cardContent;
+    }
+
+    // ALTRIMENTI: Restituisci la card con il GestureDetector
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pushNamed(
+          AppRouteNames.userTaskHistory,
+          arguments: UserTaskHistoryRouteArgs(targetUserId: userId),
+        );
+      },
+      child: cardContent,
     );
   }
 }
