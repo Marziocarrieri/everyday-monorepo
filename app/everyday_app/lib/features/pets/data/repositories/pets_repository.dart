@@ -6,38 +6,11 @@ import '../../../../shared/repositories/supabase_client.dart';
 import '../models/pet.dart'; 
 
 class PetRepository {
-  final Map<String, Map<String, dynamic>> _cachedPetsRowsById = {};
-  List<Pet> _cachedPets = const <Pet>[];
-
   String? _readString(dynamic value) {
     if (value == null) return null;
     final normalized = value.toString().trim();
     if (normalized.isEmpty) return null;
     return normalized;
-  }
-
-  String _buildRowSignature(Map<String, dynamic> row) {
-    final id = _readString(row['id']) ?? '-';
-    final updatedAt = _readString(row['updated_at']) ??
-        _readString(row['created_at']) ??
-        '-';
-    final name = _readString(row['name']) ?? '-';
-    final species = _readString(row['species']) ?? '-';
-    return '$id|$updatedAt|$name|$species';
-  }
-
-  String _buildSnapshotSignature(List<Map<String, dynamic>> rows) {
-    final sorted = rows
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList(growable: false)
-      ..sort((left, right) {
-        final leftId = _readString(left['id']) ?? '';
-        final rightId = _readString(right['id']) ?? '';
-        return leftId.compareTo(rightId);
-      });
-
-    final content = sorted.map(_buildRowSignature).join('#');
-    return '${rows.length}:$content';
   }
   /// Fetches all pets for a specific household ID.
   /// Maps the database response to the Pet model.
@@ -78,25 +51,52 @@ class PetRepository {
     StreamSubscription<List<Map<String, dynamic>>>? snapshotSubscription;
     RealtimeChannel? deleteRealtimeChannel;
     var disposed = false;
-    String? lastSnapshotSignature;
+    var started = false;
+    var activeListeners = 0;
+    final stateById = <String, Map<String, dynamic>>{};
+    final deletedIds = <String>{};
+    var lastLength = 0;
+
+    void upsertStateRow(
+      Map<String, dynamic> row, {
+      required String source,
+    }) {
+      final id = _readString(row['id']);
+      if (id == null) {
+        return;
+      }
+
+      if (deletedIds.contains(id)) {
+        if (kDebugMode) {
+          debugPrint(
+            'PET UPSERT SKIPPED TOMBSTONE source=$source id=$id',
+          );
+        }
+        return;
+      }
+
+      final previous = stateById[id];
+      stateById[id] = previous == null
+          ? Map<String, dynamic>.from(row)
+          : <String, dynamic>{...previous, ...row};
+
+      if (kDebugMode) {
+        final type = previous == null ? 'INSERT' : 'UPDATE';
+        debugPrint('PET REALTIME EVENT type=$type id=$id source=$source');
+      }
+    }
 
     void emitFromCache({required String source}) {
       if (disposed || controller.isClosed) {
         return;
       }
 
-      final filteredRows = _cachedPetsRowsById.values
+      final filteredRows = stateById.values
           .where(
             (row) => _readString(row['household_id']) == normalizedHouseholdId,
           )
           .map((row) => Map<String, dynamic>.from(row))
           .toList(growable: false);
-
-      final snapshotSignature = _buildSnapshotSignature(filteredRows);
-      if (kDebugMode && snapshotSignature == lastSnapshotSignature) {
-        debugPrint('PET SNAPSHOT SIGNATURE unchanged=$snapshotSignature');
-      }
-      lastSnapshotSignature = snapshotSignature;
 
       final nextPets = filteredRows
           .map((row) {
@@ -111,24 +111,25 @@ class PetRepository {
             }
           })
           .whereType<Pet>()
-          .toList(growable: false);
+          .toList(growable: false)
+        ..sort((left, right) => left.id.compareTo(right.id));
 
-      final previousLength = _cachedPets.length;
-      _cachedPets = List<Pet>.from(nextPets);
-      final emittedSnapshot = List<Pet>.unmodifiable(List<Pet>.from(_cachedPets));
+      final emittedSnapshot = List<Pet>.unmodifiable(List<Pet>.from(nextPets));
 
       if (kDebugMode) {
-        if (previousLength != _cachedPets.length) {
+        if (lastLength != emittedSnapshot.length) {
           debugPrint(
-            'PET CACHE LENGTH CHANGED source=$source before=$previousLength after=${_cachedPets.length}',
+            'PET CACHE LENGTH CHANGED source=$source before=$lastLength after=${emittedSnapshot.length}',
           );
         }
+        lastLength = emittedSnapshot.length;
+
         debugPrint(
           'PET SNAPSHOT EMITTED source=$source length=${emittedSnapshot.length}',
         );
         print(
-          'PET STREAM EMIT identity=${identityHashCode(_cachedPets)} '
-          'length=${_cachedPets.length}',
+          'PET STREAM EMIT identity=${identityHashCode(emittedSnapshot)} '
+          'length=${emittedSnapshot.length}',
         );
       }
 
@@ -152,28 +153,30 @@ class PetRepository {
 
     controller = StreamController<List<Pet>>.broadcast(
       onListen: () {
-        _cachedPetsRowsById.clear();
-        _cachedPets = const <Pet>[];
-        lastSnapshotSignature = null;
+        activeListeners++;
+        if (started) {
+          return;
+        }
+
+        started = true;
+        stateById.clear();
+        deletedIds.clear();
+        lastLength = 0;
+
+        emitFromCache(source: 'watch_start');
 
         snapshotSubscription = supabase
             .from('pets')
             .stream(primaryKey: ['id'])
             .eq('household_id', normalizedHouseholdId)
             .listen((rows) {
-              final nextRowsById = <String, Map<String, dynamic>>{};
               for (final row in rows) {
                 final incoming = Map<String, dynamic>.from(row);
-                final id = _readString(incoming['id']);
-                if (id == null) {
-                  continue;
-                }
-                nextRowsById[id] = incoming;
+                upsertStateRow(
+                  incoming,
+                  source: 'pets_snapshot_stream',
+                );
               }
-
-              _cachedPetsRowsById
-                ..clear()
-                ..addAll(nextRowsById);
 
               emitFromCache(source: 'pets_snapshot_stream');
             }, onError: (Object error, StackTrace stackTrace) {
@@ -209,13 +212,8 @@ class PetRepository {
                   debugPrint('PET REALTIME DELETE RECEIVED id=$deletedId');
                 }
 
-                final existed = _cachedPetsRowsById.remove(deletedId) != null;
-                if (!existed) {
-                  return;
-                }
-
-                _cachedPets = List<Pet>.from(_cachedPets)
-                  ..removeWhere((pet) => pet.id == deletedId);
+                deletedIds.add(deletedId);
+                stateById.remove(deletedId);
 
                 emitFromCache(source: 'pets_delete_realtime');
               },
@@ -223,7 +221,11 @@ class PetRepository {
             .subscribe();
       },
       onCancel: () async {
-        if (controller.hasListener) {
+        if (activeListeners > 0) {
+          activeListeners--;
+        }
+
+        if (activeListeners > 0) {
           return;
         }
         await disposeWatch();

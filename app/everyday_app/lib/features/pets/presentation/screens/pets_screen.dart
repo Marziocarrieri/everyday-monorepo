@@ -24,7 +24,6 @@ class PetsScreen extends ConsumerStatefulWidget {
 class _PetsScreenState extends ConsumerState<PetsScreen> {
   // Sfondo Azzurro Premium (Tema Invertito)
   final Color invertedBgColor = const Color(0xFF5A8B9E);
-  final Set<String> _optimisticallyRemovedPetIds = <String>{};
 
   // --- CONTROLLO RUOLO ---
   bool get _isPersonnel {
@@ -129,7 +128,10 @@ class _PetsScreenState extends ConsumerState<PetsScreen> {
     return confirmed == true;
   }
 
-  Future<void> _deletePetInBackground(Pet pet) async {
+  Future<void> _deletePetInBackground({
+    required String householdId,
+    required Pet pet,
+  }) async {
     try {
       final petRepository = ref.read(petRepositoryProvider);
       await petRepository.deletePet(pet.id);
@@ -138,13 +140,13 @@ class _PetsScreenState extends ConsumerState<PetsScreen> {
         debugPrint('PET UI DISMISS DELETE_FAILED id=${pet.id} error=$error');
       }
 
+      ref
+          .read(petsLocalRemovalProvider(householdId).notifier)
+          .restorePetLocally(pet.id);
+
       if (!mounted) {
         return;
       }
-
-      setState(() {
-        _optimisticallyRemovedPetIds.remove(pet.id);
-      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -155,47 +157,40 @@ class _PetsScreenState extends ConsumerState<PetsScreen> {
     }
   }
 
-  Future<bool> _handlePetDismiss(Pet pet) async {
-    final confirmed = await _confirmDeletePet(pet);
-    if (!confirmed || !mounted) {
-      return false;
-    }
-
-    setState(() {
-      _optimisticallyRemovedPetIds.add(pet.id);
-    });
+  void _handlePetDismissed({
+    required String householdId,
+    required Pet pet,
+  }) {
+    final removalNotifier = ref.read(
+      petsLocalRemovalProvider(householdId).notifier,
+    );
+    removalNotifier.removePetLocally(pet.id);
 
     if (kDebugMode) {
+      final pendingCount = ref.read(petsLocalRemovalProvider(householdId)).length;
       debugPrint(
-        'PET UI DISMISS LOCAL REMOVE id=${pet.id} pending=${_optimisticallyRemovedPetIds.length}',
+        'PET UI DISMISS LOCAL REMOVE id=${pet.id} pending=$pendingCount',
       );
     }
 
-    unawaited(_deletePetInBackground(pet));
-    return true;
+    unawaited(
+      _deletePetInBackground(
+        householdId: householdId,
+        pet: pet,
+      ),
+    );
   }
 
-  void _reconcileOptimisticRemovals(List<Pet> pets) {
-    if (_optimisticallyRemovedPetIds.isEmpty) {
-      return;
-    }
-
-    final incomingIds = pets.map((pet) => pet.id).toSet();
-    final resolvedIds = _optimisticallyRemovedPetIds
-        .where((id) => !incomingIds.contains(id))
-        .toList(growable: false);
-    if (resolvedIds.isEmpty) {
-      return;
-    }
-
+  void _reconcileOptimisticRemovals(String householdId, List<Pet> pets) {
+    final snapshotIds = pets.map((pet) => pet.id).toList(growable: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
 
-      setState(() {
-        _optimisticallyRemovedPetIds.removeAll(resolvedIds);
-      });
+      ref
+          .read(petsLocalRemovalProvider(householdId).notifier)
+          .reconcileWithSnapshot(snapshotIds);
     });
   }
 
@@ -229,6 +224,9 @@ class _PetsScreenState extends ConsumerState<PetsScreen> {
     }
 
     final petsAsync = ref.watch(petsStreamProvider(householdId));
+    final locallyRemovedPetIds = ref.watch(
+      petsLocalRemovalProvider(householdId),
+    );
 
     return Scaffold(
       backgroundColor: invertedBgColor, 
@@ -283,10 +281,10 @@ class _PetsScreenState extends ConsumerState<PetsScreen> {
                     ),
                   ),
                   data: (pets) {
-                    _reconcileOptimisticRemovals(pets);
+                    _reconcileOptimisticRemovals(householdId, pets);
 
                     final visiblePets = pets
-                        .where((pet) => !_optimisticallyRemovedPetIds.contains(pet.id))
+                        .where((pet) => !locallyRemovedPetIds.contains(pet.id))
                         .toList(growable: false);
 
                     if (visiblePets.isEmpty) {
@@ -307,7 +305,13 @@ class _PetsScreenState extends ConsumerState<PetsScreen> {
                                 ? DismissDirection.none
                                 : DismissDirection.endToStart,
                             confirmDismiss: (_) async {
-                              return await _handlePetDismiss(pet);
+                              return await _confirmDeletePet(pet);
+                            },
+                            onDismissed: (_) {
+                              _handlePetDismissed(
+                                householdId: householdId,
+                                pet: pet,
+                              );
                             },
                             background: Container(
                               alignment: Alignment.centerRight,

@@ -2,14 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'dart:async';
+import 'dart:convert';
 import '../../../../shared/repositories/supabase_client.dart';
 import '../models/pet_activity.dart'; 
 
 
 class PetActivitiesRepository {
-  final Map<String, Map<String, dynamic>> _cachedActivitiesRowsById = {};
-  List<PetActivity> _cachedActivities = const <PetActivity>[];
-
   String? _readString(dynamic value) {
     if (value == null) return null;
     final normalized = value.toString().trim();
@@ -21,30 +19,93 @@ class PetActivitiesRepository {
     return _readString(row['petId']) ?? _readString(row['pet_id']);
   }
 
-  String _buildRowSignature(Map<String, dynamic> row) {
-    final id = _readString(row['id']) ?? '-';
-    final updatedAt = _readString(row['updated_at']) ??
-        _readString(row['created_at']) ??
-        _readString(row['date']) ??
-        '-';
-    final description = _readString(row['description']) ?? '-';
-    final time = _readString(row['time']) ?? '-';
-    final endTime = _readString(row['end_time']) ?? '-';
-    return '$id|$updatedAt|$description|$time|$endTime';
+  String? _normalizeNullableString(String? value) {
+    if (value == null) {
+      return null;
+    }
+
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    return normalized;
   }
 
-  String _buildSnapshotSignature(List<Map<String, dynamic>> rows) {
-    final sorted = rows
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList(growable: false)
-      ..sort((left, right) {
-        final leftId = _readString(left['id']) ?? '';
-        final rightId = _readString(right['id']) ?? '';
-        return leftId.compareTo(rightId);
-      });
+  String? _extractMissingColumnName(Object error) {
+    final message = error.toString();
+    final patterns = <RegExp>[
+      RegExp(
+        r"Could not find the '([A-Za-z0-9_]+)' column",
+        caseSensitive: false,
+      ),
+      RegExp(
+        r"column\s+'([A-Za-z0-9_]+)'",
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'column\s+"([A-Za-z0-9_]+)"',
+        caseSensitive: false,
+      ),
+    ];
 
-    final content = sorted.map(_buildRowSignature).join('#');
-    return '${rows.length}:$content';
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(message);
+      final column = match?.group(1);
+      if (column != null && column.isNotEmpty) {
+        return column;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _insertWithMissingColumnFallback(
+    Map<String, dynamic> payload,
+  ) async {
+    final candidatePayload = Map<String, dynamic>.from(payload);
+    for (var attempt = 0; attempt < 8; attempt++) {
+      try {
+        await supabase.from('pets_activities').insert(candidatePayload);
+        return;
+      } catch (error) {
+        final missingColumn = _extractMissingColumnName(error);
+        if (missingColumn == null || !candidatePayload.containsKey(missingColumn)) {
+          rethrow;
+        }
+
+        if (kDebugMode) {
+          debugPrint(
+            'PET ACTIVITY INSERT RETRY remove_missing_column=$missingColumn',
+          );
+        }
+
+        candidatePayload.remove(missingColumn);
+      }
+    }
+
+    throw Exception('Pets activity insert failed: missing required columns');
+  }
+
+  Future<void> _ensurePetBelongsToHousehold({
+    required String petId,
+    required String householdId,
+  }) async {
+    final row = await supabase
+        .from('pets')
+        .select('id, household_id')
+        .eq('id', petId)
+        .maybeSingle();
+
+    if (row == null) {
+      throw Exception('Cannot create activity for missing pet');
+    }
+
+    final mapped = Map<String, dynamic>.from(row);
+    final petHouseholdId = _readString(mapped['household_id']);
+    if (petHouseholdId != null && petHouseholdId != householdId) {
+      throw Exception('Pet does not belong to active household');
+    }
   }
   /// Fetches all pets for a specific household ID.
   /// Maps the database response to the Pet model.
@@ -85,25 +146,52 @@ class PetActivitiesRepository {
     StreamSubscription<List<Map<String, dynamic>>>? snapshotSubscription;
     RealtimeChannel? deleteRealtimeChannel;
     var disposed = false;
-    String? lastSnapshotSignature;
+    var started = false;
+    var activeListeners = 0;
+    final stateById = <String, Map<String, dynamic>>{};
+    final deletedIds = <String>{};
+    var lastLength = 0;
+
+    void upsertStateRow(
+      Map<String, dynamic> row, {
+      required String source,
+    }) {
+      final id = _readString(row['id']);
+      if (id == null) {
+        return;
+      }
+
+      if (deletedIds.contains(id)) {
+        if (kDebugMode) {
+          debugPrint(
+            'PET ACTIVITY UPSERT SKIPPED TOMBSTONE source=$source id=$id',
+          );
+        }
+        return;
+      }
+
+      final previous = stateById[id];
+      stateById[id] = previous == null
+          ? Map<String, dynamic>.from(row)
+          : <String, dynamic>{...previous, ...row};
+
+      if (kDebugMode) {
+        final type = previous == null ? 'INSERT' : 'UPDATE';
+        debugPrint(
+          'PET ACTIVITY REALTIME EVENT id=$id type=$type source=$source',
+        );
+      }
+    }
 
     void emitFromCache({required String source}) {
       if (disposed || controller.isClosed) {
         return;
       }
 
-      final filteredRows = _cachedActivitiesRowsById.values
+      final filteredRows = stateById.values
           .where((row) => _readPetId(row) == normalizedPetId)
           .map((row) => Map<String, dynamic>.from(row))
           .toList(growable: false);
-
-      final snapshotSignature = _buildSnapshotSignature(filteredRows);
-      if (kDebugMode && snapshotSignature == lastSnapshotSignature) {
-        debugPrint(
-          'PET ACTIVITY SNAPSHOT SIGNATURE unchanged=$snapshotSignature',
-        );
-      }
-      lastSnapshotSignature = snapshotSignature;
 
       final nextActivities = filteredRows
           .map((row) {
@@ -118,27 +206,28 @@ class PetActivitiesRepository {
             }
           })
           .whereType<PetActivity>()
-          .toList(growable: false);
+          .toList(growable: false)
+        ..sort((left, right) => left.id.compareTo(right.id));
 
-      final previousLength = _cachedActivities.length;
-      _cachedActivities = List<PetActivity>.from(nextActivities);
       final emittedSnapshot = List<PetActivity>.unmodifiable(
-        List<PetActivity>.from(_cachedActivities),
+        List<PetActivity>.from(nextActivities),
       );
 
       if (kDebugMode) {
-        if (previousLength != _cachedActivities.length) {
+        if (lastLength != emittedSnapshot.length) {
           debugPrint(
-            'PET ACTIVITY CACHE LENGTH CHANGED source=$source before=$previousLength after=${_cachedActivities.length}',
+            'PET ACTIVITY CACHE LENGTH CHANGED source=$source before=$lastLength after=${emittedSnapshot.length}',
           );
         }
+        lastLength = emittedSnapshot.length;
+
         debugPrint(
           'PET ACTIVITY SNAPSHOT EMITTED source=$source length=${emittedSnapshot.length}',
         );
         print(
           'PET ACTIVITY STREAM EMIT '
-          'identity=${identityHashCode(_cachedActivities)} '
-          'length=${_cachedActivities.length}',
+          'identity=${identityHashCode(emittedSnapshot)} '
+          'length=${emittedSnapshot.length}',
         );
       }
 
@@ -162,28 +251,30 @@ class PetActivitiesRepository {
 
     controller = StreamController<List<PetActivity>>.broadcast(
       onListen: () {
-        _cachedActivitiesRowsById.clear();
-        _cachedActivities = const <PetActivity>[];
-        lastSnapshotSignature = null;
+        activeListeners++;
+        if (started) {
+          return;
+        }
+
+        started = true;
+        stateById.clear();
+        deletedIds.clear();
+        lastLength = 0;
+
+        emitFromCache(source: 'watch_start');
 
         snapshotSubscription = supabase
             .from('pets_activities')
             .stream(primaryKey: ['id'])
             .eq('petId', normalizedPetId)
             .listen((rows) {
-              final nextRowsById = <String, Map<String, dynamic>>{};
               for (final row in rows) {
                 final incoming = Map<String, dynamic>.from(row);
-                final id = _readString(incoming['id']);
-                if (id == null) {
-                  continue;
-                }
-                nextRowsById[id] = incoming;
+                upsertStateRow(
+                  incoming,
+                  source: 'pet_activities_snapshot_stream',
+                );
               }
-
-              _cachedActivitiesRowsById
-                ..clear()
-                ..addAll(nextRowsById);
 
               emitFromCache(source: 'pet_activities_snapshot_stream');
             }, onError: (Object error, StackTrace stackTrace) {
@@ -221,13 +312,8 @@ class PetActivitiesRepository {
                   );
                 }
 
-                final existed = _cachedActivitiesRowsById.remove(deletedId) != null;
-                if (!existed) {
-                  return;
-                }
-
-                _cachedActivities = List<PetActivity>.from(_cachedActivities)
-                  ..removeWhere((activity) => activity.id == deletedId);
+                deletedIds.add(deletedId);
+                stateById.remove(deletedId);
 
                 emitFromCache(source: 'pet_activities_delete_realtime');
               },
@@ -235,7 +321,11 @@ class PetActivitiesRepository {
             .subscribe();
       },
       onCancel: () async {
-        if (controller.hasListener) {
+        if (activeListeners > 0) {
+          activeListeners--;
+        }
+
+        if (activeListeners > 0) {
           return;
         }
         await disposeWatch();
@@ -251,26 +341,68 @@ class PetActivitiesRepository {
 
   /// Inserisce una nuova attività per un pet nella tabella 'pets_activities'
   Future<void> insertActivity({
-    required String houseHoldId,
+    required String householdId,
     required String petId,
-    required String description,
     required DateTime date,
-    required String time, // Formato "HH:mm:ss"
-    String? endTime,      // Opzionale, formato "HH:mm:ss"
-    String? notes,        // <-- AGGIUNTO
+    String? description,
+    String? startTime,
+    String? endTime,
+    String? notes,
+    String? memberId,
+    String? createdBy,
   }) async {
     try {
-      debugPrint('SAVING ACTIVITY → petId: $petId');
+      final normalizedHouseholdId = householdId.trim();
+      final normalizedPetId = petId.trim();
+      if (normalizedHouseholdId.isEmpty || normalizedPetId.isEmpty) {
+        throw Exception('Missing household_id or pet_id');
+      }
 
-      await supabase.from('pets_activities').insert({
-        'houseHoldId': houseHoldId,
-        'petId': petId,
-        'description': description,
-        'date': date.toIso8601String().split('T')[0], // Estrae solo YYYY-MM-DD
-        'time': time,
-        'end_time': endTime,
-        'notes': notes, // <-- AGGIUNTO
-      });
+      final normalizedDescription = _normalizeNullableString(description);
+      final normalizedStartTime = _normalizeNullableString(startTime);
+      final normalizedEndTime = _normalizeNullableString(endTime);
+      final normalizedNotes = _normalizeNullableString(notes);
+      final normalizedMemberId = _normalizeNullableString(memberId);
+      final normalizedCreatedBy =
+          _normalizeNullableString(createdBy) ??
+          _normalizeNullableString(supabase.auth.currentUser?.id);
+      final normalizedDate = date.toIso8601String().split('T')[0];
+
+      await _ensurePetBelongsToHousehold(
+        petId: normalizedPetId,
+        householdId: normalizedHouseholdId,
+      );
+
+      final debugPayload = <String, dynamic>{
+        'pet_id': normalizedPetId,
+        'household_id': normalizedHouseholdId,
+        'member_id': normalizedMemberId,
+        'created_by': normalizedCreatedBy,
+        'date': normalizedDate,
+        'start': normalizedStartTime,
+        'end': normalizedEndTime,
+      };
+      if (kDebugMode) {
+        debugPrint('PET ACTIVITY INSERT PAYLOAD ${jsonEncode(debugPayload)}');
+      }
+
+      final payload = <String, dynamic>{
+        'petId': normalizedPetId,
+        'pet_id': normalizedPetId,
+        'houseHoldId': normalizedHouseholdId,
+        'household_id': normalizedHouseholdId,
+        'member_id': normalizedMemberId,
+        'created_by': normalizedCreatedBy,
+        'date': normalizedDate,
+        'description': normalizedDescription,
+        'time': normalizedStartTime,
+        'start': normalizedStartTime,
+        'end_time': normalizedEndTime,
+        'end': normalizedEndTime,
+        'notes': normalizedNotes,
+      }..removeWhere((key, value) => value == null);
+
+      await _insertWithMissingColumnFallback(payload);
 
       debugPrint('ACTIVITY SAVED SUCCESSFULLY');
     } catch (e) {

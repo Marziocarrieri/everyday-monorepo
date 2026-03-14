@@ -23,7 +23,6 @@ class PetActivitiesScreen extends ConsumerStatefulWidget {
 
 class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
   final Color brandBlue = const Color(0xFF5A8B9E);
-  final Set<String> _optimisticallyRemovedActivityIds = <String>{};
 
   // --- CONTROLLO RUOLO ---
   bool get _isPersonnel {
@@ -125,7 +124,10 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
     return confirmed == true;
   }
 
-  Future<void> _deleteActivityInBackground(PetActivity activity) async {
+  Future<void> _deleteActivityInBackground({
+    required String petId,
+    required PetActivity activity,
+  }) async {
     try {
       final repository = ref.read(petActivitiesRepositoryProvider);
       await repository.deleteActivity(activity.id);
@@ -136,13 +138,13 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
         );
       }
 
+      ref
+          .read(petActivitiesLocalRemovalProvider(petId).notifier)
+          .restoreActivityLocally(activity.id);
+
       if (!mounted) {
         return;
       }
-
-      setState(() {
-        _optimisticallyRemovedActivityIds.remove(activity.id);
-      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -153,47 +155,41 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
     }
   }
 
-  Future<bool> _handleActivityDismiss(PetActivity activity) async {
-    final confirmed = await _confirmDeleteActivity(activity);
-    if (!confirmed || !mounted) {
-      return false;
-    }
-
-    setState(() {
-      _optimisticallyRemovedActivityIds.add(activity.id);
-    });
+  void _handleActivityDismissed(PetActivity activity) {
+    final removalNotifier = ref.read(
+      petActivitiesLocalRemovalProvider(widget.petId).notifier,
+    );
+    removalNotifier.removeActivityLocally(activity.id);
 
     if (kDebugMode) {
+      final pendingCount = ref.read(
+        petActivitiesLocalRemovalProvider(widget.petId),
+      ).length;
       debugPrint(
-        'PET ACTIVITY UI DISMISS LOCAL REMOVE id=${activity.id} pending=${_optimisticallyRemovedActivityIds.length}',
+        'PET ACTIVITY UI DISMISS LOCAL REMOVE id=${activity.id} pending=$pendingCount',
       );
     }
 
-    unawaited(_deleteActivityInBackground(activity));
-    return true;
+    unawaited(
+      _deleteActivityInBackground(
+        petId: widget.petId,
+        activity: activity,
+      ),
+    );
   }
 
   void _reconcileOptimisticRemovals(List<PetActivity> activities) {
-    if (_optimisticallyRemovedActivityIds.isEmpty) {
-      return;
-    }
-
-    final incomingIds = activities.map((activity) => activity.id).toSet();
-    final resolvedIds = _optimisticallyRemovedActivityIds
-        .where((id) => !incomingIds.contains(id))
+    final snapshotIds = activities
+        .map((activity) => activity.id)
         .toList(growable: false);
-    if (resolvedIds.isEmpty) {
-      return;
-    }
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
 
-      setState(() {
-        _optimisticallyRemovedActivityIds.removeAll(resolvedIds);
-      });
+      ref
+          .read(petActivitiesLocalRemovalProvider(widget.petId).notifier)
+          .reconcileWithSnapshot(snapshotIds);
     });
   }
 
@@ -213,6 +209,9 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
   @override
   Widget build(BuildContext context) {
     final activitiesAsync = ref.watch(petActivitiesStreamProvider(widget.petId));
+    final locallyRemovedActivityIds = ref.watch(
+      petActivitiesLocalRemovalProvider(widget.petId),
+    );
 
     return Scaffold(
       backgroundColor: brandBlue,
@@ -262,7 +261,7 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
                   final visibleActivities = activities
                       .where(
                         (activity) =>
-                            !_optimisticallyRemovedActivityIds.contains(activity.id),
+                            !locallyRemovedActivityIds.contains(activity.id),
                       )
                       .toList(growable: false);
 
@@ -287,7 +286,10 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
                             ? DismissDirection.none
                             : DismissDirection.endToStart,
                         confirmDismiss: (_) async {
-                          return await _handleActivityDismiss(activity);
+                          return await _confirmDeleteActivity(activity);
+                        },
+                        onDismissed: (_) {
+                          _handleActivityDismissed(activity);
                         },
                         background: Container(
                           margin: const EdgeInsets.only(bottom: 24.0),
@@ -692,10 +694,10 @@ class _AddPetActivitySheetState extends State<AddPetActivitySheet> {
                     final description = _taskController.text.trim();
                     final notes = _notesController.text.trim();
                     
-                    if (description.isEmpty || _selectedDate == null || _startTime == null) {
+                    if (_selectedDate == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Please fill in description, date and start time', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                          content: Text('Please select a date', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                           backgroundColor: const Color(0xFFF28482),
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -706,6 +708,10 @@ class _AddPetActivitySheetState extends State<AddPetActivitySheet> {
                     try {
                       final householdId = AppContext.instance.requireHouseholdId();
                       final petId = widget.petId; 
+                      final memberId =
+                          AppContext.instance.activeMembership?.id ??
+                          AppContext.instance.membershipId;
+                      final createdBy = AppContext.instance.userId;
 
                       String formatTime(DateTime dt) {
                         return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:00";
@@ -714,13 +720,15 @@ class _AddPetActivitySheetState extends State<AddPetActivitySheet> {
                       final repo = PetActivitiesRepository();
                       
                       await repo.insertActivity(
-                        houseHoldId: householdId,
+                        householdId: householdId,
                         petId: petId,
-                        description: description,
                         date: _selectedDate!,
-                        time: formatTime(_startTime!),
+                        description: description.isNotEmpty ? description : null,
+                        startTime: _startTime != null ? formatTime(_startTime!) : null,
                         endTime: _endTime != null ? formatTime(_endTime!) : null,
                         notes: notes.isNotEmpty ? notes : null, 
+                        memberId: memberId,
+                        createdBy: createdBy,
                       );
                     
                       if (context.mounted) {
