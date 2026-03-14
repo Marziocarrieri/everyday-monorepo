@@ -1,7 +1,9 @@
 // TODO migrate to features/pets
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:everyday_app/features/pets/data/repositories/pets_activities_repository.dart'; 
@@ -21,6 +23,7 @@ class PetActivitiesScreen extends ConsumerStatefulWidget {
 
 class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
   final Color brandBlue = const Color(0xFF5A8B9E);
+  final Set<String> _optimisticallyRemovedActivityIds = <String>{};
 
   // --- CONTROLLO RUOLO ---
   bool get _isPersonnel {
@@ -119,24 +122,79 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
       },
     );
 
-    if (confirmed != true) return false;
+    return confirmed == true;
+  }
 
+  Future<void> _deleteActivityInBackground(PetActivity activity) async {
     try {
-      // 1. CHIAMIAMO IL DATABASE PER L'ELIMINAZIONE VERA!
       final repository = ref.read(petActivitiesRepositoryProvider);
       await repository.deleteActivity(activity.id);
-      
-      return true;
     } catch (error) {
-      if (!mounted) return false;
+      if (kDebugMode) {
+        debugPrint(
+          'PET ACTIVITY UI DISMISS DELETE_FAILED id=${activity.id} error=$error',
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _optimisticallyRemovedActivityIds.remove(activity.id);
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error deleting activity', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           backgroundColor: const Color(0xFFF28482),
         ),
       );
+    }
+  }
+
+  Future<bool> _handleActivityDismiss(PetActivity activity) async {
+    final confirmed = await _confirmDeleteActivity(activity);
+    if (!confirmed || !mounted) {
       return false;
     }
+
+    setState(() {
+      _optimisticallyRemovedActivityIds.add(activity.id);
+    });
+
+    if (kDebugMode) {
+      debugPrint(
+        'PET ACTIVITY UI DISMISS LOCAL REMOVE id=${activity.id} pending=${_optimisticallyRemovedActivityIds.length}',
+      );
+    }
+
+    unawaited(_deleteActivityInBackground(activity));
+    return true;
+  }
+
+  void _reconcileOptimisticRemovals(List<PetActivity> activities) {
+    if (_optimisticallyRemovedActivityIds.isEmpty) {
+      return;
+    }
+
+    final incomingIds = activities.map((activity) => activity.id).toSet();
+    final resolvedIds = _optimisticallyRemovedActivityIds
+        .where((id) => !incomingIds.contains(id))
+        .toList(growable: false);
+    if (resolvedIds.isEmpty) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _optimisticallyRemovedActivityIds.removeAll(resolvedIds);
+      });
+    });
   }
 
   void _openAddActivitySheet() async {
@@ -199,7 +257,16 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
                   ),
                 ),
                 data: (activities) {
-                  if (activities.isEmpty) {
+                  _reconcileOptimisticRemovals(activities);
+
+                  final visibleActivities = activities
+                      .where(
+                        (activity) =>
+                            !_optimisticallyRemovedActivityIds.contains(activity.id),
+                      )
+                      .toList(growable: false);
+
+                  if (visibleActivities.isEmpty) {
                     return _buildEmptyState();
                   }
 
@@ -210,17 +277,17 @@ class _PetActivitiesScreenState extends ConsumerState<PetActivitiesScreen> {
                       bottom: 40.0,
                     ),
                     physics: const BouncingScrollPhysics(),
-                    itemCount: activities.length,
+                    itemCount: visibleActivities.length,
                     itemBuilder: (context, index) {
-                      final activity = activities[index];
+                      final activity = visibleActivities[index];
 
                       return Dismissible(
-                        key: ValueKey(activity.id),
+                        key: Key(activity.id),
                         direction: _isPersonnel
                             ? DismissDirection.none
                             : DismissDirection.endToStart,
                         confirmDismiss: (_) async {
-                          return await _confirmDeleteActivity(activity);
+                          return await _handleActivityDismiss(activity);
                         },
                         background: Container(
                           margin: const EdgeInsets.only(bottom: 24.0),

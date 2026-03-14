@@ -1,4 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'dart:async';
 import '../../../../shared/repositories/supabase_client.dart';
 import '../models/pet_activity.dart'; 
 
@@ -72,91 +75,37 @@ class PetActivitiesRepository {
     }
   }
 
-  Stream<List<PetActivity>> watchPetActivities(String petId) async* {
+  Stream<List<PetActivity>> watchPetActivities(String petId) {
     final normalizedPetId = petId.trim();
     if (normalizedPetId.isEmpty) {
-      yield const <PetActivity>[];
-      return;
+      return Stream<List<PetActivity>>.value(const <PetActivity>[]);
     }
 
+    late final StreamController<List<PetActivity>> controller;
+    StreamSubscription<List<Map<String, dynamic>>>? snapshotSubscription;
+    RealtimeChannel? deleteRealtimeChannel;
+    var disposed = false;
     String? lastSnapshotSignature;
-    var previousRowSignaturesById = <String, String>{};
 
-    await for (final rows in supabase
-        .from('pets_activities')
-        .stream(primaryKey: ['id'])
-        .eq('petId', normalizedPetId)) {
-      final nextRowsById = <String, Map<String, dynamic>>{};
-
-      for (final row in rows) {
-        final incoming = Map<String, dynamic>.from(row);
-        final id = _readString(incoming['id']);
-        if (id == null) {
-          continue;
-        }
-
-        final previous = _cachedActivitiesRowsById[id];
-        nextRowsById[id] = previous == null
-            ? incoming
-            : <String, dynamic>{...previous, ...incoming};
+    void emitFromCache({required String source}) {
+      if (disposed || controller.isClosed) {
+        return;
       }
-
-      _cachedActivitiesRowsById
-        ..clear()
-        ..addAll(nextRowsById);
 
       final filteredRows = _cachedActivitiesRowsById.values
           .where((row) => _readPetId(row) == normalizedPetId)
           .map((row) => Map<String, dynamic>.from(row))
           .toList(growable: false);
 
-      final currentRowSignaturesById = <String, String>{};
-      for (final row in filteredRows) {
-        final id = _readString(row['id']);
-        if (id == null) {
-          continue;
-        }
-
-        final signature = _buildRowSignature(row);
-        currentRowSignaturesById[id] = signature;
-
-        final previousSignature = previousRowSignaturesById[id];
-        if (previousSignature == null) {
-          if (kDebugMode) {
-            debugPrint('PET ACTIVITY REALTIME EVENT id=$id type=INSERT');
-          }
-          continue;
-        }
-
-        if (previousSignature != signature) {
-          if (kDebugMode) {
-            debugPrint('PET ACTIVITY REALTIME EVENT id=$id type=UPDATE');
-          }
-        }
-      }
-
-      final deletedIds = previousRowSignaturesById.keys
-          .where((id) => !currentRowSignaturesById.containsKey(id));
-      if (kDebugMode) {
-        for (final id in deletedIds) {
-          debugPrint('PET ACTIVITY REALTIME EVENT id=$id type=DELETE');
-        }
-      }
-
-      previousRowSignaturesById = Map<String, String>.from(
-        currentRowSignaturesById,
-      );
-
       final snapshotSignature = _buildSnapshotSignature(filteredRows);
-      final previousSnapshotSignature = lastSnapshotSignature;
-      lastSnapshotSignature = snapshotSignature;
-      if (kDebugMode && previousSnapshotSignature == snapshotSignature) {
+      if (kDebugMode && snapshotSignature == lastSnapshotSignature) {
         debugPrint(
           'PET ACTIVITY SNAPSHOT SIGNATURE unchanged=$snapshotSignature',
         );
       }
+      lastSnapshotSignature = snapshotSignature;
 
-      final newList = filteredRows
+      final nextActivities = filteredRows
           .map((row) {
             try {
               return PetActivity.fromJson(Map<String, dynamic>.from(row));
@@ -171,14 +120,20 @@ class PetActivitiesRepository {
           .whereType<PetActivity>()
           .toList(growable: false);
 
-      _cachedActivities = List<PetActivity>.from(newList);
+      final previousLength = _cachedActivities.length;
+      _cachedActivities = List<PetActivity>.from(nextActivities);
       final emittedSnapshot = List<PetActivity>.unmodifiable(
         List<PetActivity>.from(_cachedActivities),
       );
 
       if (kDebugMode) {
+        if (previousLength != _cachedActivities.length) {
+          debugPrint(
+            'PET ACTIVITY CACHE LENGTH CHANGED source=$source before=$previousLength after=${_cachedActivities.length}',
+          );
+        }
         debugPrint(
-          'PET ACTIVITY SNAPSHOT EMITTED length=${emittedSnapshot.length}',
+          'PET ACTIVITY SNAPSHOT EMITTED source=$source length=${emittedSnapshot.length}',
         );
         print(
           'PET ACTIVITY STREAM EMIT '
@@ -187,8 +142,107 @@ class PetActivitiesRepository {
         );
       }
 
-      yield emittedSnapshot;
+      controller.add(emittedSnapshot);
     }
+
+    Future<void> disposeWatch() async {
+      if (disposed) {
+        return;
+      }
+
+      disposed = true;
+      await snapshotSubscription?.cancel();
+      if (deleteRealtimeChannel != null) {
+        await supabase.removeChannel(deleteRealtimeChannel!);
+      }
+      if (!controller.isClosed) {
+        await controller.close();
+      }
+    }
+
+    controller = StreamController<List<PetActivity>>.broadcast(
+      onListen: () {
+        _cachedActivitiesRowsById.clear();
+        _cachedActivities = const <PetActivity>[];
+        lastSnapshotSignature = null;
+
+        snapshotSubscription = supabase
+            .from('pets_activities')
+            .stream(primaryKey: ['id'])
+            .eq('petId', normalizedPetId)
+            .listen((rows) {
+              final nextRowsById = <String, Map<String, dynamic>>{};
+              for (final row in rows) {
+                final incoming = Map<String, dynamic>.from(row);
+                final id = _readString(incoming['id']);
+                if (id == null) {
+                  continue;
+                }
+                nextRowsById[id] = incoming;
+              }
+
+              _cachedActivitiesRowsById
+                ..clear()
+                ..addAll(nextRowsById);
+
+              emitFromCache(source: 'pet_activities_snapshot_stream');
+            }, onError: (Object error, StackTrace stackTrace) {
+              if (!disposed && !controller.isClosed) {
+                controller.addError(error, stackTrace);
+              }
+            });
+
+        deleteRealtimeChannel = supabase
+            .channel('schema-db-changes:pet-activities-delete:$normalizedPetId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.delete,
+              schema: 'public',
+              table: 'pets_activities',
+              callback: (payload) {
+                if (payload.eventType != PostgresChangeEvent.delete) {
+                  return;
+                }
+
+                final deletedId = _readString(payload.oldRecord['id']);
+                if (deletedId == null) {
+                  return;
+                }
+
+                final deletedPetId =
+                    _readString(payload.oldRecord['petId']) ??
+                    _readString(payload.oldRecord['pet_id']);
+                if (deletedPetId != null && deletedPetId != normalizedPetId) {
+                  return;
+                }
+
+                if (kDebugMode) {
+                  debugPrint(
+                    'PET ACTIVITY REALTIME DELETE RECEIVED id=$deletedId',
+                  );
+                }
+
+                final existed = _cachedActivitiesRowsById.remove(deletedId) != null;
+                if (!existed) {
+                  return;
+                }
+
+                _cachedActivities = List<PetActivity>.from(_cachedActivities)
+                  ..removeWhere((activity) => activity.id == deletedId);
+
+                emitFromCache(source: 'pet_activities_delete_realtime');
+              },
+            )
+            .subscribe();
+      },
+      onCancel: () async {
+        if (controller.hasListener) {
+          return;
+        }
+        await disposeWatch();
+      },
+    );
+
+    return controller.stream;
   }
 
   Stream<List<PetActivity>> watchActivities(String petId) {

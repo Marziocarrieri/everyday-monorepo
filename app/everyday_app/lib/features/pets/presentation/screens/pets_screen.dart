@@ -1,7 +1,9 @@
 // TODO migrate to features/pets
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
@@ -22,6 +24,7 @@ class PetsScreen extends ConsumerStatefulWidget {
 class _PetsScreenState extends ConsumerState<PetsScreen> {
   // Sfondo Azzurro Premium (Tema Invertito)
   final Color invertedBgColor = const Color(0xFF5A8B9E);
+  final Set<String> _optimisticallyRemovedPetIds = <String>{};
 
   // --- CONTROLLO RUOLO ---
   bool get _isPersonnel {
@@ -123,23 +126,77 @@ class _PetsScreenState extends ConsumerState<PetsScreen> {
       },
     );
 
-    if (confirmed != true) return false;
+    return confirmed == true;
+  }
 
+  Future<void> _deletePetInBackground(Pet pet) async {
     try {
-      // CHIAMIAMO IL DATABASE PER L'ELIMINAZIONE REALE
       final petRepository = ref.read(petRepositoryProvider);
       await petRepository.deletePet(pet.id);
-      return true;
     } catch (error) {
-      if (!mounted) return false;
+      if (kDebugMode) {
+        debugPrint('PET UI DISMISS DELETE_FAILED id=${pet.id} error=$error');
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _optimisticallyRemovedPetIds.remove(pet.id);
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error removing pet', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           backgroundColor: const Color(0xFFF28482),
         ),
       );
+    }
+  }
+
+  Future<bool> _handlePetDismiss(Pet pet) async {
+    final confirmed = await _confirmDeletePet(pet);
+    if (!confirmed || !mounted) {
       return false;
     }
+
+    setState(() {
+      _optimisticallyRemovedPetIds.add(pet.id);
+    });
+
+    if (kDebugMode) {
+      debugPrint(
+        'PET UI DISMISS LOCAL REMOVE id=${pet.id} pending=${_optimisticallyRemovedPetIds.length}',
+      );
+    }
+
+    unawaited(_deletePetInBackground(pet));
+    return true;
+  }
+
+  void _reconcileOptimisticRemovals(List<Pet> pets) {
+    if (_optimisticallyRemovedPetIds.isEmpty) {
+      return;
+    }
+
+    final incomingIds = pets.map((pet) => pet.id).toSet();
+    final resolvedIds = _optimisticallyRemovedPetIds
+        .where((id) => !incomingIds.contains(id))
+        .toList(growable: false);
+    if (resolvedIds.isEmpty) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _optimisticallyRemovedPetIds.removeAll(resolvedIds);
+      });
+    });
   }
 
 
@@ -226,25 +283,31 @@ class _PetsScreenState extends ConsumerState<PetsScreen> {
                     ),
                   ),
                   data: (pets) {
-                    if (pets.isEmpty) {
+                    _reconcileOptimisticRemovals(pets);
+
+                    final visiblePets = pets
+                        .where((pet) => !_optimisticallyRemovedPetIds.contains(pet.id))
+                        .toList(growable: false);
+
+                    if (visiblePets.isEmpty) {
                       return _buildEmptyState();
                     }
 
                     return ListView.builder(
                       physics: const BouncingScrollPhysics(),
-                      itemCount: pets.length,
+                      itemCount: visiblePets.length,
                       itemBuilder: (context, index) {
-                        final pet = pets[index];
+                        final pet = visiblePets[index];
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: Dismissible(
-                            key: ValueKey(pet.id),
+                            key: Key(pet.id),
                             direction: _isPersonnel
                                 ? DismissDirection.none
                                 : DismissDirection.endToStart,
                             confirmDismiss: (_) async {
-                              return await _confirmDeletePet(pet);
+                              return await _handlePetDismiss(pet);
                             },
                             background: Container(
                               alignment: Alignment.centerRight,

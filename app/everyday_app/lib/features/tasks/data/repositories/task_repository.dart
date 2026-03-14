@@ -80,10 +80,14 @@ class TaskRepository {
     Map<String, dynamic> row, {
     required String source,
   }) {
-    final taskId = _readString(row['id']) ?? _readString(row['task_id']) ?? '-';
+    final sanitizedRow = _sanitizeTaskDetailsRow(row, source: source);
+    final taskId =
+        _readString(sanitizedRow['id']) ??
+        _readString(sanitizedRow['task_id']) ??
+        '-';
 
     try {
-      return TaskWithDetails.fromJson(row);
+      return TaskWithDetails.fromJson(sanitizedRow);
     } catch (error) {
       if (kDebugMode) {
         debugPrint(
@@ -92,6 +96,42 @@ class TaskRepository {
       }
       return null;
     }
+  }
+
+  Map<String, dynamic> _sanitizeTaskDetailsRow(
+    Map<String, dynamic> row, {
+    required String source,
+  }) {
+    final sanitized = Map<String, dynamic>.from(row);
+    final rawAssignments = row['task_assignment'];
+    if (rawAssignments is! List) {
+      return sanitized;
+    }
+
+    final taskId = _readString(row['id']) ?? _readString(row['task_id']) ?? '-';
+    final sanitizedAssignments = <Map<String, dynamic>>[];
+    for (final assignment in rawAssignments) {
+      if (assignment is! Map) {
+        continue;
+      }
+
+      final assignmentMap = Map<String, dynamic>.from(assignment);
+      final memberId = _readString(assignmentMap['member_id']);
+      if (memberId == null) {
+        if (kDebugMode) {
+          final assignmentId = _readString(assignmentMap['id']) ?? '-';
+          debugPrint(
+            'TASK_ASSIGNMENT_ROW_SKIPPED source=$source task_id=$taskId assignment_id=$assignmentId reason=missing_member_id',
+          );
+        }
+        continue;
+      }
+
+      sanitizedAssignments.add(assignmentMap);
+    }
+
+    sanitized['task_assignment'] = sanitizedAssignments;
+    return sanitized;
   }
 
   // 1. SALVA UN TASK
@@ -470,6 +510,17 @@ class TaskRepository {
       for (final row in latestAssignmentRows) {
         final assignmentTaskId = _readString(row['task_id']);
         if (assignmentTaskId == null || !taskIdSet.contains(assignmentTaskId)) {
+          continue;
+        }
+
+        final memberId = _readString(row['member_id']);
+        if (memberId == null) {
+          if (kDebugMode) {
+            final assignmentId = _readString(row['id']) ?? '-';
+            debugPrint(
+              'TASK_ASSIGNMENT_ROW_SKIPPED source=watch_emit task_id=$assignmentTaskId assignment_id=$assignmentId reason=missing_member_id',
+            );
+          }
           continue;
         }
 
