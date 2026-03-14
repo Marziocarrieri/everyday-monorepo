@@ -4,6 +4,7 @@ import '../models/pet.dart';
 
 class PetRepository {
   final Map<String, Map<String, dynamic>> _cachedPetsRowsById = {};
+  List<Pet> _cachedPets = const <Pet>[];
 
   String? _readString(dynamic value) {
     if (value == null) return null;
@@ -72,7 +73,6 @@ class PetRepository {
     }
 
     String? lastSnapshotSignature;
-    var hasEmittedSnapshot = false;
     var previousRowSignaturesById = <String, String>{};
 
     await for (final rows in supabase
@@ -141,11 +141,11 @@ class PetRepository {
       );
 
       final snapshotSignature = _buildSnapshotSignature(filteredRows);
-      if (hasEmittedSnapshot && snapshotSignature == lastSnapshotSignature) {
-        continue;
-      }
+      final previousSnapshotSignature = lastSnapshotSignature;
       lastSnapshotSignature = snapshotSignature;
-      hasEmittedSnapshot = true;
+      if (kDebugMode && previousSnapshotSignature == snapshotSignature) {
+        debugPrint('PET SNAPSHOT SIGNATURE unchanged=$snapshotSignature');
+      }
 
       final newList = filteredRows
           .map((row) {
@@ -162,11 +162,19 @@ class PetRepository {
           .whereType<Pet>()
           .toList(growable: false);
 
+      _cachedPets = List<Pet>.from(newList);
+      final emittedSnapshot =
+          List<Pet>.unmodifiable(List<Pet>.from(_cachedPets));
+
       if (kDebugMode) {
-        debugPrint('PET SNAPSHOT EMITTED length=${newList.length}');
+        debugPrint('PET SNAPSHOT EMITTED length=${emittedSnapshot.length}');
+        print(
+          'PET STREAM EMIT identity=${identityHashCode(_cachedPets)} '
+          'length=${_cachedPets.length}',
+        );
       }
 
-      yield List<Pet>.from(newList);
+      yield emittedSnapshot;
     }
   }
 

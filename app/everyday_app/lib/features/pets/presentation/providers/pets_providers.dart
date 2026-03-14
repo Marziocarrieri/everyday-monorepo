@@ -23,7 +23,7 @@ final petsStreamProvider =
   final repository = ref.watch(petRepositoryProvider);
   return repository
       .watchPets(normalizedHouseholdId)
-      .map((pets) => List<Pet>.from(pets));
+      .map((pets) => List<Pet>.unmodifiable(List<Pet>.from(pets)));
 });
 
 final petActivitiesStreamProvider =
@@ -36,5 +36,9 @@ final petActivitiesStreamProvider =
   final repository = ref.watch(petActivitiesRepositoryProvider);
   return repository
       .watchPetActivities(normalizedPetId)
-      .map((activities) => List<PetActivity>.from(activities));
+      .map(
+        (activities) => List<PetActivity>.unmodifiable(
+          List<PetActivity>.from(activities),
+        ),
+      );
 });
