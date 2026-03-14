@@ -63,6 +63,37 @@ class TaskRepository {
         (message.contains('column') || message.contains('schema cache'));
   }
 
+  String? _readString(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final normalized = value.toString().trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  TaskWithDetails? _tryParseTaskWithDetails(
+    Map<String, dynamic> row, {
+    required String source,
+  }) {
+    final taskId = _readString(row['id']) ?? _readString(row['task_id']) ?? '-';
+
+    try {
+      return TaskWithDetails.fromJson(row);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint(
+          'TASK_REPO_SKIP_MALFORMED_ROW source=$source task_id=$taskId error=$error',
+        );
+      }
+      return null;
+    }
+  }
+
   // 1. SALVA UN TASK
   Future<String> createTask(Map<String, dynamic> taskData) async {
     try {
@@ -128,7 +159,26 @@ class TaskRepository {
         .order('created_at'); // Mettili in ordine cronologico
 
     // Trasformiamo la lista di dati grezzi in una lista di oggetti Task
-    return (response as List).map((json) => Task.fromJson(json)).toList();
+    final tasks = <Task>[];
+    for (final row in List<dynamic>.from(response)) {
+      if (row is! Map) {
+        continue;
+      }
+
+      final rowMap = Map<String, dynamic>.from(row);
+      try {
+        tasks.add(Task.fromJson(rowMap));
+      } catch (error) {
+        if (kDebugMode) {
+          final taskId = _readString(rowMap['id']) ?? '-';
+          debugPrint(
+            'TASK_REPO_SKIP_MALFORMED_ROW source=get_tasks_by_date task_id=$taskId error=$error',
+          );
+        }
+      }
+    }
+
+    return tasks;
   }
 
   // 3. ASSEGNA TASK
@@ -163,9 +213,23 @@ class TaskRepository {
         .order('task_date', ascending: true)
         .order('created_at', ascending: true);
 
-    return List<Map<String, dynamic>>.from(
+    final taskRows = List<Map<String, dynamic>>.from(
       response,
-    ).map(TaskWithDetails.fromJson).toList();
+    ).map((row) => Map<String, dynamic>.from(row));
+
+    final parsed = <TaskWithDetails>[];
+    for (final row in taskRows) {
+      final mapped = _tryParseTaskWithDetails(
+        row,
+        source: 'get_tasks_for_household',
+      );
+      if (mapped == null) {
+        continue;
+      }
+      parsed.add(mapped);
+    }
+
+    return parsed;
   }
 
   Stream<List<TaskWithDetails>> watchTasks(String householdId) {
@@ -245,7 +309,7 @@ class TaskRepository {
 
     List<String> currentTaskIds() {
       return latestTaskRows
-          .map((row) => row['id'])
+          .map((row) => _readString(row['id']))
           .whereType<String>()
           .toList(growable: false);
     }
@@ -392,41 +456,49 @@ class TaskRepository {
 
       final subtasksByTaskId = <String, List<Map<String, dynamic>>>{};
       for (final row in latestSubtaskRows) {
-        final taskId = row['task_id'] as String?;
-        if (taskId == null || !taskIdSet.contains(taskId)) {
+        final subtaskTaskId = _readString(row['task_id']);
+        if (subtaskTaskId == null || !taskIdSet.contains(subtaskTaskId)) {
           continue;
         }
 
         subtasksByTaskId
-            .putIfAbsent(taskId, () => <Map<String, dynamic>>[])
+            .putIfAbsent(subtaskTaskId, () => <Map<String, dynamic>>[])
             .add(Map<String, dynamic>.from(row));
       }
 
       final assignmentsByTaskId = <String, List<Map<String, dynamic>>>{};
       for (final row in latestAssignmentRows) {
-        final taskId = row['task_id'] as String?;
-        if (taskId == null || !taskIdSet.contains(taskId)) {
+        final assignmentTaskId = _readString(row['task_id']);
+        if (assignmentTaskId == null || !taskIdSet.contains(assignmentTaskId)) {
           continue;
         }
 
         assignmentsByTaskId
-            .putIfAbsent(taskId, () => <Map<String, dynamic>>[])
+            .putIfAbsent(assignmentTaskId, () => <Map<String, dynamic>>[])
             .add(Map<String, dynamic>.from(row));
       }
 
-      final taskDetails = taskRows
-          .map((taskRow) {
-            final taskId = taskRow['id'] as String?;
-            final merged = Map<String, dynamic>.from(taskRow);
-            merged['subtask'] = taskId == null
-                ? const []
-                : (subtasksByTaskId[taskId] ?? const []);
-            merged['task_assignment'] = taskId == null
-                ? const []
-                : (assignmentsByTaskId[taskId] ?? const []);
-            return TaskWithDetails.fromJson(merged);
-          })
-          .toList(growable: false);
+      final taskDetails = <TaskWithDetails>[];
+      for (final taskRow in taskRows) {
+        final rowTaskId = _readString(taskRow['id']);
+        final merged = Map<String, dynamic>.from(taskRow);
+        merged['subtask'] = rowTaskId == null
+            ? const <Map<String, dynamic>>[]
+            : (subtasksByTaskId[rowTaskId] ?? const <Map<String, dynamic>>[]);
+        merged['task_assignment'] = rowTaskId == null
+            ? const <Map<String, dynamic>>[]
+            : (assignmentsByTaskId[rowTaskId] ?? const <Map<String, dynamic>>[]);
+
+        final parsed = _tryParseTaskWithDetails(
+          merged,
+          source: 'watch_emit',
+        );
+        if (parsed == null) {
+          continue;
+        }
+
+        taskDetails.add(parsed);
+      }
 
       final sortedTaskDetails = taskDetails.toList(growable: false)
         ..sort((left, right) => left.task.id.compareTo(right.task.id));
@@ -708,9 +780,10 @@ class TaskRepository {
                 }
 
                 final affectedTaskId =
-                    (payload.newRecord['task_id'] ??
-                            payload.oldRecord['task_id'])
-                        as String?;
+                    _readString(
+                      payload.newRecord['task_id'] ??
+                          payload.oldRecord['task_id'],
+                    );
                 if (affectedTaskId == null) {
                   return;
                 }
@@ -721,8 +794,7 @@ class TaskRepository {
                 }
 
                 final affectedSubtaskId =
-                    (payload.newRecord['id'] ?? payload.oldRecord['id'])
-                        as String?;
+                  _readString(payload.newRecord['id'] ?? payload.oldRecord['id']);
 
                 if (kDebugMode) {
                   debugPrint(
@@ -767,7 +839,7 @@ class TaskRepository {
                   return;
                 }
 
-                final deletedTaskId = payload.oldRecord['id'] as String?;
+                final deletedTaskId = _readString(payload.oldRecord['id']);
                 if (deletedTaskId == null) {
                   return;
                 }
@@ -829,9 +901,10 @@ class TaskRepository {
                 }
 
                 final affectedTaskId =
-                    (payload.newRecord['task_id'] ??
-                            payload.oldRecord['task_id'])
-                        as String?;
+                    _readString(
+                      payload.newRecord['task_id'] ??
+                          payload.oldRecord['task_id'],
+                    );
                 if (affectedTaskId == null) {
                   return;
                 }
@@ -1019,9 +1092,23 @@ class TaskRepository {
     debugPrint('GETTING TASKS → userID: $userId');
     debugPrint('Response Data: $response');
 
-    return List<Map<String, dynamic>>.from(
+    final taskRows = List<Map<String, dynamic>>.from(
       response,
-    ).map(TaskWithDetails.fromJson).toList();
+    ).map((row) => Map<String, dynamic>.from(row));
+
+    final parsed = <TaskWithDetails>[];
+    for (final row in taskRows) {
+      final mapped = _tryParseTaskWithDetails(
+        row,
+        source: 'get_tasks_for_user',
+      );
+      if (mapped == null) {
+        continue;
+      }
+      parsed.add(mapped);
+    }
+
+    return parsed;
   }
 
   Future<List<HouseholdRoom>> getHouseholdRooms(String householdId) async {

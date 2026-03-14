@@ -268,6 +268,8 @@ class _TaskCardState extends State<TaskCard> {
 
     final roomId = widget.taskWithDetails.task.roomId;
     final roomLabel = widget.roomName;
+    final normalizedTitle = widget.taskWithDetails.task.title.trim();
+    final taskTitle = normalizedTitle.isEmpty ? 'Untitled task' : normalizedTitle;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
@@ -726,7 +728,7 @@ class _TaskCardState extends State<TaskCard> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                widget.taskWithDetails.task.title,
+                                taskTitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(

@@ -31,7 +31,7 @@ class TaskSubtaskList extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        subtask.title,
+                        subtask.title.isEmpty ? 'Untitled subtask' : subtask.title,
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
