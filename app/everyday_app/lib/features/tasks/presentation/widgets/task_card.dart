@@ -10,6 +10,7 @@ import '../../../../core/app_context.dart';
 import '../../../../shared/utils/status_color_utils.dart';
 import '../../data/models/task_assignement.dart';
 import '../../data/models/task_with_details.dart';
+import '../../utils/task_creator_identity.dart';
 import 'task_subtask_list.dart';
 import 'task_time_row.dart';
 
@@ -132,24 +133,27 @@ class _TaskCardState extends State<TaskCard> {
     if (role == 'personnel') return false;
 
     final membershipId = AppContext.instance.membershipId;
-    if (membershipId == null ||
-        widget.taskWithDetails.task.createdBy != membershipId) {
+    final isCreator = isTaskCreatedByCurrentUser(
+      taskCreatedBy: widget.taskWithDetails.task.createdBy,
+      currentUserId: AppContext.instance.userId,
+      currentMemberId: membershipId,
+    );
+
+    if (!isCreator) {
       return false;
     }
 
     if (role == 'cohost') {
+      if (membershipId == null || membershipId.isEmpty) {
+        return false;
+      }
+
       return widget.taskWithDetails.assignments.any(
         (assignment) => assignment.memberId == membershipId,
       );
     }
 
     return true;
-  }
-
-  bool get _canDeleteTask {
-    return !widget.readOnlyChecklist &&
-        widget.interactionMode == TaskInteractionMode.standard &&
-        _canEditByPermission;
   }
 
   bool get _canEditTaskMetadata {
@@ -270,39 +274,77 @@ class _TaskCardState extends State<TaskCard> {
     final roomLabel = widget.roomName;
     final normalizedTitle = widget.taskWithDetails.task.title.trim();
     final taskTitle = normalizedTitle.isEmpty ? 'Untitled task' : normalizedTitle;
+    final isCreator = isTaskCreatedByCurrentUser(
+      taskCreatedBy: widget.taskWithDetails.task.createdBy,
+      currentUserId: AppContext.instance.userId,
+      currentMemberId: AppContext.instance.membershipId,
+    );
+    final dismissDirection = isCreator
+        ? DismissDirection.endToStart
+        : DismissDirection.none;
+    final dismissibleKey = ValueKey(widget.taskWithDetails.task.id);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
-      child: Dismissible(
-        key: ValueKey('task_${widget.taskWithDetails.task.id}'),
-        direction: !_canDeleteTask
-            ? DismissDirection.none
-            : DismissDirection.endToStart,
-        confirmDismiss: !_canDeleteTask
-            ? null
-            : (_) async {
-                return await widget.onConfirmDeleteTask(widget.taskWithDetails);
-              },
-        background: Container(
-          alignment: Alignment.centerRight,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF28482),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFF28482).withValues(alpha: 0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.delete_outline_rounded,
-            color: Colors.white,
-            size: 28,
-          ),
+    final ancestorListView = context.findAncestorWidgetOfExactType<ListView>();
+    final ancestorScrollable = context.findAncestorWidgetOfExactType<Scrollable>();
+    final ancestorPageView = context.findAncestorWidgetOfExactType<PageView>();
+    final ancestorGestureDetector =
+        context.findAncestorWidgetOfExactType<GestureDetector>();
+
+    if (kDebugMode) {
+      debugPrint(
+        'TASKCARD BUILD -> taskId: ${widget.taskWithDetails.task.id} | isCreator: $isCreator | dismissDirection: $dismissDirection',
+      );
+      debugPrint('Dismissible key hash -> ${dismissibleKey.hashCode}');
+      debugPrint(
+        'TASKCARD ANCESTRY -> widget: ${context.widget.runtimeType} | listView: ${ancestorListView?.runtimeType ?? 'null'} | scrollable: ${ancestorScrollable?.runtimeType ?? 'null'} | pageView: ${ancestorPageView?.runtimeType ?? 'null'} | gestureDetector: ${ancestorGestureDetector?.runtimeType ?? 'null'}',
+      );
+    }
+
+    return Dismissible(
+      key: dismissibleKey,
+      direction: dismissDirection,
+      confirmDismiss: isCreator
+          ? (_) async {
+              if (kDebugMode) {
+                debugPrint(
+                  'SWIPE CONFIRM TRIGGERED -> taskId: ${widget.taskWithDetails.task.id}',
+                );
+              }
+              return await widget.onConfirmDeleteTask(widget.taskWithDetails);
+            }
+          : null,
+      onDismissed: isCreator
+          ? (_) {
+              if (kDebugMode) {
+                debugPrint(
+                  'SWIPE DISMISSED -> taskId: ${widget.taskWithDetails.task.id}',
+                );
+              }
+            }
+          : null,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 24.0),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        decoration: BoxDecoration(
+          color: Colors.redAccent,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.redAccent.withValues(alpha: 0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
+        child: const Icon(
+          Icons.delete_outline_rounded,
+          color: Colors.white,
+          size: 28,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 24.0),
         child: Stack(
           clipBehavior: Clip.none,
           children: [

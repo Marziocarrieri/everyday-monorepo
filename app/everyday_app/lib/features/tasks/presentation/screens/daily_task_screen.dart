@@ -1,8 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'dart:ui'; // Aggiunto per l'effetto Glassmorphism
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
@@ -11,6 +11,8 @@ import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
 import '../providers/task_providers.dart';
 import '../widgets/task_card.dart';
+import '../widgets/task_delete_confirmation_dialog.dart';
+import '../../utils/task_creator_identity.dart';
 import 'add_task_screen.dart';
 
 class DailyTaskScreen extends ConsumerWidget {
@@ -234,144 +236,58 @@ class _UserTaskTimelineScreenState
     }
   }
 
+  String? _resolveTargetMemberId(TaskWithDetails task) {
+    final normalizedTargetUserId = widget.targetUserId.trim();
+    if (normalizedTargetUserId.isEmpty) {
+      return null;
+    }
+
+    for (final assignment in task.assignments) {
+      final assignmentUserId = assignment.member?.userId.trim();
+      if (assignmentUserId == normalizedTargetUserId) {
+        return assignment.memberId;
+      }
+    }
+
+    return null;
+  }
+
   Future<bool> _deleteTask(TaskWithDetails task) async {
-    // === DIALOG DI ELIMINAZIONE PREMIUM ===
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFF28482).withValues(alpha: 0.2),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF28482).withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: Color(0xFFF28482),
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Delete Task',
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF3D342C),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Are you sure you want to delete this task? This action cannot be undone.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF3D342C).withValues(alpha: 0.6),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => Navigator.of(dialogContext).pop(false),
-                          child: Container(
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(
-                                  0xFF3D342C,
-                                ).withValues(alpha: 0.1),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Cancel',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(
-                                    0xFF3D342C,
-                                  ).withValues(alpha: 0.7),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => Navigator.of(dialogContext).pop(true),
-                          child: Container(
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF28482),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFFF28482,
-                                  ).withValues(alpha: 0.3),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Delete',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+    final currentUserId = AppContext.instance.userId;
+    final currentMemberId = AppContext.instance.membershipId;
+    final canDelete = isTaskCreatedByCurrentUser(
+      taskCreatedBy: task.task.createdBy,
+      currentUserId: currentUserId,
+      currentMemberId: currentMemberId,
+    );
+    if (!canDelete) return false;
+
+    final mustConfirmDelete = shouldShowTaskDeleteConfirmation(
+      task: task,
+      currentUserId: currentUserId,
+      currentMemberId: currentMemberId,
     );
 
-    if (confirmed != true) return false;
+    if (mustConfirmDelete) {
+      final confirmed = await showTaskDeleteConfirmationDialog(context);
+      if (!confirmed) return false;
+    }
+
+    final targetMemberId = _resolveTargetMemberId(task);
+    if (targetMemberId == null || targetMemberId.isEmpty) {
+      if (kDebugMode) {
+        debugPrint(
+          'TASK DELETE SKIPPED -> unable to resolve target assignment member for task_id=${task.task.id} target_user_id=${widget.targetUserId}',
+        );
+      }
+      return false;
+    }
 
     try {
-      await _taskService.deleteTask(task.task.id);
+      await _taskService.removeTaskAssignment(
+        taskId: task.task.id,
+        memberId: targetMemberId,
+      );
       if (!mounted) return false;
       return true;
     } catch (error) {
@@ -505,6 +421,11 @@ class _UserTaskTimelineScreenState
                             itemCount: tasks.length,
                             itemBuilder: (context, index) {
                               final task = tasks[index];
+                              if (kDebugMode) {
+                                debugPrint(
+                                  'BUILDING TASKCARD FROM DAILY SCREEN -> taskId ${task.task.id}',
+                                );
+                              }
                               return TaskCard(
                                 key: ValueKey(task.task.id),
                                 taskWithDetails: task,

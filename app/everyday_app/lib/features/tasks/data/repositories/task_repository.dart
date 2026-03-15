@@ -186,6 +186,36 @@ class TaskRepository {
     await supabase.from('tasks').delete().eq('id', taskId);
   }
 
+  Future<void> removeTaskAssignment({
+    required String taskId,
+    required String memberId,
+  }) async {
+    final normalizedTaskId = taskId.trim();
+    final normalizedMemberId = memberId.trim();
+    if (normalizedTaskId.isEmpty || normalizedMemberId.isEmpty) {
+      return;
+    }
+
+    await supabase
+        .from('task_assignment')
+        .delete()
+        .eq('task_id', normalizedTaskId)
+        .eq('member_id', normalizedMemberId);
+
+    final remainingAssignments = await supabase
+        .from('task_assignment')
+        .select('id')
+        .eq('task_id', normalizedTaskId)
+        .limit(1);
+
+    final hasRemainingAssignments = List<dynamic>.from(
+      remainingAssignments,
+    ).isNotEmpty;
+    if (!hasRemainingAssignments) {
+      await deleteTask(normalizedTaskId);
+    }
+  }
+
   // 2. SCARICA I TASK DI UN GIORNO
   Future<List<Task>> getTasksByDate(String householdId, DateTime date) async {
     // Convertiamo la data in stringa "2025-12-13" perché il DB capisce solo testo

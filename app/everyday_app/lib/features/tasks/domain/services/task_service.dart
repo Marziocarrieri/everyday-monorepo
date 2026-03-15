@@ -259,6 +259,18 @@ class TaskService {
     }
   }
 
+  Future<void> removeTaskAssignment({
+    required String taskId,
+    required String memberId,
+  }) async {
+    try {
+      await _repo.removeTaskAssignment(taskId: taskId, memberId: memberId);
+    } catch (error) {
+      debugPrint('Error removing task assignment: $error');
+      rethrow;
+    }
+  }
+
   // --- I METODI AGGIORNATI CON LA POLICY DI SICUREZZA ---
   Future<List<TaskWithDetails>> getTasksForHousehold() async {
     try {

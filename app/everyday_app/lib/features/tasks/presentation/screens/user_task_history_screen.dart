@@ -7,7 +7,10 @@ import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
 import 'package:everyday_app/features/tasks/presentation/providers/task_providers.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/add_task_screen.dart';
 import 'package:everyday_app/features/tasks/presentation/widgets/task_card.dart';
+import 'package:everyday_app/features/tasks/presentation/widgets/task_delete_confirmation_dialog.dart';
+import 'package:everyday_app/features/tasks/utils/task_creator_identity.dart';
 import 'package:everyday_app/features/tasks/utils/task_temporal_ordering.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -124,8 +127,76 @@ class UserTaskHistoryScreen extends ConsumerWidget {
     }
   }
 
-  Future<bool> _noopDeleteTask(TaskWithDetails task) async {
-    return false;
+  String? _resolveTargetMemberId(TaskWithDetails task) {
+    final normalizedTargetUserId = targetUserId.trim();
+    if (normalizedTargetUserId.isEmpty) {
+      return null;
+    }
+
+    for (final assignment in task.assignments) {
+      final assignmentUserId = assignment.member?.userId.trim();
+      if (assignmentUserId == normalizedTargetUserId) {
+        return assignment.memberId;
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> _deleteTask(
+    BuildContext context,
+    WidgetRef ref,
+    TaskWithDetails task,
+  ) async {
+    final currentUserId = AppContext.instance.userId;
+    final currentMemberId = AppContext.instance.membershipId;
+    final canDelete = isTaskCreatedByCurrentUser(
+      taskCreatedBy: task.task.createdBy,
+      currentUserId: currentUserId,
+      currentMemberId: currentMemberId,
+    );
+
+    if (!canDelete) {
+      return false;
+    }
+
+    final mustConfirmDelete = shouldShowTaskDeleteConfirmation(
+      task: task,
+      currentUserId: currentUserId,
+      currentMemberId: currentMemberId,
+    );
+
+    if (mustConfirmDelete) {
+      final confirmed = await showTaskDeleteConfirmationDialog(context);
+      if (!confirmed) {
+        return false;
+      }
+    }
+
+    final targetMemberId = _resolveTargetMemberId(task);
+    if (targetMemberId == null || targetMemberId.isEmpty) {
+      if (kDebugMode) {
+        debugPrint(
+          'TASK HISTORY DELETE SKIPPED -> unable to resolve target assignment member for task_id=${task.task.id} target_user_id=$targetUserId',
+        );
+      }
+      return false;
+    }
+
+    try {
+      await ref.read(taskServiceProvider).removeTaskAssignment(
+        taskId: task.task.id,
+        memberId: targetMemberId,
+      );
+      return true;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint(
+          'TASK HISTORY DELETE FAILED task_id=${task.task.id} error=$error',
+        );
+      }
+      return false;
+    }
   }
 
   @override
@@ -206,22 +277,30 @@ class UserTaskHistoryScreen extends ConsumerWidget {
                             _buildDayHeader(group.day),
                             const SizedBox(height: 14),
                             ...group.tasks.map(
-                              (task) => TaskCard(
-                                key: ValueKey('history_${task.task.id}'),
-                                taskWithDetails: task,
-                                onSubtaskToggle: _noopToggleSubtask,
-                                onAssignmentToggle: _noopToggleAssignment,
-                                onSaveNote: _noopSaveNote,
-                                onEditTask: (task) =>
-                                    _openEditTask(context, task),
-                                onConfirmDeleteTask: _noopDeleteTask,
-                                targetUserId: targetUserId,
-                                interactionMode: TaskInteractionMode
-                                    .supervisionHostReadOnlyChecklist,
-                                roomName: task.task.roomId != null
-                                    ? roomNamesById[task.task.roomId!]
-                                    : null,
-                              ),
+                              (task) {
+                                if (kDebugMode) {
+                                  debugPrint(
+                                    'BUILDING TASKCARD FROM HISTORY SCREEN -> taskId ${task.task.id}',
+                                  );
+                                }
+                                return TaskCard(
+                                  key: ValueKey('history_${task.task.id}'),
+                                  taskWithDetails: task,
+                                  onSubtaskToggle: _noopToggleSubtask,
+                                  onAssignmentToggle: _noopToggleAssignment,
+                                  onSaveNote: _noopSaveNote,
+                                  onEditTask: (task) =>
+                                      _openEditTask(context, task),
+                                  onConfirmDeleteTask: (task) =>
+                                    _deleteTask(context, ref, task),
+                                  targetUserId: targetUserId,
+                                  interactionMode: TaskInteractionMode
+                                      .supervisionHostReadOnlyChecklist,
+                                  roomName: task.task.roomId != null
+                                      ? roomNamesById[task.task.roomId!]
+                                      : null,
+                                );
+                              },
                             ),
                             if (index < groupedHistory.length - 1)
                               const SizedBox(height: 10),
