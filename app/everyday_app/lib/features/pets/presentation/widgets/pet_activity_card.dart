@@ -26,8 +26,10 @@ class _PetActivityCardState extends State<PetActivityCard> {
   @override
   Widget build(BuildContext context) {
     final date = widget.activity.date;
+    
+    // --- MODIFICA: Giorno e Mese a doppia cifra ---
     final dateStr = date != null
-        ? '${date.day}/${date.month}/${date.year}'
+        ? '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'
         : 'No Date';
 
     var timeStr = 'No Time';

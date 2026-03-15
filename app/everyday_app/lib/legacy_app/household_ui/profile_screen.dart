@@ -1556,20 +1556,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ),
                                 child: Column(
                                   children: [
-                                    // 1. NOME GLOBALE (Fisso)
-                                    Text(
-                                      globalName,
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w800,
-                                        color: const Color(0xFF3D342C),
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-
-                                    // 2. NICKNAME (Modificabile inline)
+                                    // 1. NICKNAME (Modificabile inline)
                                     _editingNickname
                                         ? Container(
                                             padding: const EdgeInsets.symmetric(
@@ -1614,26 +1601,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                                 : 'Tap edit to add nickname',
                                             textAlign: TextAlign.center,
                                             style: GoogleFonts.poppins(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
+                                              fontSize: 18, 
+                                              fontWeight: FontWeight.w600,
                                               fontStyle: FontStyle.italic,
-                                              color: const Color(0xFF3D342C).withValues(alpha: 0.6),
+                                              color: const Color(0xFF3D342C).withValues(alpha: 0.8),
                                             ),
                                           ),
 
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 8),
 
-                                    // 3. RUOLO CENTRATO SOTTO TUTTO
+                                    // 2. RUOLO CENTRATO
                                     Text(
                                       role.toUpperCase(),
                                       style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
-                                        color: const Color(
-                                          0xFF5A8B9E,
-                                        ), // Blu premium
-                                        letterSpacing:
-                                            2.0, // Molto spaziato per l'eleganza
+                                        color: const Color(0xFF5A8B9E), // Blu premium
+                                        letterSpacing: 2.0, // Molto spaziato per l'eleganza
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 12),
+
+                                    // 3. NOME GLOBALE (Fisso)
+                                    Text(
+                                      globalName,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF3D342C),
+                                        letterSpacing: -0.5,
                                       ),
                                     ),
                                   ],

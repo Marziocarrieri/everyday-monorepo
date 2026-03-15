@@ -76,8 +76,17 @@ class PersonnelScreen extends ConsumerWidget {
                       itemCount: personnelMembers.length,
                       itemBuilder: (context, index) {
                         final member = personnelMembers[index];
-                        final memberName = member.profile?.name ?? 'Unknown';
-                        final memberColor = _getColorForMember(memberName);
+                        
+                        // --- LOGICA DI FALLBACK NICKNAME -> NOME PROFILO ---
+                        final displayName = (member.nickname != null && member.nickname!.trim().isNotEmpty)
+                            ? member.nickname!
+                            : (member.profile?.name ?? 'Unknown');
+                            
+                        final displayInitial = displayName.isNotEmpty 
+                            ? displayName[0].toUpperCase() 
+                            : '?';
+
+                        final memberColor = _getColorForMember(displayName); // Generiamo il colore in base al nome visualizzato
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
@@ -92,11 +101,9 @@ class PersonnelScreen extends ConsumerWidget {
                               );
                             },
                             child: _buildPremiumPersonnelCard(
-                              name: memberName,
+                              name: displayName,
                               role: member.role,
-                              initial: memberName != 'Unknown'
-                                  ? memberName[0].toUpperCase()
-                                  : '?',
+                              initial: displayInitial,
                               color: memberColor,
                             ),
                           ),

@@ -113,18 +113,25 @@ class FamilyScreen extends ConsumerWidget {
                       itemBuilder: (context, index) {
                         final member = familyMembers[index];
 
+                        // --- LOGICA DI FALLBACK NICKNAME -> NOME PROFILO ---
+                        final displayName = (member.nickname != null && member.nickname!.trim().isNotEmpty)
+                            ? member.nickname!
+                            : (member.profile?.name ?? 'Unknown');
+                            
+                        final displayInitial = displayName.isNotEmpty 
+                            ? displayName[0].toUpperCase() 
+                            : '?';
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: _buildPremiumFamilyCard(
                             context: context,
                             userId: member.userId,
-                            name: member.profile?.name ?? 'Unknown',
-                            initial: (member.profile?.name ?? '?').isNotEmpty
-                                ? (member.profile?.name ?? '?')[0].toUpperCase()
-                                : '?',
+                            name: displayName, // Usiamo il displayName calcolato sopra
+                            initial: displayInitial, // Usiamo l'iniziale calcolata sopra
                             color: const Color(0xFFF4A261),
                             role: member.role,
-                            isPersonnel: isPersonnel, // Passiamo il ruolo alla card!
+                            isPersonnel: isPersonnel, 
                           ),
                         );
                       },
@@ -492,13 +499,18 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
 
                   // Map through the actual membersList objects
                   ...assignableMembers.map((member) {
-                    final isSelected = selectedAssignableIds.contains(
-                      member.id,
-                    ); // Changed from member['id']
+                    final isSelected = selectedAssignableIds.contains(member.id);
+                    
+                    // --- LOGICA DI FALLBACK ANCHE NEL BOTTOM SHEET ---
+                    final displayName = (member.nickname != null && member.nickname!.trim().isNotEmpty)
+                        ? member.nickname!
+                        : (member.profile?.name ?? 'Unknown Member');
+                    final displayInitial = displayName.isNotEmpty 
+                        ? displayName[0].toUpperCase() 
+                        : '?';
+
                     return GestureDetector(
-                      onTap: () => _toggleSelection(
-                        member.id,
-                      ), // Changed from member['id']
+                      onTap: () => _toggleSelection(member.id),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.only(bottom: 12),
@@ -536,8 +548,7 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                               ),
                               child: Center(
                                 child: Text(
-                                  member.profile?.name?[0].toUpperCase() ??
-                                      '?', // Changed from member['initial']
+                                  displayInitial, // Iniziale aggiornata
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -549,8 +560,7 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                             const SizedBox(width: 16),
                             Expanded(
                               child: Text(
-                                member.profile?.name ??
-                                    'Unknown Member', // Changed from member['name']
+                                displayName, // Nome aggiornato
                                 style: GoogleFonts.poppins(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,

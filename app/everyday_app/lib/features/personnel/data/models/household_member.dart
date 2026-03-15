@@ -8,6 +8,9 @@ class HouseholdMember {
   final bool isPersonnel;
   final String? personnelType;
   
+  // --- AGGIUNTO IL NICKNAME QUI ---
+  final String? nickname; 
+  
   // Relazione (JOIN)
   // Questo campo è il risultato di una "Join" nel database. Se chiediamo i dati extra
   // dell'utente (nome, email), li mettiamo qui dentro.
@@ -20,6 +23,7 @@ class HouseholdMember {
     required this.role,
     required this.isPersonnel,
     this.personnelType,
+    this.nickname, // <-- Aggiunto al costruttore
     this.profile,
   });
 
@@ -31,9 +35,10 @@ class HouseholdMember {
       role: json['role'],
       isPersonnel: json['is_personnel'] ?? false,
       personnelType: json['personnel_type'],
+      nickname: json['nickname'], // <-- Mappato dal JSON del database
       
       // Gestione Oggetti Annidati
-      // Se nel JSON c'è un pezzo chiamato 'users_profile' e non è vuoto, 
+      // Se nel JSON c'è un pezzo chiamato 'profile' e non è vuoto, 
       // usiamo il traduttore di AppUser (AppUser.fromJson) per convertirlo.
       profile: json['profile'] != null 
           ? AppUser.fromJson(json['profile']) 
