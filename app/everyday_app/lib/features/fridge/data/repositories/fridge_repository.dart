@@ -133,7 +133,20 @@ class FridgeRepository {
             }
           })
           .whereType<FridgeItem>()
-          .toList(growable: false);
+          .toList(); // <-- Rimosso growable: false per poterla ordinare!
+
+      // --- LOGICA DI ORDINAMENTO (SORTING) ---
+      newList.sort((a, b) {
+        // Se entrambi non hanno la data, mantieni l'ordine attuale
+        if (a.expirationDate == null && b.expirationDate == null) return 0;
+        // Se 'a' non ha la data, mettilo dopo 'b'
+        if (a.expirationDate == null) return 1;
+        // Se 'b' non ha la data, metti 'a' prima di 'b'
+        if (b.expirationDate == null) return -1;
+        
+        // Entrambi hanno la data: ordina in ordine crescente (le date più vecchie prima)
+        return a.expirationDate!.compareTo(b.expirationDate!);
+      });
 
       if (kDebugMode) {
         debugPrint('UTILITY SNAPSHOT EMITTED length=${newList.length}');

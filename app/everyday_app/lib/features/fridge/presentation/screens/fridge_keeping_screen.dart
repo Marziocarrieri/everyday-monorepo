@@ -295,13 +295,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                         .where((item) => item.area == _selectedCategory)
                         .toList();
 
-                    // Ordina la lista mettendo prima quelli scaduti/in scadenza
-                    filteredItems.sort((a, b) {
-                      if (a.expirationDate == null && b.expirationDate == null) return 0;
-                      if (a.expirationDate == null) return 1;
-                      if (b.expirationDate == null) return -1;
-                      return a.expirationDate!.compareTo(b.expirationDate!);
-                    });
+                    // Rimosso il sorting client-side. Affidiamo il sorting a FridgeRepository.watchPantryItems.
 
                     return _isListView
                         ? _buildGlassList(filteredItems, pantryService)

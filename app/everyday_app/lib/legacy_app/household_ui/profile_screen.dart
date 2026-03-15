@@ -10,6 +10,8 @@ import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/runtime/household_runtime_controller.dart';
 import 'package:everyday_app/legacy_app/services/profile_data_service.dart';
+import 'package:everyday_app/core/providers/app_state_providers.dart';
+import 'package:everyday_app/core/app_router.dart';
 
 void showProfileHouseholdBottomSheet(BuildContext context) {
   showModalBottomSheet(
@@ -511,15 +513,15 @@ class _ProfileHouseholdBottomSheetState
                             : null,
                         onTap:
                             household.id == activeHouseholdId ||
-                                isSwitchingHousehold
-                            ? null
-                            : () async {
-                                await ref
-                                    .read(householdRuntimeControllerProvider)
-                                    .switchHousehold(ref, household.id);
-                                if (!mounted) return;
-                                Navigator.of(context).pop();
-                              },
+                                    isSwitchingHousehold
+                                ? null
+                                : () async {
+                                    await ref
+                                        .read(householdRuntimeControllerProvider)
+                                        .switchHousehold(ref, household.id);
+                                    if (!mounted) return;
+                                    Navigator.of(context).pop();
+                                  },
                       ),
                     ),
                   const SizedBox(height: 16),
@@ -1464,9 +1466,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     
     final avatarUrl = _activeMembership?.avatarUrl;
 
-    final displayName = (nickname != null && nickname.trim().isNotEmpty)
-        ? nickname
-        : (profile.name ?? '');
+    // --- MODIFICA NOME VISUALIZZATO ---
+    // NOME GLOBALE
+    final globalName = profile.name ?? 'Unknown User';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1554,7 +1556,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ),
                                 child: Column(
                                   children: [
-                                    // NOME CENTRATO (Con Modifica inline)
+                                    // 1. NOME GLOBALE (Fisso)
+                                    Text(
+                                      globalName,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF3D342C),
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+
+                                    // 2. NICKNAME (Modificabile inline)
                                     _editingNickname
                                         ? Container(
                                             padding: const EdgeInsets.symmetric(
@@ -1584,30 +1599,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                                     EdgeInsets.symmetric(
                                                   vertical: 12,
                                                 ),
+                                                hintText: 'Enter nickname...',
                                               ),
                                               style: GoogleFonts.poppins(
-                                                fontSize: 22,
-                                                fontWeight: FontWeight.w700,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
                                                 color: const Color(0xFF3D342C),
-                                                letterSpacing: -0.5,
                                               ),
                                             ),
                                           )
                                         : Text(
-                                            displayName,
+                                            (nickname != null && nickname.isNotEmpty)
+                                                ? '"$nickname"'
+                                                : 'Tap edit to add nickname',
                                             textAlign: TextAlign.center,
                                             style: GoogleFonts.poppins(
-                                              fontSize:
-                                                  24, // Leggermente più grande
-                                              fontWeight: FontWeight.w800,
-                                              color: const Color(0xFF3D342C),
-                                              letterSpacing: -0.5,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              fontStyle: FontStyle.italic,
+                                              color: const Color(0xFF3D342C).withValues(alpha: 0.6),
                                             ),
                                           ),
 
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 12),
 
-                                    // RUOLO CENTRATO SOTTO IL NOME
+                                    // 3. RUOLO CENTRATO SOTTO TUTTO
                                     Text(
                                       role.toUpperCase(),
                                       style: GoogleFonts.poppins(
@@ -1626,7 +1642,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                           ),
 
-                          // 2. L'AVATAR FLUTTUANTE (Centrato in alto)
+                          // L'AVATAR FLUTTUANTE (Centrato in alto)
                           Positioned(
                             top:
                                 -35, // Metà dell'altezza (70/2) per farlo sbordare perfettamente
@@ -1676,7 +1692,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                                         ) => Center(
                                                           child: Text(
                                                             _initialFromName(
-                                                              displayName,
+                                                              globalName, // Usiamo globalName qui
                                                             ),
                                                             style:
                                                                 GoogleFonts.poppins(
@@ -1692,7 +1708,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                                   )
                                                 : Center(
                                                     child: Text(
-                                                      _initialFromName(displayName),
+                                                      _initialFromName(globalName), // Usiamo globalName qui
                                                       style: GoogleFonts.poppins(
                                                         fontSize: 26,
                                                         fontWeight: FontWeight.bold,
@@ -1721,7 +1737,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                           ),
 
-                          // 3. LA MATITA DI MODIFICA (In alto a destra della card)
+                          // LA MATITA DI MODIFICA (In alto a destra della card)
                           Positioned(
                             top: 16,
                             right: 16,
@@ -1807,7 +1823,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       icon: Icons.receipt_long_rounded,
                       text: 'Your Home',
                       onTap: () {
-                        Navigator.of(context).pushNamed(AppRouteNames.yourHome);
+                        showProfileHouseholdBottomSheet(context); 
                       },
                     ),
                     const SizedBox(height: 32),
