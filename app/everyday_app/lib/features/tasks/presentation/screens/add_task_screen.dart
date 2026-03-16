@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -634,6 +635,11 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     try {
       final editingTask = widget.initialTask;
       if (editingTask == null) {
+        if (kDebugMode && widget.multiAssignMode) {
+          debugPrint(
+            'MULTI ASSIGN CREATE -> selectedRoomId ${_selectedRoomId ?? '-'} | selectedMemberIds $memberIds',
+          );
+        }
         await _taskService.createTaskWithDetails(
           title: title,
           date: targetDate,

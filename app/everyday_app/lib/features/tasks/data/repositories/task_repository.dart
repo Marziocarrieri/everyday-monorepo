@@ -116,7 +116,30 @@ class TaskRepository {
       }
 
       final assignmentMap = Map<String, dynamic>.from(assignment);
+      final nestedMemberPayload = assignmentMap['household_member'];
+      Map<String, dynamic>? nestedMember;
+      if (nestedMemberPayload is Map<String, dynamic>) {
+        nestedMember = nestedMemberPayload;
+      } else if (nestedMemberPayload is Map) {
+        nestedMember = Map<String, dynamic>.from(nestedMemberPayload);
+      } else if (nestedMemberPayload is List && nestedMemberPayload.isNotEmpty) {
+        final first = nestedMemberPayload.first;
+        if (first is Map<String, dynamic>) {
+          nestedMember = first;
+        } else if (first is Map) {
+          nestedMember = Map<String, dynamic>.from(first);
+        }
+      }
+
       final memberId = _readString(assignmentMap['member_id']);
+      if (kDebugMode) {
+        final assignmentId = _readString(assignmentMap['id']) ?? '-';
+        final nestedMemberId = _readString(nestedMember?['id']) ?? '-';
+        final nestedMemberUserId = _readString(nestedMember?['user_id']) ?? '-';
+        debugPrint(
+          'ASSIGNMENT HYDRATION COMPARE -> assignment_id=$assignmentId | raw_member_id=${memberId ?? '-'} | nested_member_id=$nestedMemberId | nested_member_user_id=$nestedMemberUserId | hydrated_member_id=${memberId ?? '-'}',
+        );
+      }
       if (memberId == null) {
         if (kDebugMode) {
           final assignmentId = _readString(assignmentMap['id']) ?? '-';
@@ -137,6 +160,11 @@ class TaskRepository {
   // 1. SALVA UN TASK
   Future<String> createTask(Map<String, dynamic> taskData) async {
     try {
+      if (kDebugMode) {
+        debugPrint(
+          'TASK INSERT PAYLOAD -> room_id ${taskData['room_id']?.toString() ?? '-'}',
+        );
+      }
       final res = await supabase
           .from('tasks')
           .insert(taskData)
@@ -151,6 +179,11 @@ class TaskRepository {
       }
 
       debugPrint('room_id not available, creating task without room: $error');
+      if (kDebugMode) {
+        debugPrint(
+          'TASK INSERT PAYLOAD -> room_id - (fallback_without_room_id_column)',
+        );
+      }
       final fallbackPayload = Map<String, dynamic>.from(taskData)
         ..remove('room_id');
 
@@ -196,11 +229,65 @@ class TaskRepository {
       return;
     }
 
+    final matchingAssignmentsBeforeDelete = await supabase
+        .from('task_assignment')
+        .select('member_id')
+        .eq('task_id', normalizedTaskId)
+        .eq('member_id', normalizedMemberId);
+    final matchingBeforeCount = List<dynamic>.from(
+      matchingAssignmentsBeforeDelete,
+    ).length;
+
     await supabase
         .from('task_assignment')
         .delete()
         .eq('task_id', normalizedTaskId)
         .eq('member_id', normalizedMemberId);
+
+    final matchingAssignmentsAfterDelete = await supabase
+        .from('task_assignment')
+        .select('member_id')
+        .eq('task_id', normalizedTaskId)
+        .eq('member_id', normalizedMemberId);
+    final matchingAfterCount = List<dynamic>.from(
+      matchingAssignmentsAfterDelete,
+    ).length;
+    final rowsAffected = matchingBeforeCount - matchingAfterCount;
+
+    final postDeleteAssignments = await supabase
+        .from('task_assignment')
+        .select('member_id')
+        .eq('task_id', normalizedTaskId)
+        .order('member_id');
+    final remainingMemberIds = List<dynamic>.from(postDeleteAssignments)
+        .map((row) {
+          if (row is Map<String, dynamic>) {
+            return row['member_id']?.toString() ?? '';
+          }
+          if (row is Map) {
+            return row['member_id']?.toString() ?? '';
+          }
+          return '';
+        })
+        .where((memberId) => memberId.isNotEmpty)
+        .toList(growable: false);
+
+    if (kDebugMode) {
+      debugPrint(
+        'DELETE QUERY RESULT -> taskId $normalizedTaskId | memberId $normalizedMemberId | rowsAffected $rowsAffected',
+      );
+      debugPrint(
+        'POST DELETE ASSIGNMENTS -> taskId $normalizedTaskId | remaining: $remainingMemberIds',
+      );
+      if (rowsAffected == 0) {
+        final zeroRowsHint = matchingBeforeCount == 0
+            ? 'No assignment matched before delete. Possible wrong memberId, assignment.memberId/userId mismatch, or household-context mismatch.'
+            : 'Assignment matched before delete but remained after delete. Possible RLS delete policy block or context mismatch.';
+        debugPrint(
+          'DELETE QUERY ZERO ROWS DIAG -> taskId $normalizedTaskId | memberId $normalizedMemberId | preMatchCount $matchingBeforeCount | postMatchCount $matchingAfterCount | hint: $zeroRowsHint',
+        );
+      }
+    }
 
     final remainingAssignments = await supabase
         .from('task_assignment')
@@ -656,6 +743,9 @@ class TaskRepository {
               .join('|');
           debugPrint(
             'EMITTED TASK SNAPSHOT task_id=${task.task.id} subtasks=$subtaskSignature',
+          );
+          debugPrint(
+            'ROOM FINAL -> taskId ${task.task.id} | task.roomId ${task.task.roomId ?? '-'}',
           );
         }
       }

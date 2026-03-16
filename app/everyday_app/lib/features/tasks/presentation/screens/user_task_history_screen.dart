@@ -132,21 +132,6 @@ class UserTaskHistoryScreen extends ConsumerWidget {
     }
   }
 
-  String? _resolveTargetMemberId(TaskWithDetails task) {
-    final viewedMemberId = targetMemberId.trim();
-    if (viewedMemberId.isEmpty) {
-      return null;
-    }
-
-    for (final assignment in task.assignments) {
-      if (assignment.memberId == viewedMemberId) {
-        return assignment.memberId;
-      }
-    }
-
-    return null;
-  }
-
   Future<bool> _deleteTask(
     BuildContext context,
     WidgetRef ref,
@@ -159,7 +144,20 @@ class UserTaskHistoryScreen extends ConsumerWidget {
       currentUserId: currentUserId,
       currentMemberId: currentMemberId,
     );
-    final resolvedTargetMemberId = _resolveTargetMemberId(task);
+    final deleteTargetMemberId = targetMemberId.trim();
+    if (kDebugMode) {
+      final assignmentMemberIds = task.assignments
+          .map((assignment) => assignment.memberId)
+          .toList(growable: false);
+      final normalizedCurrentMemberId = (currentMemberId ?? '').trim();
+      final viewedMemberId = targetMemberId.trim();
+      debugPrint(
+        'DELETE DIAG START -> taskId ${task.task.id} | assignments: $assignmentMemberIds',
+      );
+      debugPrint(
+        'DELETE DIAG CONTEXT -> taskId ${task.task.id} | resolvedTargetMemberId ${deleteTargetMemberId.isEmpty ? '-' : deleteTargetMemberId} | currentMemberId ${normalizedCurrentMemberId.isEmpty ? '-' : normalizedCurrentMemberId} | viewedMemberId ${viewedMemberId.isEmpty ? '-' : viewedMemberId}',
+      );
+    }
 
     if (!isCreator) {
       return false;
@@ -178,7 +176,7 @@ class UserTaskHistoryScreen extends ConsumerWidget {
       }
     }
 
-    if (resolvedTargetMemberId == null || resolvedTargetMemberId.isEmpty) {
+    if (deleteTargetMemberId.isEmpty) {
       if (kDebugMode) {
         debugPrint(
           'TASK HISTORY DELETE SKIPPED -> unable to resolve target assignment member for task_id=${task.task.id} target_member_id=$targetMemberId',
@@ -190,13 +188,22 @@ class UserTaskHistoryScreen extends ConsumerWidget {
     try {
       if (kDebugMode) {
         debugPrint(
-          'DELETE FIX -> taskId ${task.task.id} | resolvedTargetMemberId $resolvedTargetMemberId | assignmentsCount ${task.assignments.length}',
+          'DELETE FINAL -> taskId ${task.task.id} | targetMemberId $deleteTargetMemberId',
+        );
+        debugPrint(
+          'DELETE FIX -> taskId ${task.task.id} | resolvedTargetMemberId $deleteTargetMemberId | assignmentsCount ${task.assignments.length}',
         );
       }
       await ref.read(taskServiceProvider).removeTaskAssignment(
         taskId: task.task.id,
-        memberId: resolvedTargetMemberId,
+        memberId: deleteTargetMemberId,
       );
+      ref.invalidate(tasksStreamProvider);
+      if (kDebugMode) {
+        debugPrint(
+          'REALTIME FIX -> manual refresh triggered after assignment delete taskId ${task.task.id}',
+        );
+      }
       return true;
     } catch (error) {
       if (kDebugMode) {
@@ -305,9 +312,10 @@ class UserTaskHistoryScreen extends ConsumerWidget {
                                   targetUserId: targetUserId ?? '',
                                   interactionMode: TaskInteractionMode
                                       .supervisionHostReadOnlyChecklist,
-                                  roomName: task.task.roomId != null
-                                      ? roomNamesById[task.task.roomId!]
-                                      : null,
+                                  roomName: task.task.roomId == null
+                                      ? null
+                                      : (roomNamesById[task.task.roomId!] ??
+                                            task.task.roomId!),
                                 );
                               },
                             ),

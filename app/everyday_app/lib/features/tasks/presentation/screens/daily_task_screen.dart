@@ -240,59 +240,18 @@ class _UserTaskTimelineScreenState
     required TaskWithDetails task,
     required Map<String, String> roomNamesById,
   }) {
-    final currentMemberId = (AppContext.instance.membershipId ?? '').trim();
-    if (currentMemberId.isEmpty) {
-      if (kDebugMode) {
-        debugPrint(
-          'ROOM RESOLUTION FIX -> taskId ${task.task.id} | currentMemberId $currentMemberId | resolvedAssignmentRoomId -',
-        );
-      }
-      return null;
-    }
-
-    String? resolvedAssignmentRoomId;
-    var hasAssignmentForCurrentMember = false;
-    for (final assignment in task.assignments) {
-      if (assignment.memberId == currentMemberId) {
-        hasAssignmentForCurrentMember = true;
-        final scopedRoomId = assignment.roomId?.trim();
-        if (scopedRoomId != null && scopedRoomId.isNotEmpty) {
-          resolvedAssignmentRoomId = scopedRoomId;
-        }
-        break;
-      }
-    }
-
+    final taskRoomId = task.task.roomId?.trim();
     if (kDebugMode) {
       debugPrint(
-        'ROOM RESOLUTION FIX -> taskId ${task.task.id} | currentMemberId $currentMemberId | resolvedAssignmentRoomId ${resolvedAssignmentRoomId ?? '-'}',
+        'ROOM FINAL -> taskId ${task.task.id} | task.roomId ${taskRoomId ?? '-'}',
       );
     }
 
-    if (!hasAssignmentForCurrentMember) {
+    if (taskRoomId == null || taskRoomId.isEmpty) {
       return null;
     }
 
-    if (resolvedAssignmentRoomId == null) {
-      return 'Room assigned';
-    }
-
-    return roomNamesById[resolvedAssignmentRoomId] ?? resolvedAssignmentRoomId;
-  }
-
-  String? _resolveTargetMemberId(TaskWithDetails task) {
-    final viewedMemberId = (AppContext.instance.membershipId ?? '').trim();
-    if (viewedMemberId.isEmpty) {
-      return null;
-    }
-
-    for (final assignment in task.assignments) {
-      if (assignment.memberId == viewedMemberId) {
-        return assignment.memberId;
-      }
-    }
-
-    return null;
+    return roomNamesById[taskRoomId] ?? taskRoomId;
   }
 
   Future<bool> _deleteTask(TaskWithDetails task) async {
@@ -316,8 +275,19 @@ class _UserTaskTimelineScreenState
       if (!confirmed) return false;
     }
 
-    final targetMemberId = _resolveTargetMemberId(task);
-    if (targetMemberId == null || targetMemberId.isEmpty) {
+    final targetMemberId = (currentMemberId ?? '').trim();
+    if (kDebugMode) {
+      final assignmentMemberIds = task.assignments
+          .map((assignment) => assignment.memberId)
+          .toList(growable: false);
+      debugPrint(
+        'DELETE DIAG START -> taskId ${task.task.id} | assignments: $assignmentMemberIds',
+      );
+      debugPrint(
+        'DELETE DIAG CONTEXT -> taskId ${task.task.id} | resolvedTargetMemberId ${targetMemberId.isEmpty ? '-' : targetMemberId} | currentMemberId ${targetMemberId.isEmpty ? '-' : targetMemberId}',
+      );
+    }
+    if (targetMemberId.isEmpty) {
       if (kDebugMode) {
         final viewedMemberId = (AppContext.instance.membershipId ?? '').trim();
         debugPrint(
@@ -330,6 +300,9 @@ class _UserTaskTimelineScreenState
     try {
       if (kDebugMode) {
         debugPrint(
+          'DELETE FINAL -> taskId ${task.task.id} | targetMemberId $targetMemberId',
+        );
+        debugPrint(
           'DELETE FIX -> taskId ${task.task.id} | resolvedTargetMemberId $targetMemberId | assignmentsCount ${task.assignments.length}',
         );
       }
@@ -337,6 +310,20 @@ class _UserTaskTimelineScreenState
         taskId: task.task.id,
         memberId: targetMemberId,
       );
+      ref.invalidate(tasksStreamProvider);
+      ref.invalidate(
+        userTaskTimelineProvider(
+          UserTaskTimelineQuery(
+            date: widget.date,
+            targetUserId: widget.targetUserId,
+          ),
+        ),
+      );
+      if (kDebugMode) {
+        debugPrint(
+          'REALTIME FIX -> manual refresh triggered after assignment delete taskId ${task.task.id}',
+        );
+      }
       if (!mounted) return false;
       return true;
     } catch (error) {
