@@ -10,6 +10,7 @@ class HouseholdMember {
   
   // --- AGGIUNTO IL NICKNAME QUI ---
   final String? nickname; 
+  final String? avatarUrl; // <-- Aggiunto l'avatarUrl
   
   // Relazione (JOIN)
   // Questo campo è il risultato di una "Join" nel database. Se chiediamo i dati extra
@@ -24,6 +25,7 @@ class HouseholdMember {
     required this.isPersonnel,
     this.personnelType,
     this.nickname, // <-- Aggiunto al costruttore
+    this.avatarUrl,
     this.profile,
   });
 
@@ -36,6 +38,7 @@ class HouseholdMember {
       isPersonnel: json['is_personnel'] ?? false,
       personnelType: json['personnel_type'],
       nickname: json['nickname'], // <-- Mappato dal JSON del database
+      avatarUrl: json['avatar_url'], // <-- Mappato dal JSON del database
       
       // Gestione Oggetti Annidati
       // Se nel JSON c'è un pezzo chiamato 'profile' e non è vuoto, 

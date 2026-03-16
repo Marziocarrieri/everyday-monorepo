@@ -5,6 +5,8 @@ import 'dart:ui';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
+// IMPORTA IL NUOVO WIDGET CONDIVISO
+import 'package:everyday_app/shared/widgets/avatar_image.dart';
 
 class PersonnelScreen extends ConsumerWidget {
   const PersonnelScreen({super.key});
@@ -86,7 +88,8 @@ class PersonnelScreen extends ConsumerWidget {
                             ? displayName[0].toUpperCase() 
                             : '?';
 
-                        final memberColor = _getColorForMember(displayName); // Generiamo il colore in base al nome visualizzato
+                        final memberColor = _getColorForMember(displayName); 
+                        final avatarUrl = member.avatarUrl ?? member.profile?.avatarUrl;
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
@@ -106,6 +109,7 @@ class PersonnelScreen extends ConsumerWidget {
                               role: member.role,
                               initial: displayInitial,
                               color: memberColor,
+                              avatarUrl: avatarUrl, // PASSATO ALLA CARD
                             ),
                           ),
                         );
@@ -121,12 +125,13 @@ class PersonnelScreen extends ConsumerWidget {
     );
   }
 
-  // --- CARD PERSONALE PREMIUM (Invariata) ---
+  // --- CARD PERSONALE PREMIUM AGGIORNATA ---
   Widget _buildPremiumPersonnelCard({
     required String name,
     required String role,
     required String initial,
     required Color color,
+    String? avatarUrl, // NUOVO PARAMETRO
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(32),
@@ -167,32 +172,11 @@ class PersonnelScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3D342C),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF3D342C,
-                              ).withValues(alpha: 0.2),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            initial,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
+                      // SOSTITUITO IL CONTAINER CON IL NUOVO WIDGET
+                      AvatarImage(
+                        avatarUrl: avatarUrl,
+                        initial: initial,
+                        size: 48,
                       ),
                       const SizedBox(width: 16),
                       Expanded(

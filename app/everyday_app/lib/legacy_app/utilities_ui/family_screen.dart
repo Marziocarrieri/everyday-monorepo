@@ -7,6 +7,8 @@ import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
 import '../../features/personnel/data/models/household_member.dart';
+// IMPORTA IL NUOVO WIDGET CONDIVISO
+import 'package:everyday_app/shared/widgets/avatar_image.dart'; 
 
 class FamilyScreen extends ConsumerWidget {
   const FamilyScreen({super.key});
@@ -87,7 +89,7 @@ class FamilyScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 30),
 
-              // LISTA CARD PREMIUM (MODIFICATA PER IL CLICK)
+              // LISTA CARD PREMIUM (MODIFICATA PER IL CLICK E L'AVATAR)
               Expanded(
                 child: membersAsync.when(
                   loading: () =>
@@ -122,14 +124,18 @@ class FamilyScreen extends ConsumerWidget {
                             ? displayName[0].toUpperCase() 
                             : '?';
 
+                        // Recuperiamo l'avatar (priorità a quello del membro, poi a quello del profilo)
+                        final avatarUrl = member.avatarUrl ?? member.profile?.avatarUrl;
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: _buildPremiumFamilyCard(
                             context: context,
                             memberId: member.id,
                             userId: member.userId,
-                            name: displayName, // Usiamo il displayName calcolato sopra
-                            initial: displayInitial, // Usiamo l'iniziale calcolata sopra
+                            name: displayName, 
+                            initial: displayInitial, 
+                            avatarUrl: avatarUrl, // PASSATO ALLA CARD
                             color: const Color(0xFFF4A261),
                             role: member.role,
                             isPersonnel: isPersonnel, 
@@ -185,7 +191,8 @@ class FamilyScreen extends ConsumerWidget {
     required String role,
     required String initial,
     required Color color,
-    required bool isPersonnel, // Nuovo parametro
+    required bool isPersonnel,
+    String? avatarUrl, // NUOVO PARAMETRO
   }) {
     
     // Il widget base della Card (separato dal GestureDetector)
@@ -228,30 +235,11 @@ class FamilyScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3D342C),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF3D342C).withValues(alpha: 0.2),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            initial,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
+                      // SOSTITUITO IL CONTAINER CON IL NUOVO WIDGET
+                      AvatarImage(
+                        avatarUrl: avatarUrl,
+                        initial: initial,
+                        size: 48,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -430,7 +418,6 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
             color: Colors.white.withValues(alpha: 0.9),
             border: Border.all(color: Colors.white, width: 1.5),
           ),
-          // Use .when to handle the AsyncValue state
           child: widget.members.when(
             loading: () => const SizedBox(
               height: 200,
@@ -449,7 +436,6 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                   .where((memberId) => assignableIds.contains(memberId))
                   .toSet();
 
-              // 'membersList' is now your actual List<HouseholdMember>
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -502,17 +488,17 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Map through the actual membersList objects
                   ...assignableMembers.map((member) {
                     final isSelected = selectedAssignableIds.contains(member.id);
                     
-                    // --- LOGICA DI FALLBACK ANCHE NEL BOTTOM SHEET ---
+                    // --- LOGICA DI FALLBACK ---
                     final displayName = (member.nickname != null && member.nickname!.trim().isNotEmpty)
                         ? member.nickname!
                         : (member.profile?.name ?? 'Unknown Member');
                     final displayInitial = displayName.isNotEmpty 
                         ? displayName[0].toUpperCase() 
                         : '?';
+                    final avatarUrl = member.avatarUrl ?? member.profile?.avatarUrl;
 
                     return GestureDetector(
                       onTap: () => _toggleSelection(member.id),
@@ -544,28 +530,16 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF3D342C),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  displayInitial, // Iniziale aggiornata
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
+                            // SOSTITUITO IL CONTAINER CON IL NUOVO WIDGET
+                            AvatarImage(
+                              avatarUrl: avatarUrl,
+                              initial: displayInitial,
+                              size: 44,
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: Text(
-                                displayName, // Nome aggiornato
+                                displayName,
                                 style: GoogleFonts.poppins(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
