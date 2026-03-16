@@ -787,7 +787,7 @@ class _TaskCardState extends State<TaskCard> {
                               ),
                               const SizedBox(height: 4),
                               TaskTimeRow(timeRange: '$timeFrom - $timeTo'),
-                              if (roomId != null)
+                              if (roomId != null || roomLabel != null)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(

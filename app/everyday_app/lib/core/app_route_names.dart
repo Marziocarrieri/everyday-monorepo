@@ -76,9 +76,13 @@ class DailyTaskRouteArgs {
 }
 
 class UserTaskHistoryRouteArgs {
-  final String targetUserId;
+  final String targetMemberId;
+  final String? targetUserId;
 
-  const UserTaskHistoryRouteArgs({required this.targetUserId});
+  const UserTaskHistoryRouteArgs({
+    required this.targetMemberId,
+    this.targetUserId,
+  });
 }
 
 class MemberActivitiesRouteArgs {

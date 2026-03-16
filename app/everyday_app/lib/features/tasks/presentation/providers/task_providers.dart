@@ -73,6 +73,7 @@ TaskAssignment _copyAssignment(TaskAssignment assignment) {
     id: assignment.id,
     taskId: assignment.taskId,
     memberId: assignment.memberId,
+    roomId: assignment.roomId,
     status: assignment.status,
     note: assignment.note,
     completedAt: assignment.completedAt == null

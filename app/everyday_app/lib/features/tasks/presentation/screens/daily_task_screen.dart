@@ -236,15 +236,58 @@ class _UserTaskTimelineScreenState
     }
   }
 
+  String? _resolveRoomNameForCurrentMember({
+    required TaskWithDetails task,
+    required Map<String, String> roomNamesById,
+  }) {
+    final currentMemberId = (AppContext.instance.membershipId ?? '').trim();
+    if (currentMemberId.isEmpty) {
+      if (kDebugMode) {
+        debugPrint(
+          'ROOM RESOLUTION FIX -> taskId ${task.task.id} | currentMemberId $currentMemberId | resolvedAssignmentRoomId -',
+        );
+      }
+      return null;
+    }
+
+    String? resolvedAssignmentRoomId;
+    var hasAssignmentForCurrentMember = false;
+    for (final assignment in task.assignments) {
+      if (assignment.memberId == currentMemberId) {
+        hasAssignmentForCurrentMember = true;
+        final scopedRoomId = assignment.roomId?.trim();
+        if (scopedRoomId != null && scopedRoomId.isNotEmpty) {
+          resolvedAssignmentRoomId = scopedRoomId;
+        }
+        break;
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        'ROOM RESOLUTION FIX -> taskId ${task.task.id} | currentMemberId $currentMemberId | resolvedAssignmentRoomId ${resolvedAssignmentRoomId ?? '-'}',
+      );
+    }
+
+    if (!hasAssignmentForCurrentMember) {
+      return null;
+    }
+
+    if (resolvedAssignmentRoomId == null) {
+      return 'Room assigned';
+    }
+
+    return roomNamesById[resolvedAssignmentRoomId] ?? resolvedAssignmentRoomId;
+  }
+
   String? _resolveTargetMemberId(TaskWithDetails task) {
-    final normalizedTargetUserId = widget.targetUserId.trim();
-    if (normalizedTargetUserId.isEmpty) {
+    final viewedMemberId = (AppContext.instance.membershipId ?? '').trim();
+    if (viewedMemberId.isEmpty) {
       return null;
     }
 
     for (final assignment in task.assignments) {
-      final assignmentUserId = assignment.member?.userId.trim();
-      if (assignmentUserId == normalizedTargetUserId) {
+      if (assignment.memberId == viewedMemberId) {
         return assignment.memberId;
       }
     }
@@ -276,14 +319,20 @@ class _UserTaskTimelineScreenState
     final targetMemberId = _resolveTargetMemberId(task);
     if (targetMemberId == null || targetMemberId.isEmpty) {
       if (kDebugMode) {
+        final viewedMemberId = (AppContext.instance.membershipId ?? '').trim();
         debugPrint(
-          'TASK DELETE SKIPPED -> unable to resolve target assignment member for task_id=${task.task.id} target_user_id=${widget.targetUserId}',
+          'TASK DELETE SKIPPED -> unable to resolve target assignment member for task_id=${task.task.id} target_member_id=$viewedMemberId',
         );
       }
       return false;
     }
 
     try {
+      if (kDebugMode) {
+        debugPrint(
+          'DELETE FIX -> taskId ${task.task.id} | resolvedTargetMemberId $targetMemberId | assignmentsCount ${task.assignments.length}',
+        );
+      }
       await _taskService.removeTaskAssignment(
         taskId: task.task.id,
         memberId: targetMemberId,
@@ -421,6 +470,11 @@ class _UserTaskTimelineScreenState
                             itemCount: tasks.length,
                             itemBuilder: (context, index) {
                               final task = tasks[index];
+                              final resolvedRoomName =
+                                  _resolveRoomNameForCurrentMember(
+                                    task: task,
+                                    roomNamesById: roomNamesById,
+                                  );
                               if (kDebugMode) {
                                 debugPrint(
                                   'BUILDING TASKCARD FROM DAILY SCREEN -> taskId ${task.task.id}',
@@ -436,9 +490,7 @@ class _UserTaskTimelineScreenState
                                 onConfirmDeleteTask: _deleteTask,
                                 targetUserId: widget.targetUserId,
                                 readOnlyChecklist: widget.readOnlyChecklist,
-                                roomName: task.task.roomId != null
-                                    ? roomNamesById[task.task.roomId!]
-                                    : null,
+                                roomName: resolvedRoomName,
                               );
                             },
                           );

@@ -6,6 +6,7 @@ class TaskAssignment {
   final String id;
   final String taskId;
   final String memberId;
+  final String? roomId;
   final String status; // 'TODO', 'DONE', 'SKIPPED'
   final String? note;
   final DateTime? completedAt;
@@ -15,6 +16,7 @@ class TaskAssignment {
     required this.id,
     required this.taskId,
     required this.memberId,
+    this.roomId,
     required this.status,
     this.note,
     this.completedAt,
@@ -55,6 +57,7 @@ class TaskAssignment {
       id: id,
       taskId: taskId,
       memberId: memberId,
+      roomId: _asNullableString(json['room_id']),
       status: _asString(json['status'], fallback: 'TODO'),
       note: _asNullableString(json['note']),
       completedAt: _parseDateTime(json['completed_at']),

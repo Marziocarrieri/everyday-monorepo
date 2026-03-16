@@ -73,8 +73,10 @@ class AppRouter {
         }
 
         return MaterialPageRoute(
-          builder: (_) =>
-              UserTaskHistoryScreen(targetUserId: args.targetUserId),
+          builder: (_) => UserTaskHistoryScreen(
+            targetMemberId: args.targetMemberId,
+            targetUserId: args.targetUserId,
+          ),
           settings: settings,
         );
 

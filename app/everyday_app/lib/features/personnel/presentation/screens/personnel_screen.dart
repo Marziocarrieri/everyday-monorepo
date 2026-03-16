@@ -96,6 +96,7 @@ class PersonnelScreen extends ConsumerWidget {
                                 context,
                                 AppRouteNames.userTaskHistory,
                                 arguments: UserTaskHistoryRouteArgs(
+                                  targetMemberId: member.id,
                                   targetUserId: member.userId,
                                 ),
                               );

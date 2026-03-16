@@ -126,6 +126,7 @@ class FamilyScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: _buildPremiumFamilyCard(
                             context: context,
+                            memberId: member.id,
                             userId: member.userId,
                             name: displayName, // Usiamo il displayName calcolato sopra
                             initial: displayInitial, // Usiamo l'iniziale calcolata sopra
@@ -178,6 +179,7 @@ class FamilyScreen extends ConsumerWidget {
   // --- CARD FAMILY PREMIUM AGGIORNATA ---
   Widget _buildPremiumFamilyCard({
     required BuildContext context,
+    required String memberId,
     required String userId,
     required String name,
     required String role,
@@ -334,7 +336,10 @@ class FamilyScreen extends ConsumerWidget {
       onTap: () {
         Navigator.of(context).pushNamed(
           AppRouteNames.userTaskHistory,
-          arguments: UserTaskHistoryRouteArgs(targetUserId: userId),
+          arguments: UserTaskHistoryRouteArgs(
+            targetMemberId: memberId,
+            targetUserId: userId,
+          ),
         );
       },
       child: cardContent,
