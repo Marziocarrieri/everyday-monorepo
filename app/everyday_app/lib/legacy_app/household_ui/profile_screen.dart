@@ -1359,7 +1359,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       _buildPremiumMenuButton(icon: Icons.fastfood_outlined, text: 'Your Diet', onTap: () => Navigator.of(context).pushNamed(AppRouteNames.diet)),
                       const SizedBox(height: 16),
                     ],
-                    _buildPremiumMenuButton(icon: Icons.receipt_long_rounded, text: 'Your Home', onTap: () => showProfileHouseholdBottomSheet(context)),
+                    _buildPremiumMenuButton(icon: Icons.other_houses_outlined, text: 'Your Home', onTap: () => AppRouter.navigate(context, AppRouteNames.yourHome)),
                     const SizedBox(height: 32),
                     Align(alignment: Alignment.centerLeft, child: Padding(padding: const EdgeInsets.only(left: 8, bottom: 12), child: Text('Household Settings', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF3D342C).withValues(alpha: 0.5))))),
                     Row(children: [
