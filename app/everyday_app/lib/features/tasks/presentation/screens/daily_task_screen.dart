@@ -310,20 +310,6 @@ class _UserTaskTimelineScreenState
         taskId: task.task.id,
         memberId: targetMemberId,
       );
-      ref.invalidate(tasksStreamProvider);
-      ref.invalidate(
-        userTaskTimelineProvider(
-          UserTaskTimelineQuery(
-            date: widget.date,
-            targetUserId: widget.targetUserId,
-          ),
-        ),
-      );
-      if (kDebugMode) {
-        debugPrint(
-          'REALTIME FIX -> manual refresh triggered after assignment delete taskId ${task.task.id}',
-        );
-      }
       if (!mounted) return false;
       return true;
     } catch (error) {

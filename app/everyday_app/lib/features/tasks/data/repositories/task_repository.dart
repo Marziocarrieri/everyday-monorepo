@@ -1071,11 +1071,31 @@ class TaskRepository {
                   return;
                 }
 
-                final affectedTaskId =
-                    _readString(
-                      payload.newRecord['task_id'] ??
-                          payload.oldRecord['task_id'],
-                    );
+                final affectedAssignmentId = _readString(
+                  payload.newRecord['id'] ?? payload.oldRecord['id'],
+                );
+                var affectedTaskId = _readString(
+                  payload.newRecord['task_id'] ?? payload.oldRecord['task_id'],
+                );
+                var affectedMemberId = _readString(
+                  payload.newRecord['member_id'] ??
+                      payload.oldRecord['member_id'],
+                );
+
+                if ((affectedTaskId == null || affectedMemberId == null) &&
+                    affectedAssignmentId != null) {
+                  for (final cachedRow in latestAssignmentRows) {
+                    final cachedAssignmentId = _readString(cachedRow['id']);
+                    if (cachedAssignmentId != affectedAssignmentId) {
+                      continue;
+                    }
+
+                    affectedTaskId ??= _readString(cachedRow['task_id']);
+                    affectedMemberId ??= _readString(cachedRow['member_id']);
+                    break;
+                  }
+                }
+
                 if (affectedTaskId == null) {
                   return;
                 }
@@ -1085,7 +1105,32 @@ class TaskRepository {
                   return;
                 }
 
-                await refreshAssignmentCache(taskIdsOverride: scopedTaskIds);
+                if (kDebugMode) {
+                  debugPrint(
+                    'REALTIME ASSIGNMENT EVENT -> rebuild triggered | eventType ${payload.eventType.name} | taskId $affectedTaskId | memberId ${affectedMemberId ?? '-'}',
+                  );
+                }
+
+                final freshTasks = await supabase
+                    .from('tasks')
+                    .select('*')
+                    .eq('household_id', householdId);
+
+                if (disposed) {
+                  return;
+                }
+
+                latestTaskRows = List<Map<String, dynamic>>.from(freshTasks)
+                    .map((row) => Map<String, dynamic>.from(row))
+                    .toList(growable: false);
+
+                await ensureDetailSubscriptions();
+                if (watchedTaskIds.isEmpty) {
+                  return;
+                }
+
+                await refreshSubtaskCache(taskIdsOverride: watchedTaskIds);
+                await refreshAssignmentCache(taskIdsOverride: watchedTaskIds);
                 emitLatestSnapshot(
                   source: 'assignment_realtime_event',
                   taskId: affectedTaskId,

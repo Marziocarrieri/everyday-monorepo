@@ -198,12 +198,6 @@ class UserTaskHistoryScreen extends ConsumerWidget {
         taskId: task.task.id,
         memberId: deleteTargetMemberId,
       );
-      ref.invalidate(tasksStreamProvider);
-      if (kDebugMode) {
-        debugPrint(
-          'REALTIME FIX -> manual refresh triggered after assignment delete taskId ${task.task.id}',
-        );
-      }
       return true;
     } catch (error) {
       if (kDebugMode) {
