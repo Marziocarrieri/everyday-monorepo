@@ -19,6 +19,7 @@ import 'package:everyday_app/features/tasks/presentation/screens/add_task_screen
 import 'package:everyday_app/features/tasks/presentation/screens/daily_task_screen.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/user_task_history_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:everyday_app/features/tasks/presentation/screens/week_tasks_screen.dart';
 
 class AppRouter {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
@@ -28,6 +29,9 @@ class AppRouter {
           builder: (_) => const RoleShellGate(),
           settings: settings,
         );
+
+      case AppRouteNames.weekTasks:
+        return MaterialPageRoute(builder: (_) => const WeekTasksScreen());
 
       case AppRouteNames.addTask:
         final args = settings.arguments as AddTaskRouteArgs?;

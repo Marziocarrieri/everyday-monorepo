@@ -370,4 +370,80 @@ class TaskService {
       return false;
     }
   }
+
+  // --- NUOVA FUNZIONE: COPIA UNA SETTIMANA (CON SOVRASCRITTURA) ---
+  Future<void> copyWeekTasks({
+    required DateTime sourceWeekDate,
+    required DateTime targetWeekDate,
+  }) async {
+    // 1. Calcoliamo i confini della settimana sorgente
+    final sourceMonday = sourceWeekDate.subtract(Duration(days: sourceWeekDate.weekday - 1));
+    final sourceSunday = sourceMonday.add(const Duration(days: 6));
+
+    // 2. Calcoliamo i confini della settimana target e la differenza di giorni (offset)
+    final targetMonday = targetWeekDate.subtract(Duration(days: targetWeekDate.weekday - 1));
+    final targetSunday = targetMonday.add(const Duration(days: 6));
+    final offsetDays = targetMonday.difference(sourceMonday).inDays;
+
+    if (offsetDays == 0) return; // Non ha senso copiare la stessa settimana su se stessa
+
+    // 3. Peschiamo tutti i task
+    final allTasks = await getTasksForHousehold();
+
+    // 4. Teniamo solo quelli della settimana sorgente
+    final sourceTasks = allTasks.where((t) {
+      final taskDate = DateTime(t.task.taskDate.year, t.task.taskDate.month, t.task.taskDate.day);
+      final s = DateTime(sourceMonday.year, sourceMonday.month, sourceMonday.day);
+      final e = DateTime(sourceSunday.year, sourceSunday.month, sourceSunday.day);
+      return taskDate.isAfter(s.subtract(const Duration(days: 1))) && 
+             taskDate.isBefore(e.add(const Duration(days: 1)));
+    }).toList();
+
+    // Controlliamo PRIMA di cancellare qualsiasi cosa che ci siano effettivamente task da copiare
+    if (sourceTasks.isEmpty) throw Exception("No tasks found in the selected source week.");
+
+    // 5. Troviamo i task della settimana target per ELIMINARLI (Sovrascrittura)
+    final targetTasksToDelete = allTasks.where((t) {
+      final taskDate = DateTime(t.task.taskDate.year, t.task.taskDate.month, t.task.taskDate.day);
+      final s = DateTime(targetMonday.year, targetMonday.month, targetMonday.day);
+      final e = DateTime(targetSunday.year, targetSunday.month, targetSunday.day);
+      return taskDate.isAfter(s.subtract(const Duration(days: 1))) && 
+             taskDate.isBefore(e.add(const Duration(days: 1)));
+    }).toList();
+
+    // Cancelliamo i task esistenti nella settimana di destinazione
+    for (final t in targetTasksToDelete) {
+      await deleteTask(t.task.id);
+    }
+
+    // Helper per riconvertire la stringa dell'orario in TimeOfDay
+    TimeOfDay? parseTime(String? timeStr) {
+      if (timeStr == null || timeStr.isEmpty) return null;
+      final parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+      }
+      return null;
+    }
+
+    // 6. Creiamo i cloni
+    for (final t in sourceTasks) {
+      final newDate = t.task.taskDate.add(Duration(days: offsetDays));
+      final checklistTitles = t.subtasks.map((st) => st.title).toList();
+      final assignedMemberIds = t.assignments.map((a) => a.memberId).toList();
+
+      await createTaskWithDetails(
+        title: t.task.title,
+        description: t.task.description,
+        date: newDate,
+        timeFrom: parseTime(t.task.timeFrom),
+        timeTo: parseTime(t.task.timeTo),
+        visibility: t.task.visibility,
+        roomId: t.task.roomId,
+        assignedMemberIds: assignedMemberIds,
+        checklistTitles: checklistTitles,
+        personalOnly: false,
+      );
+    }
+  }
 }

@@ -19,6 +19,7 @@ class AppRouteNames {
 
   static const String addTask = '/tasks/add';
   static const String dailyTask = '/tasks/daily';
+  static const String weekTasks = '/week-tasks';
   static const String userTaskHistory = '/tasks/history/user';
   static const String fridgeKeeping = '/fridge/keeping';
   static const String provisionList = '/fridge/provision-list';

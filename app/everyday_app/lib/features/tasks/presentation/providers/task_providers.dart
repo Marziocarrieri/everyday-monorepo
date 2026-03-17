@@ -339,3 +339,100 @@ final taskRoomsProvider = FutureProvider<List<HouseholdRoom>>((ref) async {
   final taskService = ref.watch(taskServiceProvider);
   return taskService.getAvailableRooms();
 });
+
+// =========================================================================
+// NUOVO PROVIDER: TASKS DELLA SETTIMANA CORRENTE (Lunedì - Domenica)
+// =========================================================================
+
+bool _isDateInCurrentWeek(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  
+  // Calcola quanti giorni sottrarre per arrivare a Lunedì (1 = Lunedì, 7 = Domenica)
+  final daysSinceMonday = today.weekday - 1;
+  final startOfWeek = today.subtract(Duration(days: daysSinceMonday));
+  
+  // Calcola la Domenica successiva (aggiungendo 6 giorni a Lunedì)
+  final endOfWeek = startOfWeek.add(const Duration(days: 6));
+
+  final taskDate = DateTime(date.year, date.month, date.day);
+  
+  // Ritorna true se la data della task è >= Lunedì e <= Domenica
+  return taskDate.isAfter(startOfWeek.subtract(const Duration(days: 1))) && 
+         taskDate.isBefore(endOfWeek.add(const Duration(days: 1)));
+}
+
+final homeWeeklyTasksProvider = Provider<AsyncValue<List<TaskWithDetails>>>((
+  ref,
+) {
+  final householdId = ref.watch(currentHouseholdIdProvider);
+  final currentUser = ref.watch(currentUserProvider);
+  final tasksAsync = ref.watch(tasksStreamProvider);
+  final optimisticSubtaskOverrides = ref.watch(
+    optimisticSubtaskOverridesProvider,
+  );
+
+  if (householdId == null ||
+      householdId.isEmpty ||
+      currentUser == null ||
+      currentUser.id.isEmpty) {
+    return const AsyncValue<List<TaskWithDetails>>.data([]);
+  }
+
+  return tasksAsync.whenData((tasks) {
+    final filtered = tasks
+        .where((task) => task.task.householdId == householdId)
+        .where((task) => _isDateInCurrentWeek(task.task.taskDate))
+        .where((task) => _isTaskAssignedToUser(task, currentUser.id))
+        .toList(); // Serve una lista per l'override
+
+    return _applyOptimisticSubtaskOverrides(
+      tasks: filtered,
+      overrides: optimisticSubtaskOverrides,
+    );
+  });
+});
+
+// =========================================================================
+// PROVIDER: TASKS DI UNA SETTIMANA SPECIFICA (Per la WeekTasksScreen)
+// =========================================================================
+
+bool _isDateInSpecificWeek(DateTime date, DateTime weekReference) {
+  final reference = DateTime(weekReference.year, weekReference.month, weekReference.day);
+  final daysSinceMonday = reference.weekday - 1;
+  final startOfWeek = reference.subtract(Duration(days: daysSinceMonday));
+  final endOfWeek = startOfWeek.add(const Duration(days: 6));
+
+  final taskDate = DateTime(date.year, date.month, date.day);
+  
+  return taskDate.isAfter(startOfWeek.subtract(const Duration(days: 1))) && 
+         taskDate.isBefore(endOfWeek.add(const Duration(days: 1)));
+}
+
+// Usiamo .family per poter passare la data selezionata dall'utente
+final weeklyTasksFamilyProvider = Provider.family<AsyncValue<List<TaskWithDetails>>, DateTime>((
+  ref, 
+  selectedWeek
+) {
+  final householdId = ref.watch(currentHouseholdIdProvider);
+  final currentUser = ref.watch(currentUserProvider);
+  final tasksAsync = ref.watch(tasksStreamProvider);
+  final optimisticSubtaskOverrides = ref.watch(optimisticSubtaskOverridesProvider);
+
+  if (householdId == null || householdId.isEmpty || currentUser == null || currentUser.id.isEmpty) {
+    return const AsyncValue<List<TaskWithDetails>>.data([]);
+  }
+
+  return tasksAsync.whenData((tasks) {
+    final filtered = tasks
+        .where((task) => task.task.householdId == householdId)
+        .where((task) => _isDateInSpecificWeek(task.task.taskDate, selectedWeek))
+        .where((task) => _isTaskAssignedToUser(task, currentUser.id))
+        .toList();
+
+    return _applyOptimisticSubtaskOverrides(
+      tasks: filtered,
+      overrides: optimisticSubtaskOverrides,
+    );
+  });
+});
