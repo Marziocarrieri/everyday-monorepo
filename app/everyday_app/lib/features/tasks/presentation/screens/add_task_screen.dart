@@ -43,13 +43,125 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   final Map<String, List<String>> _suggestedTasks = {
-    'Kids Management': [
-      'School Drop-off / Pick-up',
-      'After-School Activities',
-      'Pediatric Check-ups',
+    'Daily Chores': [
+      'Make the beds',
+      'Wash dishes',
+      'Load dishwasher',
+      'Unload dishwasher',
+      'Wipe kitchen counters',
+      'Sweep the floors',
+      'Take out the trash',
+      'Tidy up the living room',
+      'Sort the mail',
+      'Set the table',
+      'Clear the table'
     ],
-    'Home Management': ['Home Repairs', 'Car Maintenance'],
-    'Personal Care': ['Beauty Appointment', 'Mental Health Check'],
+    'Weekly Cleaning': [
+      'Vacuum all rooms',
+      'Mop the floors',
+      'Clean the bathrooms',
+      'Scrub the toilets',
+      'Clean the mirrors',
+      'Dust the furniture',
+      'Change bed sheets',
+      'Do the laundry (Colors)',
+      'Do the laundry (Whites)',
+      'Do the laundry (Delicates)',
+      'Fold laundry',
+      'Put away laundry',
+      'Iron clothes',
+      'Take out recycling'
+    ],
+    'Deep Cleaning & Seasonal': [
+      'Defrost the freezer',
+      'Clean the oven',
+      'Wash the windows',
+      'Wash the curtains',
+      'Organize the pantry',
+      'Organize the wardrobe',
+      'Clean the carpets',
+      'Clean the fridge',
+      'Descale coffee maker',
+      'Clean dishwasher filter'
+    ],
+    'Kitchen & Meals': [
+      'Grocery shopping',
+      'Order groceries online',
+      'Plan weekly meals',
+      'Meal prep',
+      'Cook breakfast',
+      'Cook lunch',
+      'Cook dinner',
+      'Bake a cake / dessert',
+      'Check for expired food',
+      'Buy fresh bread',
+      'Restock water/beverages'
+    ],
+    'Kids Management': [
+      'School Drop-off',
+      'School Pick-up',
+      'Pack school lunches',
+      'Pack the backpack',
+      'Homework help',
+      'After-school activities',
+      'Bathtime routine',
+      'Bedtime routine',
+      'Pediatrician check-up',
+      'Buy school supplies',
+      'Organize toys'
+    ],
+    'Pet Care': [
+      'Walk the dog (Morning)',
+      'Walk the dog (Evening)',
+      'Feed the pets',
+      'Clean the litter box',
+      'Bathe the pet',
+      'Vet appointment',
+      'Buy pet food',
+      'Brush the pet',
+      'Wash pet bedding'
+    ],
+    'Home Maintenance & Car': [
+      'Change lightbulbs',
+      'Check smoke detectors',
+      'Pay utility bills',
+      'Pay condo fees',
+      'Call the plumber/electrician',
+      'Fix broken items',
+      'Wash the car',
+      'Clean the garage',
+      'Refuel the car',
+      'Schedule car service'
+    ],
+    'Garden & Outdoor': [
+      'Water the plants (Indoor)',
+      'Water the plants (Outdoor)',
+      'Mow the lawn',
+      'Rake leaves',
+      'Clean the patio / balcony',
+      'Take out the yard waste'
+    ],
+    'Personal & Health': [
+      'Workout / Gym',
+      'Doctor appointment',
+      'Dentist appointment',
+      'Buy medicines at pharmacy',
+      'Haircut appointment',
+      'Beauty/Spa appointment',
+      'Meditate / Relax',
+      'Read a book'
+    ],
+    'Admin & Organization': [
+      'Pay taxes',
+      'Renew insurance',
+      'Review monthly budget',
+      'File receipts / documents',
+      'Backup computer/phone',
+      'Plan family holidays',
+      'Organize family calendar',
+      'Call parents/relatives',
+      'Buy a gift'
+    ]
   };
 
   @override
@@ -95,8 +207,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     // --- LOGICA DI FILTRAGGIO RICERCA ---
     final query = _searchController.text.trim().toLowerCase();
     
-    // Filtra la mappa: mantiene solo le task che matchano la ricerca,
-    // e se una categoria non ha più task al suo interno, la rimuove dalla lista.
     final filteredEntries = _suggestedTasks.entries.map((entry) {
       final matchedTasks = entry.value
           .where((task) => task.toLowerCase().contains(query))
@@ -127,12 +237,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         color: Colors.white,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: colorSafeAzzurro.withValues(alpha: 0.1),
+                          color: colorSafeAzzurro.withOpacity(0.1),
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: colorSafeAzzurro.withValues(alpha: 0.08),
+                            color: colorSafeAzzurro.withOpacity(0.08),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -162,12 +272,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         color: Colors.white,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: colorSafeAzzurro.withValues(alpha: 0.1),
+                          color: colorSafeAzzurro.withOpacity(0.1),
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: colorSafeAzzurro.withValues(alpha: 0.08),
+                            color: colorSafeAzzurro.withOpacity(0.08),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -195,12 +305,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     height: 55,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: Colors.white.withOpacity(0.6),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: Colors.white, width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
+                          color: Colors.black.withOpacity(0.03),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
@@ -212,14 +322,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           child: TextField(
                             controller: _searchController,
                             onChanged: (value) {
-                              setState(() {}); // <-- AGGIUNTO: Aggiorna lo stato mentre scrivi
+                              setState(() {}); 
                             },
                             decoration: InputDecoration(
                               hintText: 'Search templates...',
                               hintStyle: GoogleFonts.poppins(
                                 color: const Color(
                                   0xFF3D342C,
-                                ).withValues(alpha: 0.4),
+                                ).withOpacity(0.4),
                                 fontSize: 15,
                               ),
                               border: InputBorder.none,
@@ -248,14 +358,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: filteredEntries.isEmpty
-                    // Mostriamo un feedback se la ricerca non produce risultati
                     ? Padding(
                         padding: const EdgeInsets.only(top: 40.0),
                         child: Center(
                           child: Text(
                             'No templates found',
                             style: GoogleFonts.poppins(
-                              color: const Color(0xFF3D342C).withValues(alpha: 0.5),
+                              color: const Color(0xFF3D342C).withOpacity(0.5),
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
@@ -315,18 +424,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    colorSafeAzzurro.withValues(alpha: 0.15),
-                    Colors.white.withValues(alpha: 0.4),
+                    colorSafeAzzurro.withOpacity(0.15),
+                    Colors.white.withOpacity(0.4),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: Colors.white.withOpacity(0.8),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: colorSafeAzzurro.withValues(alpha: 0.1),
+                    color: colorSafeAzzurro.withOpacity(0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
@@ -341,7 +450,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: colorSafeAzzurro.withValues(alpha: 0.2),
+                          color: colorSafeAzzurro.withOpacity(0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -420,6 +529,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   String? _selectedRoomId;
   TaskCreationAccess? _creationAccess;
   final Set<String> _selectedMemberIds = <String>{};
+
+  // --- VARIAIBILE PER LA RIPETIZIONE MENSILE ---
+  bool _repeatWeeklyInMonth = false;
 
   final Color colorOrange = const Color(0xFFF4A261);
   final Color colorRed = const Color(0xFFF28482);
@@ -664,26 +776,45 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
     try {
       final editingTask = widget.initialTask;
+      
       if (editingTask == null) {
-        if (kDebugMode && widget.multiAssignMode) {
-          debugPrint(
-            'MULTI ASSIGN CREATE -> selectedRoomId ${_selectedRoomId ?? '-'} | selectedMemberIds $memberIds',
+        // --- CREAZIONE ---
+        List<DateTime> datesToCreate = [];
+        
+        if (_repeatWeeklyInMonth) {
+          final year = targetDate.year;
+          final month = targetDate.month;
+          final weekday = targetDate.weekday;
+          
+          final daysInMonth = DateTime(year, month + 1, 0).day;
+          
+          for (int i = 1; i <= daysInMonth; i++) {
+            final d = DateTime(year, month, i);
+            if (d.weekday == weekday) {
+              datesToCreate.add(d);
+            }
+          }
+        } else {
+          datesToCreate.add(targetDate);
+        }
+
+        for (final date in datesToCreate) {
+          await _taskService.createTaskWithDetails(
+            title: title,
+            date: date,
+            timeFrom: _startTime != null
+                ? TimeOfDay.fromDateTime(_startTime!)
+                : null,
+            timeTo: _endTime != null ? TimeOfDay.fromDateTime(_endTime!) : null,
+            visibility: 'ALL',
+            roomId: _selectedRoomId,
+            assignedMemberIds: memberIds,
+            checklistTitles: checklistTitles,
+            personalOnly: widget.personalOnly,
           );
         }
-        await _taskService.createTaskWithDetails(
-          title: title,
-          date: targetDate,
-          timeFrom: _startTime != null
-              ? TimeOfDay.fromDateTime(_startTime!)
-              : null,
-          timeTo: _endTime != null ? TimeOfDay.fromDateTime(_endTime!) : null,
-          visibility: 'ALL',
-          roomId: _selectedRoomId,
-          assignedMemberIds: memberIds,
-          checklistTitles: checklistTitles,
-          personalOnly: widget.personalOnly,
-        );
       } else {
+        // --- AGGIORNAMENTO ---
         await _taskService.updateTaskWithDetails(
           taskId: editingTask.task.id,
           title: title,
@@ -733,7 +864,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -747,7 +878,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: Colors.grey.withValues(alpha: 0.2),
+                      color: Colors.grey.withOpacity(0.2),
                       width: 1,
                     ),
                   ),
@@ -830,7 +961,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: Dialog(
-            backgroundColor: Colors.white.withValues(alpha: 0.95),
+            backgroundColor: Colors.white.withOpacity(0.95),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(32),
               side: const BorderSide(color: Colors.white, width: 2),
@@ -849,7 +980,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Divider(color: color.withValues(alpha: 0.2)),
+                  Divider(color: color.withOpacity(0.2)),
 
                   ListTile(
                     title: Text(
@@ -858,7 +989,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                       style: GoogleFonts.poppins(
                         color: _selectedRoomId == null
                             ? color
-                            : const Color(0xFF3D342C).withValues(alpha: 0.5),
+                            : const Color(0xFF3D342C).withOpacity(0.5),
                         fontWeight: _selectedRoomId == null
                             ? FontWeight.w800
                             : FontWeight.w600,
@@ -870,7 +1001,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                       Navigator.pop(context);
                     },
                   ),
-                  Divider(color: color.withValues(alpha: 0.1)),
+                  Divider(color: color.withOpacity(0.1)),
 
                   ..._rooms.map((room) {
                     final isSelected = room.id == _selectedRoomId;
@@ -895,7 +1026,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                             Navigator.pop(context);
                           },
                         ),
-                        Divider(color: color.withValues(alpha: 0.1)),
+                        Divider(color: color.withOpacity(0.1)),
                       ],
                     );
                   }),
@@ -910,13 +1041,17 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
   String _formatDate(DateTime date) => formatDate(date);
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    for (final item in _checklistItems) {
-      item.controller.dispose();
+  String _getWeekdayName(int weekday) {
+    switch (weekday) {
+      case 1: return 'Monday';
+      case 2: return 'Tuesday';
+      case 3: return 'Wednesday';
+      case 4: return 'Thursday';
+      case 5: return 'Friday';
+      case 6: return 'Saturday';
+      case 7: return 'Sunday';
+      default: return '';
     }
-    super.dispose();
   }
 
   @override
@@ -925,6 +1060,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     final selectedRoomExists =
         _selectedRoomId != null &&
         _rooms.any((room) => room.id == _selectedRoomId);
+
+    final currentTargetDate = _selectedDate ?? DateTime.now();
+    final weekdayName = _getWeekdayName(currentTargetDate.weekday);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
@@ -941,7 +1079,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.95),
+            color: Colors.white.withOpacity(0.95),
             border: Border.all(color: Colors.white, width: 1.5),
           ),
           child: Column(
@@ -951,7 +1089,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 width: 50,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: colorSafeAzzurro.withValues(alpha: 0.3),
+                  color: colorSafeAzzurro.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -967,7 +1105,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: colorOrange.withValues(alpha: 0.15),
+                    color: colorOrange.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -987,7 +1125,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
                       minHeight: 4,
-                      backgroundColor: colorSafeAzzurro.withValues(alpha: 0.2),
+                      backgroundColor: colorSafeAzzurro.withOpacity(0.2),
                       valueColor: AlwaysStoppedAnimation<Color>(
                         colorSafeAzzurro,
                       ),
@@ -1003,10 +1141,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: colorRed.withValues(alpha: 0.1),
+                    color: colorRed.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: colorRed.withValues(alpha: 0.3),
+                      color: colorRed.withOpacity(0.3),
                       width: 1,
                     ),
                   ),
@@ -1112,27 +1250,19 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                                                 : Colors.white,
                                             borderRadius: BorderRadius.circular(
                                               20,
-                                            ),
+                                           ),
                                             border: Border.all(
                                               color: isSelected
                                                   ? colorSafeAzzurro
-                                                  : colorSafeAzzurro.withValues(
-                                                      alpha: 0.3,
-                                                    ),
+                                                  : colorSafeAzzurro.withOpacity(0.3),
                                               width: 1.5,
                                             ),
                                             boxShadow: isSelected
                                                 ? [
                                                     BoxShadow(
-                                                      color: colorSafeAzzurro
-                                                          .withValues(
-                                                            alpha: 0.3,
-                                                          ),
+                                                      color: colorSafeAzzurro.withOpacity(0.3),
                                                       blurRadius: 8,
-                                                      offset: const Offset(
-                                                        0,
-                                                        4,
-                                                      ),
+                                                      offset: const Offset(0, 4),
                                                     ),
                                                   ]
                                                 : [],
@@ -1174,9 +1304,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                                   vertical: 14,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: colorSafeAzzurro.withValues(
-                                    alpha: 0.08,
-                                  ),
+                                  color: colorSafeAzzurro.withOpacity(0.08),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
@@ -1234,6 +1362,57 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                       ),
                       const SizedBox(height: 30),
 
+                      // --- NUOVO DESIGN: TOGGLE RIPETIZIONE MENSILE (VETRO ROTONDO) ---
+                      if (widget.initialTask == null) ...[
+                        GestureDetector(
+                          onTap: () => setState(() => _repeatWeeklyInMonth = !_repeatWeeklyInMonth),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: colorSafeAzzurro.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: colorSafeAzzurro.withOpacity(0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min, 
+                                    children: [
+                                      // Testo prima
+                                      Text(
+                                        'Add task on every $weekdayName of the month',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF3D342C).withOpacity(0.7),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Icona rotonda dopo a destra
+                                      Icon(
+                                        _repeatWeeklyInMonth 
+                                          ? Icons.check_circle_rounded 
+                                          : Icons.radio_button_unchecked_rounded,
+                                        color: colorSafeAzzurro,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
                       Text(
                         'Sub-tasks',
                         style: GoogleFonts.poppins(
@@ -1263,10 +1442,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                                   width: 46,
                                   height: 46,
                                   decoration: BoxDecoration(
-                                    color: colorRed.withValues(alpha: 0.1),
+                                    color: colorRed.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: colorRed.withValues(alpha: 0.3),
+                                      color: colorRed.withOpacity(0.3),
                                       width: 1.5,
                                     ),
                                   ),
@@ -1282,7 +1461,6 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                         );
                       }),
 
-                      // PILLOLA "+ SUB-TASK" CENTRATA
                       Align(
                         alignment: Alignment.center,
                         child: _buildActionPill(
@@ -1298,7 +1476,6 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 ),
               ),
 
-              // BOTTONE SALVATAGGIO
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -1310,7 +1487,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    shadowColor: colorSafeAzzurro.withValues(alpha: 0.4),
+                    shadowColor: colorSafeAzzurro.withOpacity(0.4),
                   ),
                   child: _isSaving
                       ? const SizedBox(
@@ -1350,19 +1527,19 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: isTitle
-            ? color.withValues(alpha: 0.1)
-            : Colors.white.withValues(alpha: 0.6),
+            ? color.withOpacity(0.1)
+            : Colors.white.withOpacity(0.6),
         borderRadius: BorderRadius.circular(isTitle ? 24 : 16),
         border: Border.all(
           color: isTitle
-              ? color.withValues(alpha: 0.4)
-              : color.withValues(alpha: 0.2),
+              ? color.withOpacity(0.4)
+              : color.withOpacity(0.2),
           width: 1.5,
         ),
         boxShadow: isTitle
             ? [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.05),
+                  color: color.withOpacity(0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
@@ -1381,7 +1558,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
             border: InputBorder.none,
             hintText: hint,
             hintStyle: GoogleFonts.poppins(
-              color: const Color(0xFF3D342C).withValues(alpha: 0.4),
+              color: const Color(0xFF3D342C).withOpacity(0.4),
             ),
           ),
         ),
@@ -1402,9 +1579,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
+          color: color.withOpacity(0.05),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
+          border: Border.all(color: color.withOpacity(0.2), width: 1.5),
         ),
         child: Row(
           children: [
@@ -1416,7 +1593,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 style: GoogleFonts.poppins(
                   color: roomExists
                       ? const Color(0xFF3D342C)
-                      : const Color(0xFF3D342C).withValues(alpha: 0.5),
+                      : const Color(0xFF3D342C).withOpacity(0.5),
                   fontWeight: roomExists ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 15,
                 ),
@@ -1452,10 +1629,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
+          border: Border.all(color: color.withOpacity(0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
