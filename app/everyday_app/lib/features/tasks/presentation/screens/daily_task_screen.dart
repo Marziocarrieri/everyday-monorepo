@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
@@ -53,6 +54,7 @@ class UserTaskTimelineScreen extends ConsumerStatefulWidget {
 class _UserTaskTimelineScreenState
     extends ConsumerState<UserTaskTimelineScreen> {
   late final TaskService _taskService;
+  bool _isCopying = false; // Stato per mostrare il caricamento durante la copia
 
   final Color themeColor = const Color(0xFF5A8B9E); // Colore Premium Azzurro
 
@@ -94,6 +96,120 @@ class _UserTaskTimelineScreenState
           ),
         ),
       );
+    }
+  }
+
+  // --- LOGICA DI COPIA DEL GIORNO ---
+  Future<void> _handleCopyDay() async {
+    final sourceDate = await showDatePicker(
+      context: context,
+      initialDate: widget.date.subtract(const Duration(days: 1)), // Ieri di default
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      helpText: 'SELECT SOURCE DAY TO CLONE',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(primary: themeColor),
+          ),
+          child: child!,
+        );
+      }
+    );
+
+    if (sourceDate == null) return;
+
+    // POPUP DI PERICOLO ROSSO (Sovrascrittura)
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Dialog(
+          backgroundColor: Colors.white.withValues(alpha: 0.95),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32), side: const BorderSide(color: Colors.white, width: 2)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60, height: 60,
+                  decoration: BoxDecoration(color: const Color(0xFFF28482).withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFF28482), size: 28),
+                ),
+                const SizedBox(height: 20),
+                Text('Overwrite Day?', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C))),
+                const SizedBox(height: 12),
+                Text(
+                  'All existing tasks for this day will be DELETED and replaced with the tasks from ${DateFormat('MMM dd, yyyy').format(sourceDate)}.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withValues(alpha: 0.6)),
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context, false),
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFF3D342C).withValues(alpha: 0.1)),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withValues(alpha: 0.7)))),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context, true),
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(color: const Color(0xFFF28482), borderRadius: BorderRadius.circular(16)),
+                          child: Center(child: Text('Overwrite', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white))),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      )
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isCopying = true);
+    try {
+      await _taskService.copyDayTasks(
+        sourceDate: sourceDate,
+        targetDate: widget.date,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Day overwritten successfully! ✨', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: themeColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', ''), style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFF28482),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isCopying = false);
     }
   }
 
@@ -362,117 +478,147 @@ class _UserTaskTimelineScreenState
           ),
         ),
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 20.0,
-                ),
-                child: _buildHeader(
-                  formattedDate: formattedDate,
-                  // NASCONDE IL BOTTONE SE L'UTENTE E' PERSONNEL
-                  showAddButton: !_isPersonnel,
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: tasksAsync.when(
-                        loading: () => Center(
-                          child: CircularProgressIndicator(color: themeColor),
-                        ),
-                        error: (error, _) => Padding(
-                          padding: const EdgeInsets.only(
-                            left: 24.0,
-                            right: 24.0,
-                            bottom: 16.0,
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0,
+                      vertical: 20.0,
+                    ),
+                    child: _buildHeader(
+                      formattedDate: formattedDate,
+                      // NASCONDE IL BOTTONE (E QUELLO DI COPIA) SE L'UTENTE E' PERSONNEL
+                      showAddButton: !_isPersonnel,
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: tasksAsync.when(
+                            loading: () => Center(
+                              child: CircularProgressIndicator(color: themeColor),
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFF28482,
-                              ).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFF28482,
-                                ).withValues(alpha: 0.3),
+                            error: (error, _) => Padding(
+                              padding: const EdgeInsets.only(
+                                left: 24.0,
+                                right: 24.0,
+                                bottom: 16.0,
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  color: Color(0xFFF28482),
-                                  size: 20,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    error.toString(),
-                                    style: GoogleFonts.poppins(
-                                      color: const Color(0xFFF28482),
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFFF28482,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFFF28482,
+                                    ).withValues(alpha: 0.3),
                                   ),
                                 ),
-                              ],
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline_rounded,
+                                      color: Color(0xFFF28482),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        error.toString(),
+                                        style: GoogleFonts.poppins(
+                                          color: const Color(0xFFF28482),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        data: (tasks) {
-                          if (tasks.isEmpty) {
-                            return _buildEmptyState();
-                          }
-
-                          return ListView.builder(
-                            padding: const EdgeInsets.only(
-                              left: 24.0,
-                              right: 24.0,
-                              bottom: 40.0,
-                            ),
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: tasks.length,
-                            itemBuilder: (context, index) {
-                              final task = tasks[index];
-                              final resolvedRoomName =
-                                  _resolveRoomNameForCurrentMember(
-                                    task: task,
-                                    roomNamesById: roomNamesById,
-                                  );
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'BUILDING TASKCARD FROM DAILY SCREEN -> taskId ${task.task.id}',
-                                );
+                            data: (tasks) {
+                              if (tasks.isEmpty) {
+                                return _buildEmptyState();
                               }
-                              return TaskCard(
-                                key: ValueKey(task.task.id),
-                                taskWithDetails: task,
-                                onSubtaskToggle: _toggleSubtask,
-                                onAssignmentToggle: _toggleAssignmentStatus,
-                                onSaveNote: _saveNote,
-                                onEditTask: _openEditTask,
-                                onConfirmDeleteTask: _deleteTask,
-                                targetUserId: widget.targetUserId,
-                                readOnlyChecklist: widget.readOnlyChecklist,
-                                roomName: resolvedRoomName,
+
+                              return ListView.builder(
+                                padding: const EdgeInsets.only(
+                                  left: 24.0,
+                                  right: 24.0,
+                                  bottom: 40.0,
+                                ),
+                                physics: const BouncingScrollPhysics(),
+                                itemCount: tasks.length,
+                                itemBuilder: (context, index) {
+                                  final task = tasks[index];
+                                  final resolvedRoomName =
+                                      _resolveRoomNameForCurrentMember(
+                                        task: task,
+                                        roomNamesById: roomNamesById,
+                                      );
+                                  if (kDebugMode) {
+                                    debugPrint(
+                                      'BUILDING TASKCARD FROM DAILY SCREEN -> taskId ${task.task.id}',
+                                    );
+                                  }
+                                  return TaskCard(
+                                    key: ValueKey(task.task.id),
+                                    taskWithDetails: task,
+                                    onSubtaskToggle: _toggleSubtask,
+                                    onAssignmentToggle: _toggleAssignmentStatus,
+                                    onSaveNote: _saveNote,
+                                    onEditTask: _openEditTask,
+                                    onConfirmDeleteTask: _deleteTask,
+                                    targetUserId: widget.targetUserId,
+                                    readOnlyChecklist: widget.readOnlyChecklist,
+                                    roomName: resolvedRoomName,
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // --- OVERLAY DI CARICAMENTO DURANTE LA COPIA ---
+              if (_isCopying)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(color: themeColor),
+                            const SizedBox(height: 16),
+                            Text('Overwriting Day...', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: themeColor)),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -482,7 +628,7 @@ class _UserTaskTimelineScreenState
 
   Widget _buildHeader({
     required String formattedDate,
-    bool showAddButton = true, // Parametro aggiunto per controllare la visibilità
+    bool showAddButton = true, 
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -536,32 +682,50 @@ class _UserTaskTimelineScreenState
           ],
         ),
         if (showAddButton)
-          GestureDetector(
-            onTap: _openAddTaskFlow,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: themeColor.withValues(alpha: 0.1),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: themeColor.withValues(alpha: 0.08),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: _handleCopyDay,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: themeColor.withValues(alpha: 0.1), width: 1),
+                    boxShadow: [BoxShadow(color: themeColor.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
                   ),
-                ],
+                  child: Icon(Icons.content_copy_rounded, color: themeColor, size: 24),
+                ),
               ),
-              child: Icon(Icons.add_rounded, color: themeColor, size: 28),
-            ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _openAddTaskFlow,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: themeColor.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: themeColor.withValues(alpha: 0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.add_rounded, color: themeColor, size: 28),
+                ),
+              ),
+            ],
           )
         else
-          // Spazio vuoto per mantenere centrato il titolo
-          const SizedBox(width: 48, height: 48),
+          const SizedBox(width: 104, height: 48), // Spazio vuoto compensato (48 + 8 + 48)
       ],
     );
   }
