@@ -39,6 +39,7 @@ class TaskCard extends StatefulWidget {
   final String? roomName;
   final String targetUserId;
   final bool readOnlyChecklist;
+  final bool enableCreatorDeleteSwipe;
   final TaskInteractionMode interactionMode;
 
   const TaskCard({
@@ -51,6 +52,7 @@ class TaskCard extends StatefulWidget {
     required this.onConfirmDeleteTask,
     required this.targetUserId,
     this.readOnlyChecklist = false,
+    this.enableCreatorDeleteSwipe = true,
     this.interactionMode = TaskInteractionMode.standard,
     this.roomName,
   });
@@ -114,6 +116,16 @@ class _TaskCardState extends State<TaskCard> {
   }
 
   bool get _isChecklistReadOnly {
+    if (widget.readOnlyChecklist) {
+      return true;
+    }
+
+    if (widget.interactionMode == TaskInteractionMode.readOnlyChecklist ||
+        widget.interactionMode ==
+            TaskInteractionMode.supervisionHostReadOnlyChecklist) {
+      return true;
+    }
+
     return !_isAssignedToCurrentUser;
   }
 
@@ -279,7 +291,8 @@ class _TaskCardState extends State<TaskCard> {
       currentUserId: AppContext.instance.userId,
       currentMemberId: AppContext.instance.membershipId,
     );
-    final dismissDirection = isCreator
+    final canSwipeDelete = isCreator && widget.enableCreatorDeleteSwipe;
+    final dismissDirection = canSwipeDelete
         ? DismissDirection.endToStart
         : DismissDirection.none;
     final dismissibleKey = ValueKey(widget.taskWithDetails.task.id);
@@ -303,7 +316,7 @@ class _TaskCardState extends State<TaskCard> {
     return Dismissible(
       key: dismissibleKey,
       direction: dismissDirection,
-      confirmDismiss: isCreator
+      confirmDismiss: canSwipeDelete
           ? (_) async {
               if (kDebugMode) {
                 debugPrint(
@@ -313,7 +326,7 @@ class _TaskCardState extends State<TaskCard> {
               return await widget.onConfirmDeleteTask(widget.taskWithDetails);
             }
           : null,
-      onDismissed: isCreator
+      onDismissed: canSwipeDelete
           ? (_) {
               if (kDebugMode) {
                 debugPrint(

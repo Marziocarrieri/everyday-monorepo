@@ -17,7 +17,6 @@ import 'package:everyday_app/features/personnel/presentation/screens/member_acti
 import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/add_task_screen.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/daily_task_screen.dart';
-import 'package:everyday_app/features/tasks/presentation/screens/user_task_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/week_tasks_screen.dart';
 import 'package:everyday_app/features/fridge/presentation/screens/provision_history_screen.dart'; 
@@ -79,7 +78,8 @@ class AppRouter {
         }
 
         return MaterialPageRoute(
-          builder: (_) => UserTaskHistoryScreen(
+          builder: (_) => WeekTasksScreen(
+            viewMode: WeekTasksViewMode.delegated,
             targetMemberId: args.targetMemberId,
             targetUserId: args.targetUserId,
           ),

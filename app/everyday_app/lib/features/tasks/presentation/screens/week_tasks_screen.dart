@@ -2,21 +2,49 @@ import 'dart:ui';
 
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
-import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
 import 'package:everyday_app/features/tasks/presentation/providers/task_providers.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/add_task_screen.dart';
 import 'package:everyday_app/features/tasks/presentation/widgets/task_card.dart';
 import 'package:everyday_app/features/tasks/presentation/widgets/task_delete_confirmation_dialog.dart';
 import 'package:everyday_app/features/tasks/utils/task_creator_identity.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+enum WeekTasksViewMode {
+  self,
+  delegated,
+}
+
+class WeekTasksCapabilities {
+  final bool canCreate;
+  final bool canManage;
+  final bool canCopy;
+  final bool canUseChecklist;
+
+  const WeekTasksCapabilities({
+    required this.canCreate,
+    required this.canManage,
+    required this.canCopy,
+    required this.canUseChecklist,
+  });
+}
+
 class WeekTasksScreen extends ConsumerStatefulWidget {
-  const WeekTasksScreen({super.key});
+  final WeekTasksViewMode viewMode;
+  final String? targetMemberId;
+  final String? targetUserId;
+  final WeekTasksCapabilities? capabilityOverride;
+
+  const WeekTasksScreen({
+    super.key,
+    this.viewMode = WeekTasksViewMode.self,
+    this.targetMemberId,
+    this.targetUserId,
+    this.capabilityOverride,
+  });
 
   @override
   ConsumerState<WeekTasksScreen> createState() => _WeekTasksScreenState();
@@ -25,6 +53,81 @@ class WeekTasksScreen extends ConsumerStatefulWidget {
 class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
   DateTime _selectedWeek = DateTime.now();
   bool _isCopying = false;
+
+  bool get _isDelegatedMode => widget.viewMode == WeekTasksViewMode.delegated;
+
+  String _normalizedRole() {
+    final rawRole = (AppContext.instance.activeMembership?.role ?? '')
+        .toUpperCase()
+        .replaceAll('-', '')
+        .replaceAll('_', '')
+        .replaceAll(' ', '');
+    return rawRole;
+  }
+
+  String? _resolveEffectiveTargetMemberId() {
+    final memberId = _isDelegatedMode
+        ? widget.targetMemberId
+        : AppContext.instance.membershipId;
+    final normalized = (memberId ?? '').trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  String? _resolveEffectiveTargetUserId() {
+    final userId = _isDelegatedMode
+        ? widget.targetUserId
+        : AppContext.instance.userId;
+    final normalized = (userId ?? '').trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  WeekTasksCapabilities _resolveCapabilities() {
+    final override = widget.capabilityOverride;
+    if (override != null) {
+      return override;
+    }
+
+    final role = _normalizedRole();
+    if (_isDelegatedMode) {
+      if (role == 'HOST') {
+        return const WeekTasksCapabilities(
+          canCreate: true,
+          canManage: true,
+          canCopy: true,
+          canUseChecklist: false,
+        );
+      }
+
+      return const WeekTasksCapabilities(
+        canCreate: false,
+        canManage: false,
+        canCopy: false,
+        canUseChecklist: false,
+      );
+    }
+
+    if (role == 'HOST' || role == 'COHOST') {
+      return const WeekTasksCapabilities(
+        canCreate: true,
+        canManage: true,
+        canCopy: true,
+        canUseChecklist: true,
+      );
+    }
+
+    return const WeekTasksCapabilities(
+      canCreate: false,
+      canManage: false,
+      canCopy: false,
+      canUseChecklist: true,
+    );
+  }
 
   List<_HistoryDayGroup> _buildGroupedHistory({
     required List<TaskWithDetails> tasks,
@@ -44,7 +147,16 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     }).toList();
   }
 
-  Future<void> _openEditTask(BuildContext context, TaskWithDetails task, String? currentUserId) async {
+  Future<void> _openEditTask(
+    BuildContext context,
+    TaskWithDetails task,
+    String? effectiveTargetUserId,
+    WeekTasksCapabilities capabilities,
+  ) async {
+    if (!capabilities.canManage) {
+      return;
+    }
+
     final changed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -52,7 +164,7 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
       builder: (_) => AddTaskSheet(
         initialDate: task.task.taskDate,
         initialTask: task,
-        preselectedAssigneeUserId: currentUserId,
+        preselectedAssigneeUserId: effectiveTargetUserId,
       ),
     );
 
@@ -61,7 +173,17 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     }
   }
 
-  Future<bool> _deleteTask(BuildContext context, WidgetRef ref, TaskWithDetails task) async {
+  Future<bool> _deleteTask(
+    BuildContext context,
+    WidgetRef ref,
+    TaskWithDetails task, {
+    required WeekTasksCapabilities capabilities,
+    required String? effectiveTargetMemberId,
+  }) async {
+    if (!capabilities.canManage) {
+      return false;
+    }
+
     final currentUserId = AppContext.instance.userId;
     final currentMemberId = AppContext.instance.membershipId;
     final isCreator = isTaskCreatedByCurrentUser(
@@ -83,14 +205,57 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
       if (!confirmed) return false;
     }
 
+    final deleteMemberId = _isDelegatedMode
+        ? (effectiveTargetMemberId ?? '')
+        : ((currentMemberId ?? '').trim());
+    if (deleteMemberId.isEmpty) {
+      return false;
+    }
+
     try {
       await ref.read(taskServiceProvider).removeTaskAssignment(
         taskId: task.task.id,
-        memberId: currentMemberId ?? '',
+        memberId: deleteMemberId,
       );
       return true;
     } catch (error) {
       return false;
+    }
+  }
+
+  Future<void> _openAddTask(
+    BuildContext context, {
+    required WeekTasksCapabilities capabilities,
+    required String? effectiveTargetMemberId,
+    required String? effectiveTargetUserId,
+  }) async {
+    if (!capabilities.canCreate) {
+      return;
+    }
+
+    if (_isDelegatedMode &&
+        (effectiveTargetMemberId == null ||
+            effectiveTargetMemberId.isEmpty)) {
+      _showSnackBar('Unable to resolve delegated member', isError: true);
+      return;
+    }
+
+    final args = _isDelegatedMode
+        ? AddTaskRouteArgs(
+            initialDate: _selectedWeek,
+            assignedMemberIds: <String>{effectiveTargetMemberId!},
+            preselectedAssigneeUserId: effectiveTargetUserId,
+            multiAssignMode: true,
+          )
+        : AddTaskRouteArgs(initialDate: _selectedWeek);
+
+    final changed = await Navigator.of(context).pushNamed(
+      AppRouteNames.addTask,
+      arguments: args,
+    );
+
+    if (changed == true && mounted) {
+      _showSnackBar('Task saved successfully');
     }
   }
 
@@ -143,7 +308,21 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
   }
 
   // --- LOGICA DI COPIA SETTIMANA CON SOVRASCRITTURA ---
-  Future<void> _handleCopyWeek() async {
+  Future<void> _handleCopyWeek({
+    required WeekTasksCapabilities capabilities,
+    required String? effectiveTargetMemberId,
+  }) async {
+    if (!capabilities.canCopy) {
+      return;
+    }
+
+    if (_isDelegatedMode &&
+        (effectiveTargetMemberId == null ||
+            effectiveTargetMemberId.isEmpty)) {
+      _showSnackBar('Unable to resolve delegated member', isError: true);
+      return;
+    }
+
     final sourceDate = await showDatePicker(
       context: context,
       initialDate: _selectedWeek.subtract(const Duration(days: 7)), 
@@ -161,6 +340,7 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     );
 
     if (sourceDate == null) return;
+    if (!mounted) return;
 
     // POPUP DI PERICOLO ROSSO
     final confirmed = await showDialog<bool>(
@@ -231,6 +411,7 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
       await ref.read(taskServiceProvider).copyWeekTasks(
         sourceWeekDate: sourceDate,
         targetWeekDate: _selectedWeek,
+        targetMemberId: _isDelegatedMode ? effectiveTargetMemberId : null,
       );
       _showSnackBar('Week overwritten successfully! ✨');
     } catch (e) {
@@ -242,9 +423,21 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tasksAsync = ref.watch(weeklyTasksFamilyProvider(_selectedWeek));
+    final capabilities = _resolveCapabilities();
+    final effectiveTargetMemberId = _resolveEffectiveTargetMemberId();
+    final effectiveTargetUserId = _resolveEffectiveTargetUserId();
+
+    final tasksAsync = effectiveTargetMemberId == null
+        ? const AsyncValue<List<TaskWithDetails>>.data([])
+        : ref.watch(
+            weeklyTasksByMemberFamilyProvider(
+              WeeklyTasksByMemberQuery(
+                selectedWeek: _selectedWeek,
+                targetMemberId: effectiveTargetMemberId,
+              ),
+            ),
+          );
     final roomsAsync = ref.watch(taskRoomsProvider);
-    final currentUserId = AppContext.instance.userId;
     
     final roomNamesById = roomsAsync.maybeWhen(
       data: (rooms) => {for (final room in rooms) room.id: room.name},
@@ -268,7 +461,20 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-                    child: _buildHeader(context),
+                    child: _buildHeader(
+                      context,
+                      capabilities: capabilities,
+                      onCreateTask: () => _openAddTask(
+                        context,
+                        capabilities: capabilities,
+                        effectiveTargetMemberId: effectiveTargetMemberId,
+                        effectiveTargetUserId: effectiveTargetUserId,
+                      ),
+                      onCopyWeek: () => _handleCopyWeek(
+                        capabilities: capabilities,
+                        effectiveTargetMemberId: effectiveTargetMemberId,
+                      ),
+                    ),
                   ),
                   Expanded(
                     child: tasksAsync.when(
@@ -299,9 +505,15 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                                     taskWithDetails: task,
                                     // --- FIX PERFETTO PARAMETRI NOMINATI ---
                                     onSubtaskToggle: ({required String subtaskId, required bool isDone}) async {
+                                      if (!capabilities.canUseChecklist) {
+                                        return;
+                                      }
                                       await ref.read(taskServiceProvider).setSubtaskDone(subtaskId: subtaskId, isDone: isDone);
                                     },
                                     onAssignmentToggle: ({required String assignmentId, required bool isDone}) async {
+                                      if (!capabilities.canUseChecklist) {
+                                        return;
+                                      }
                                       final status = isDone ? 'DONE' : 'TODO';
                                       await ref.read(taskServiceProvider).setAssignmentStatus(assignmentId: assignmentId, status: status);
                                     },
@@ -309,9 +521,32 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                                       await ref.read(taskServiceProvider).addPersonnelNote(assignmentId: assignmentId, note: note);
                                     },
                                     // ---------------------------------------
-                                    onEditTask: (task) => _openEditTask(context, task, currentUserId),
-                                    onConfirmDeleteTask: (task) => _deleteTask(context, ref, task),
-                                    targetUserId: currentUserId ?? '',
+                                    onEditTask: (task) => _openEditTask(
+                                      context,
+                                      task,
+                                      effectiveTargetUserId,
+                                      capabilities,
+                                    ),
+                                    onConfirmDeleteTask: (task) => _deleteTask(
+                                      context,
+                                      ref,
+                                      task,
+                                      capabilities: capabilities,
+                                      effectiveTargetMemberId:
+                                          effectiveTargetMemberId,
+                                    ),
+                                    targetUserId: effectiveTargetUserId ?? '',
+                                    interactionMode: _isDelegatedMode
+                                        ? (capabilities.canManage
+                                              ? TaskInteractionMode
+                                                    .supervisionHostReadOnlyChecklist
+                                              : TaskInteractionMode
+                                                    .readOnlyChecklist)
+                                        : TaskInteractionMode.standard,
+                                    readOnlyChecklist:
+                                        !capabilities.canUseChecklist,
+                                    enableCreatorDeleteSwipe:
+                                        capabilities.canManage,
                                     roomName: task.task.roomId == null
                                         ? null
                                         : (roomNamesById[task.task.roomId!] ?? task.task.roomId!),
@@ -360,7 +595,12 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(
+    BuildContext context, {
+    required WeekTasksCapabilities capabilities,
+    required VoidCallback onCreateTask,
+    required VoidCallback onCopyWeek,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,9 +659,24 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
           ),
         ),
         
-        GestureDetector(
-          onTap: _handleCopyWeek,
-          child: _buildHeaderIcon(Icons.content_copy_rounded),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (capabilities.canCopy)
+              GestureDetector(
+                onTap: onCopyWeek,
+                child: _buildHeaderIcon(Icons.content_copy_rounded),
+              ),
+            if (capabilities.canCopy && capabilities.canCreate)
+              const SizedBox(width: 10),
+            if (capabilities.canCreate)
+              GestureDetector(
+                onTap: onCreateTask,
+                child: _buildHeaderIcon(Icons.add_rounded),
+              ),
+            if (!capabilities.canCopy && !capabilities.canCreate)
+              const SizedBox(width: 48, height: 48),
+          ],
         ),
       ],
     );

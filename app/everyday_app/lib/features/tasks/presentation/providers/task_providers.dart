@@ -273,6 +273,10 @@ bool _isTaskAssignedToUser(TaskWithDetails task, String userId) {
   );
 }
 
+bool _isTaskAssignedToMember(TaskWithDetails task, String memberId) {
+  return task.assignments.any((assignment) => assignment.memberId == memberId);
+}
+
 final homeDailyTasksProvider = Provider<AsyncValue<List<TaskWithDetails>>>((
   ref,
 ) {
@@ -436,3 +440,64 @@ final weeklyTasksFamilyProvider = Provider.family<AsyncValue<List<TaskWithDetail
     );
   });
 });
+
+class WeeklyTasksByMemberQuery {
+  final DateTime selectedWeek;
+  final String targetMemberId;
+
+  const WeeklyTasksByMemberQuery({
+    required this.selectedWeek,
+    required this.targetMemberId,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is WeeklyTasksByMemberQuery &&
+        other.targetMemberId == targetMemberId &&
+        other.selectedWeek.year == selectedWeek.year &&
+        other.selectedWeek.month == selectedWeek.month &&
+        other.selectedWeek.day == selectedWeek.day;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      targetMemberId,
+      selectedWeek.year,
+      selectedWeek.month,
+      selectedWeek.day,
+    );
+  }
+}
+
+final weeklyTasksByMemberFamilyProvider =
+    Provider.family<AsyncValue<List<TaskWithDetails>>, WeeklyTasksByMemberQuery>(
+      (ref, query) {
+        final householdId = ref.watch(currentHouseholdIdProvider);
+        final tasksAsync = ref.watch(tasksStreamProvider);
+        final optimisticSubtaskOverrides = ref.watch(
+          optimisticSubtaskOverridesProvider,
+        );
+
+        final memberId = query.targetMemberId.trim();
+        if (householdId == null || householdId.isEmpty || memberId.isEmpty) {
+          return const AsyncValue<List<TaskWithDetails>>.data([]);
+        }
+
+        return tasksAsync.whenData((tasks) {
+          final filtered = tasks
+              .where((task) => task.task.householdId == householdId)
+              .where(
+                (task) => _isDateInSpecificWeek(task.task.taskDate, query.selectedWeek),
+              )
+              .where((task) => _isTaskAssignedToMember(task, memberId))
+              .toList();
+
+          return _applyOptimisticSubtaskOverrides(
+            tasks: filtered,
+            overrides: optimisticSubtaskOverrides,
+          );
+        });
+      },
+    );
