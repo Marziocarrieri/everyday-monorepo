@@ -72,13 +72,22 @@ final householdMembersStreamProvider = StreamProvider<List<HouseholdMember>>((
   return repository.watchMembers(householdId);
 });
 
+// --- INIZIO PARTE MODIFICATA ---
 final dietStreamProvider = StreamProvider<DietDocument?>((ref) {
   final householdId = ref.watch(currentHouseholdIdProvider);
+  
+  // 1. Recuperiamo l'utente corrente tramite il provider già esistente
+  final currentUser = ref.watch(currentUserProvider);
+  final userId = currentUser?.id;
 
-  if (householdId == null || householdId.isEmpty) {
+  // 2. Controlliamo che ENTRAMBI gli ID (casa e utente) siano validi
+  if (householdId == null || householdId.isEmpty || userId == null || userId.isEmpty) {
     return const Stream<DietDocument?>.empty();
   }
 
   final repository = ref.watch(dietRepositoryProvider);
-  return repository.watchDiet(householdId);
+  
+  // 3. Passiamo entrambi i parametri al repository aggiornato
+  return repository.watchDiet(householdId, userId);
 });
+// --- FINE PARTE MODIFICATA ---

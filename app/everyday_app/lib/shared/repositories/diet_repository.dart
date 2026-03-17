@@ -4,14 +4,17 @@ import 'supabase_client.dart';
 import 'package:everyday_app/shared/models/diet_document.dart';
 
 class DietRepository {
-  Stream<DietDocument?> watchDiet(String householdId) async* {
+  // --- MODIFICA 1: Aggiunto il parametro userId ---
+  Stream<DietDocument?> watchDiet(String householdId, String userId) async* {
     final cachedRowsById = <String, Map<String, dynamic>>{};
     String? lastSnapshotSignature;
 
     await for (final rows
         in supabase.from('diet_document').stream(primaryKey: ['id'])) {
+      
       final previousHouseholdIds = cachedRowsById.values
-          .where((row) => _readString(row['household_id']) == householdId)
+          // --- MODIFICA 2: Filtro per household_id E user_id ---
+          .where((row) => _readString(row['household_id']) == householdId && _readString(row['user_id']) == userId)
           .map((row) => _readString(row['id']))
           .whereType<String>()
           .toSet();
@@ -31,7 +34,8 @@ class DietRepository {
       }
 
       final nextHouseholdIds = nextRowsById.values
-          .where((row) => _readString(row['household_id']) == householdId)
+          // --- MODIFICA 3: Filtro per household_id E user_id ---
+          .where((row) => _readString(row['household_id']) == householdId && _readString(row['user_id']) == userId)
           .map((row) => _readString(row['id']))
           .whereType<String>()
           .toSet();
@@ -48,7 +52,8 @@ class DietRepository {
         ..addAll(nextRowsById);
 
       final householdRows = cachedRowsById.values
-          .where((row) => _readString(row['household_id']) == householdId)
+          // --- MODIFICA 4: Filtro per household_id E user_id ---
+          .where((row) => _readString(row['household_id']) == householdId && _readString(row['user_id']) == userId)
           .map((row) => Map<String, dynamic>.from(row))
           .toList(growable: false);
 
