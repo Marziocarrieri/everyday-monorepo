@@ -33,4 +33,13 @@ class ShoppingService {
   Future<void> updateItem(ShoppingItem item) {
     return _repository.updateItem(item);
   }
+
+  // --- NUOVI METODI PER LO STORICO ---
+  Future<void> moveToHistory(String itemId) {
+    return _repository.moveToHistory(itemId);
+  }
+
+  Future<void> restoreItem(String itemId) {
+    return _repository.restoreItem(itemId);
+  }
 }

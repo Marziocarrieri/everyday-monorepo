@@ -20,6 +20,8 @@ import 'package:everyday_app/features/tasks/presentation/screens/daily_task_scre
 import 'package:everyday_app/features/tasks/presentation/screens/user_task_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/week_tasks_screen.dart';
+import 'package:everyday_app/features/fridge/presentation/screens/provision_history_screen.dart'; 
+
 
 class AppRouter {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
@@ -94,6 +96,11 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => const ProvisionListScreen(),
           settings: settings,
+        );
+
+      case AppRouteNames.provisionHistory:
+        return MaterialPageRoute(
+          builder: (_) => const ProvisionHistoryScreen(),
         );
 
       case AppRouteNames.memberActivities:

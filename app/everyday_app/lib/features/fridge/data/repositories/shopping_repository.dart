@@ -195,4 +195,19 @@ class ShoppingRepository {
         .update(payload)
         .eq('id', item.id);
   }
+
+  // --- NUOVI METODI PER LO STORICO ---
+  Future<void> moveToHistory(String itemId) async {
+    await supabase
+        .from('shopping_item')
+        .update({'status': 'BOUGHT'})
+        .eq('id', itemId);
+  }
+
+  Future<void> restoreItem(String itemId) async {
+    await supabase
+        .from('shopping_item')
+        .update({'status': 'PENDING'}) // Lo fa tornare da comprare
+        .eq('id', itemId);
+  }
 }

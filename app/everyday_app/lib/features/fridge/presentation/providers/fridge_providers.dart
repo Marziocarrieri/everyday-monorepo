@@ -38,3 +38,22 @@ final pantryItemsStreamProvider =
   final repository = ref.watch(fridgeRepositoryProvider);
   return repository.watchPantryItems(householdId);
 });
+
+// --- PROVIDER FILTRATI PER LISTA ATTIVA E STORICO ---
+final activeShoppingItemsProvider = Provider.family<AsyncValue<List<ShoppingItem>>, String>((ref, householdId) {
+  final itemsAsync = ref.watch(shoppingItemsStreamProvider(householdId));
+  
+  return itemsAsync.whenData((items) {
+    // Mostra tutto TRANNE quelli nello storico
+    return items.where((item) => item.status != 'BOUGHT').toList();
+  });
+});
+
+final historyShoppingItemsProvider = Provider.family<AsyncValue<List<ShoppingItem>>, String>((ref, householdId) {
+  final itemsAsync = ref.watch(shoppingItemsStreamProvider(householdId));
+  
+  return itemsAsync.whenData((items) {
+    // Mostra SOLO quelli nello storico
+    return items.where((item) => item.status == 'BOUGHT').toList();
+  });
+});

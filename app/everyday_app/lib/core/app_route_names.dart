@@ -34,6 +34,7 @@ class AppRouteNames {
   static const String login2 = '/legacy/login2';
   static const String mainLayout = '/legacy/main-layout';
   static const String diet = '/legacy/diet';
+  static const String provisionHistory = '/provision-history';
 
   static const String cohostDailyTask = '/legacy/cohost/daily-task';
   static const String cohostAddTask = '/legacy/cohost/add-task';
