@@ -1382,8 +1382,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                                       width: 1,
                                     ),
                                   ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min, 
+                                  child: Wrap(
+                                    spacing: 12,
+                                    runSpacing: 4,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
                                     children: [
                                       // Testo prima
                                       Text(
@@ -1394,7 +1396,6 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                                           color: const Color(0xFF3D342C).withOpacity(0.7),
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
                                       // Icona rotonda dopo a destra
                                       Icon(
                                         _repeatWeeklyInMonth 
