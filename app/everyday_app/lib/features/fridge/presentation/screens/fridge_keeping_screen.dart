@@ -27,7 +27,15 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   final TextEditingController quantityController = TextEditingController();
   final TextEditingController weightController = TextEditingController();
   final TextEditingController dateTextController = TextEditingController();
+  
   bool _isListView = true;
+  bool _isDeleteMode = false;
+  
+  // --- VARIABILE PER LA RICERCA ---
+  String _searchQuery = '';
+  
+  // --- SET PER LA SELEZIONE MULTIPLA ---
+  final Set<String> _selectedIdsForDeletion = {};
 
   // Colori Brand per coerenza
   final Color primaryColor = const Color(0xFF5A8B9E); // Azzurro
@@ -120,7 +128,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     }
   }
 
-  // --- DIALOG DI CONFERMA ELIMINAZIONE ---
+  // --- DIALOG DI CONFERMA SINGOLA ---
   Future<bool?> _confirmDelete(FridgeItem item) {
     return showDialog<bool>(
       context: context,
@@ -209,6 +217,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
   }
 
+  // --- FUNZIONE PER L'ELIMINAZIONE SINGOLA (SWIPE) ---
   Future<void> _deleteItem(FridgeItem item) async {
     try {
       final pantryService = ref.read(pantryServiceProvider);
@@ -216,10 +225,135 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       _showSuccessSnackBar('Item deleted');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString()))
+      );
     }
+  }
+
+  // --- DIALOG DI CONFERMA MULTIPLA ---
+  Future<bool?> _confirmBatchDelete(int count) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFFF28482).withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60, height: 60,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFF28482), size: 30),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Delete Items',
+                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: darkTextColor),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Are you sure you want to remove $count items?',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: darkTextColor.withValues(alpha: 0.6)),
+                  ),
+                  const SizedBox(height: 30),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(false),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: darkTextColor.withValues(alpha: 0.1), width: 1.5),
+                            ),
+                            child: Center(
+                              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: darkTextColor.withValues(alpha: 0.7))),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(true),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF28482),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: const Color(0xFFF28482).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
+                            child: Center(
+                              child: Text('Delete', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- FUNZIONE PER ELIMINARE LA SELEZIONE MULTIPLA ---
+  Future<void> _deleteSelectedItems() async {
+    if (_selectedIdsForDeletion.isEmpty) return;
+
+    final confirmed = await _confirmBatchDelete(_selectedIdsForDeletion.length);
+    if (confirmed != true) return;
+
+    try {
+      final pantryService = ref.read(pantryServiceProvider);
+      for (final id in _selectedIdsForDeletion) {
+        await pantryService.deleteItem(id);
+      }
+      
+      if (!mounted) return;
+      
+      setState(() {
+        _isDeleteMode = false;
+        _selectedIdsForDeletion.clear();
+      });
+      _showSuccessSnackBar('Items deleted');
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  void _toggleSelection(String itemId) {
+    setState(() {
+      if (_selectedIdsForDeletion.contains(itemId)) {
+        _selectedIdsForDeletion.remove(itemId);
+      } else {
+        _selectedIdsForDeletion.add(itemId);
+      }
+    });
   }
 
   @override
@@ -247,67 +381,88 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: 30),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 30),
 
-              _buildSearchBar(),
-              const SizedBox(height: 20),
+                  _buildSearchBar(),
+                  const SizedBox(height: 20),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [_buildViewToggle(), _buildCategorySelector(context)],
-              ),
-              const SizedBox(height: 20),
-
-              Expanded(
-                child: itemsAsync.when(
-                  loading: () => Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(themeColor),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          _buildViewToggle(),
+                          const SizedBox(width: 12),
+                          _buildDeleteModeToggle(), 
+                        ],
+                      ),
+                      _buildCategorySelector(context),
+                    ],
                   ),
-                  error: (error, _) => Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF28482).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFFF28482).withValues(alpha: 0.3),
+                  const SizedBox(height: 20),
+
+                  Expanded(
+                    child: itemsAsync.when(
+                      loading: () => Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(themeColor),
                         ),
                       ),
-                      child: Text(
-                        error.toString(),
-                        style: GoogleFonts.poppins(
-                          color: const Color(0xFFF28482),
-                          fontWeight: FontWeight.w500,
+                      error: (error, _) => Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFF28482).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            error.toString(),
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFFF28482),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
+                      data: (items) {
+                        // --- LOGICA DI RICERCA + CATEGORIA COMBINATA ---
+                        final filteredItems = items.where((item) {
+                          final matchesCategory = item.area == _selectedCategory;
+                          final matchesSearch = _searchQuery.isEmpty || 
+                              item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+                          return matchesCategory && matchesSearch;
+                        }).toList();
+
+                        return _isListView
+                            ? _buildGlassList(filteredItems, pantryService)
+                            : _buildSmallGlassGrid(filteredItems, pantryService);
+                      },
                     ),
                   ),
-                  data: (items) {
-                    final filteredItems = items
-                        .where((item) => item.area == _selectedCategory)
-                        .toList();
-
-                    // Rimosso il sorting client-side. Affidiamo il sorting a FridgeRepository.watchPantryItems.
-
-                    return _isListView
-                        ? _buildGlassList(filteredItems, pantryService)
-                        : _buildSmallGlassGrid(filteredItems, pantryService);
-                  },
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            
+            // --- BARRA FLUTTUANTE PER L'ELIMINAZIONE MULTIPLA ---
+            if (_isDeleteMode)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: _buildBatchDeleteBar(),
+              ),
+          ],
         ),
       ),
-      // NESSUN FLOATING ACTION BUTTON! Il bottone è integrato nelle liste.
     );
   }
 
@@ -402,6 +557,12 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             children: [
               Expanded(
                 child: TextField(
+                  // --- RICERCA IN TEMPO REALE ---
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: 'Search items...',
                     hintStyle: GoogleFonts.poppins(
@@ -439,7 +600,11 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: () => setState(() => _isListView = true),
+            onTap: () => setState(() {
+              _isListView = true;
+              _isDeleteMode = false; 
+              _selectedIdsForDeletion.clear(); // Reset selezione
+            }),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -465,7 +630,11 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () => setState(() => _isListView = false),
+            onTap: () => setState(() {
+              _isListView = false;
+              _isDeleteMode = false; 
+              _selectedIdsForDeletion.clear(); // Reset selezione
+            }),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -491,6 +660,112 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDeleteModeToggle() {
+    return GestureDetector(
+      onTap: () => setState(() {
+        _isDeleteMode = !_isDeleteMode;
+        if (!_isDeleteMode) {
+          _selectedIdsForDeletion.clear(); // Svuota se si spegne
+        }
+      }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: _isDeleteMode ? expiredColor : Colors.white.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _isDeleteMode ? expiredColor : primaryColor.withValues(alpha: 0.1),
+            width: 1.2,
+          ),
+        ),
+        child: Icon(
+          Icons.checklist_rounded, 
+          size: 22,
+          color: _isDeleteMode ? Colors.white : primaryColor.withValues(alpha: 0.4),
+        ),
+      ),
+    );
+  }
+
+  // --- BARRA FLUTTUANTE AZIONI DI GRUPPO ---
+  Widget _buildBatchDeleteBar() {
+    final count = _selectedIdsForDeletion.length;
+    final bool hasSelection = count > 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: 70,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: hasSelection 
+                ? expiredColor.withValues(alpha: 0.95) 
+                : Colors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: hasSelection ? expiredColor : darkTextColor.withValues(alpha: 0.1), 
+                width: 1.5
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: hasSelection 
+                    ? expiredColor.withValues(alpha: 0.3) 
+                    : Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ]
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  count == 0 ? 'Select items...' : '$count selected',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: hasSelection ? Colors.white : darkTextColor.withValues(alpha: 0.6),
+                  ),
+                ),
+                if (hasSelection)
+                  GestureDetector(
+                    onTap: _deleteSelectedItems,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded, color: expiredColor, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Delete',
+                            style: GoogleFonts.poppins(
+                              color: expiredColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -620,22 +895,23 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 40), 
-      itemCount: items.length + 1, // +1 per il bottone "+" alla fine
+      // Se c'è la barra in basso, diamo un bel padding inferiore
+      padding: EdgeInsets.only(bottom: _isDeleteMode ? 100 : 40), 
+      itemCount: items.length + 1, 
       separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
-        // Se siamo all'ultimo indice, mostriamo il bottoncino centrale
         if (index == items.length) {
-          return _buildInlineAddButton();
+          // Nascondiamo il bottone aggiungi in delete mode
+          return _isDeleteMode ? const SizedBox() : _buildInlineAddButton();
         }
 
         final item = items[index];
         return Dismissible(
           key: ValueKey(item.id),
-          direction: DismissDirection.endToStart,
+          direction: _isDeleteMode ? DismissDirection.none : DismissDirection.endToStart,
           background: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF28482),
+              color: expiredColor,
               borderRadius: BorderRadius.circular(24),
             ),
             alignment: Alignment.centerRight,
@@ -651,7 +927,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             if (shouldDelete != true) {
               return false;
             }
-
             await _deleteItem(item);
             return false;
           },
@@ -662,23 +937,33 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   }
 
   Widget _buildListItem(FridgeItem item, PantryService pantryService) {
-    Color iconColor = _getItemColor(item); // USO LA NUOVA LOGICA!
+    final isSelected = _selectedIdsForDeletion.contains(item.id);
+    
+    // Logica colori dinamica in base a scadenza e selezione
+    Color baseIconColor = _getItemColor(item); 
+    Color currentBorderColor = _isDeleteMode && isSelected ? expiredColor : baseIconColor.withValues(alpha: 0.3);
+    Color currentBgColor = _isDeleteMode && isSelected 
+        ? expiredColor.withValues(alpha: 0.1) 
+        : Colors.white.withValues(alpha: 0.6);
     
     return GestureDetector(
-      onTap: () => _showItemDetailModal(item, pantryService, iconColor),
+      onTap: _isDeleteMode 
+          ? () => _toggleSelection(item.id) 
+          : () => _showItemDetailModal(item, pantryService, baseIconColor),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             height: 85,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: currentBgColor,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: iconColor.withValues(alpha: 0.3), // Bordo col colore di stato
-                width: 1.5,
+                color: currentBorderColor, 
+                width: isSelected ? 2.0 : 1.5,
               ),
             ),
             child: Row(
@@ -690,7 +975,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: iconColor.withValues(alpha: 0.3), // Ombra col colore di stato
+                        color: baseIconColor.withValues(alpha: 0.3), 
                         blurRadius: 10,
                         offset: const Offset(0, 5),
                       ),
@@ -698,7 +983,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   ),
                   child: Icon(
                     Icons.kitchen_outlined,
-                    color: iconColor,
+                    color: baseIconColor,
                     size: 28,
                   ),
                 ),
@@ -713,11 +998,19 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     ),
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: iconColor.withValues(alpha: 0.5),
-                  size: 28,
-                ),
+                // --- CAMBIO ICONA DESTRA SE IN DELETE MODE ---
+                if (_isDeleteMode)
+                  Icon(
+                    isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                    color: isSelected ? expiredColor : Colors.grey.withValues(alpha: 0.4),
+                    size: 28,
+                  )
+                else
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: baseIconColor.withValues(alpha: 0.5),
+                    size: 28,
+                  ),
               ],
             ),
           ),
@@ -732,92 +1025,121 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   ) {
     if (items.isEmpty) return _buildEmptyState();
 
-    // Usiamo una CustomScrollView per poter mettere il bottone alla fine della griglia
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        SliverGrid(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.1, // Card più compatte e basse!
-          ),
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => _buildSmallGridCard(items[index], pantryService),
-            childCount: items.length,
-          ),
-        ),
-        // Aggiungiamo il bottoncino sotto la griglia
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 20.0, bottom: 40.0),
-            child: _buildInlineAddButton(),
+        SliverPadding(
+          padding: EdgeInsets.only(bottom: _isDeleteMode ? 100 : 0), // Spazio per la barra fluttuante
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.1, 
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildSmallGridCard(items[index], pantryService),
+              childCount: items.length,
+            ),
           ),
         ),
+        if (!_isDeleteMode)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 20.0, bottom: 40.0),
+              child: _buildInlineAddButton(),
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildSmallGridCard(FridgeItem item, PantryService pantryService) {
-    Color iconColor = _getItemColor(item); // USO LA NUOVA LOGICA!
+    final isSelected = _selectedIdsForDeletion.contains(item.id);
+    Color baseIconColor = _getItemColor(item);
+    
+    Color currentBorderColor = _isDeleteMode && isSelected ? expiredColor : baseIconColor.withValues(alpha: 0.3);
+    Color currentBgColor = _isDeleteMode && isSelected 
+        ? expiredColor.withValues(alpha: 0.1) 
+        : Colors.white.withValues(alpha: 0.6);
 
-    return GestureDetector(
-      onTap: () => _showItemDetailModal(item, pantryService, iconColor),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: iconColor.withValues(alpha: 0.3), // Bordo col colore di stato
-                width: 1.5,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: iconColor.withValues(alpha: 0.3), // Ombra col colore di stato
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        GestureDetector(
+          onTap: _isDeleteMode 
+            ? () => _toggleSelection(item.id) 
+            : () => _showItemDetailModal(item, pantryService, baseIconColor),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: currentBgColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: currentBorderColor, 
+                    width: isSelected ? 2.0 : 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: baseIconColor.withValues(alpha: 0.3), 
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.kitchen_outlined,
-                    color: iconColor,
-                    size: 22, // Ridotto un po' per la card compatta
-                  ),
+                      child: Icon(
+                        Icons.kitchen_outlined,
+                        color: baseIconColor,
+                        size: 22, 
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: darkTextColor,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  item.name,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: darkTextColor,
-                    height: 1.1,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
+
+        // --- BADGE SELEZIONE SULLA GRIGLIA ---
+        if (_isDeleteMode)
+          Positioned(
+            top: 5,
+            right: 5,
+            child: Icon(
+              isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+              color: isSelected ? expiredColor : Colors.grey.withValues(alpha: 0.5),
+              size: 24,
+            ),
+          ),
+      ],
     );
   }
 
@@ -899,7 +1221,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   Future<void> _showItemDetailModal(
     FridgeItem item,
     PantryService pantryService,
-    Color itemColor, // Aggiunto per passare il colore calcolato
+    Color itemColor, 
   ) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
@@ -915,7 +1237,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 
 
   // ==========================================
-  // MODAL ADD ELEMENT
+  // MODAL ADD ELEMENT E DETAIL 
   // ==========================================
 
   Future<void> _showAddElementModal(BuildContext context) async {
@@ -1147,7 +1469,7 @@ class FridgeItemDetailSheet extends StatefulWidget {
     super.key,
     required this.item,
     required this.pantryService,
-    required this.itemColor, // Il colore dinamico
+    required this.itemColor, 
   });
   final FridgeItem item;
   final PantryService pantryService;
@@ -1262,7 +1584,6 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Uso il colore che mi è stato passato dal padre (rosso, giallo o azzurro)
     final itemColor = widget.itemColor;
 
     return ClipRRect(

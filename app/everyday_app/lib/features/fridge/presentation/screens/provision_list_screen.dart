@@ -1,3 +1,4 @@
+// TODO migrate to features/fridge
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +7,7 @@ import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/fridge/data/models/shopping_item.dart';
 import 'package:everyday_app/features/fridge/domain/services/shopping_service.dart';
 import 'package:everyday_app/features/fridge/presentation/providers/fridge_providers.dart';
-import 'package:everyday_app/shared/utils/status_color_utils.dart'; // Importato per la coerenza dei colori
+import 'package:everyday_app/shared/utils/status_color_utils.dart'; 
 
 class ProvisionListScreen extends ConsumerStatefulWidget {
   const ProvisionListScreen({super.key});
@@ -17,6 +18,16 @@ class ProvisionListScreen extends ConsumerStatefulWidget {
 }
 
 class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
+  // --- NUOVE VARIABILI DI STATO ---
+  String _searchQuery = '';
+  bool _isDeleteMode = false;
+  final Set<String> _selectedIdsForDeletion = {};
+
+  // Colori Brand
+  final Color primaryColor = const Color(0xFF5A8B9E); 
+  final Color expiredColor = const Color(0xFFF28482); 
+  final Color darkTextColor = const Color(0xFF3D342C);
+
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
 
@@ -29,73 +40,192 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF5A8B9E),
+        backgroundColor: primaryColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 2),
       ),
     );
   }
 
+  // --- DIALOG DI CONFERMA SINGOLA ---
   Future<bool?> _confirmDelete(ShoppingItem item) {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: AlertDialog(
-            backgroundColor: Colors.white.withValues(alpha: 0.9),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: const BorderSide(color: Colors.white, width: 1.5),
-            ),
-            title: Text(
-              'Delete Item?',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF3D342C),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(color: expiredColor.withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
+                ],
               ),
-            ),
-            content: Text(
-              'Are you sure you want to remove "${item.name}" from your list?',
-              style: GoogleFonts.poppins(
-                color: const Color(0xFF3D342C).withValues(alpha: 0.7),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF5A8B9E),
-                    fontWeight: FontWeight.w600,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60, height: 60,
+                    decoration: BoxDecoration(
+                      color: expiredColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.delete_outline_rounded, color: expiredColor, size: 30),
                   ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF28482),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Delete Item?',
+                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: darkTextColor),
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Delete',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 12),
+                  Text(
+                    'Are you sure you want to remove "${item.name}" from your list?',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: darkTextColor.withValues(alpha: 0.6)),
                   ),
-                ),
+                  const SizedBox(height: 30),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(false),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: darkTextColor.withValues(alpha: 0.1), width: 1.5),
+                            ),
+                            child: Center(
+                              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: darkTextColor.withValues(alpha: 0.7))),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(true),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: expiredColor,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: expiredColor.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
+                            child: Center(
+                              child: Text('Delete', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
+  // --- DIALOG DI CONFERMA MULTIPLA ---
+  Future<bool?> _confirmBatchDelete(int count) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(color: expiredColor.withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60, height: 60,
+                    decoration: BoxDecoration(
+                      color: expiredColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.delete_sweep_rounded, color: expiredColor, size: 30),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Delete Items',
+                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: darkTextColor),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Are you sure you want to remove $count items?',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: darkTextColor.withValues(alpha: 0.6)),
+                  ),
+                  const SizedBox(height: 30),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(false),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: darkTextColor.withValues(alpha: 0.1), width: 1.5),
+                            ),
+                            child: Center(
+                              child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: darkTextColor.withValues(alpha: 0.7))),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(true),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: expiredColor,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: expiredColor.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
+                            child: Center(
+                              child: Text('Delete', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- FUNZIONE ELIMINAZIONE SINGOLA ---
   Future<void> _deleteItem(String id, ShoppingService shoppingService) async {
     try {
       await shoppingService.deleteItem(id);
@@ -106,6 +236,41 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
+  }
+
+  // --- FUNZIONE ELIMINAZIONE MULTIPLA ---
+  Future<void> _deleteSelectedItems(ShoppingService shoppingService) async {
+    if (_selectedIdsForDeletion.isEmpty) return;
+
+    final confirmed = await _confirmBatchDelete(_selectedIdsForDeletion.length);
+    if (confirmed != true) return;
+
+    try {
+      for (final id in _selectedIdsForDeletion) {
+        await shoppingService.deleteItem(id);
+      }
+      
+      if (!mounted) return;
+      
+      setState(() {
+        _isDeleteMode = false;
+        _selectedIdsForDeletion.clear();
+      });
+      _showSuccessSnackBar('Items deleted');
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  void _toggleSelection(String itemId) {
+    setState(() {
+      if (_selectedIdsForDeletion.contains(itemId)) {
+        _selectedIdsForDeletion.remove(itemId);
+      } else {
+        _selectedIdsForDeletion.add(itemId);
+      }
+    });
   }
 
   Future<void> _openAddModal(ShoppingService shoppingService) async {
@@ -157,7 +322,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
           child: Text(
             'Household context not ready',
             style: GoogleFonts.poppins(
-              color: const Color(0xFF3D342C),
+              color: darkTextColor,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -170,50 +335,95 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context, shoppingService),
-              const SizedBox(height: 30),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(context, shoppingService),
+                  const SizedBox(height: 30),
 
-              // LA LISTA IN VETRO
-              Expanded(
-                child: itemsAsync.when(
-                  loading: () => Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        getStatusColor('safe'),
-                      ),
-                    ),
+                  // --- BARRA DI RICERCA ---
+                  _buildSearchBar(),
+                  const SizedBox(height: 20),
+
+                  // --- TOGGLE DELETE MODE ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      _buildDeleteModeToggle(),
+                    ],
                   ),
-                  error: (error, _) => Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF28482).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFFF28482).withValues(alpha: 0.3),
+                  const SizedBox(height: 20),
+
+                  // LA LISTA IN VETRO
+                  Expanded(
+                    child: itemsAsync.when(
+                      loading: () => Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            getStatusColor('safe'),
+                          ),
                         ),
                       ),
-                      child: Text(
-                        error.toString(),
-                        style: GoogleFonts.poppins(
-                          color: const Color(0xFFF28482),
-                          fontWeight: FontWeight.w500,
+                      error: (error, _) => Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: expiredColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: expiredColor.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            error.toString(),
+                            style: GoogleFonts.poppins(
+                              color: expiredColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
+                      data: (items) {
+                        // --- FILTRO RICERCA ---
+                        final filteredItems = items.where((item) {
+                          return _searchQuery.isEmpty || 
+                              item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+                        }).toList();
+
+                        if (filteredItems.isEmpty && _searchQuery.isNotEmpty) {
+                          return Center(
+                            child: Text(
+                              'No items found',
+                              style: GoogleFonts.poppins(
+                                color: darkTextColor.withValues(alpha: 0.5),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }
+
+                        return filteredItems.isEmpty
+                            ? _buildEmptyState()
+                            : _buildGlassList(filteredItems, shoppingService);
+                      },
                     ),
                   ),
-                  data: (items) => items.isEmpty
-                      ? _buildEmptyState()
-                      : _buildGlassList(items, shoppingService),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+
+            // --- BARRA FLUTTUANTE AZIONI ---
+            if (_isDeleteMode)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: _buildBatchDeleteBar(shoppingService),
+              ),
+          ],
         ),
       ),
     );
@@ -228,7 +438,6 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Tasto Indietro
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
@@ -238,36 +447,32 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
               color: Colors.white,
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF5A8B9E).withValues(alpha: 0.08),
+                  color: primaryColor.withValues(alpha: 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF5A8B9E),
+              color: primaryColor,
               size: 20,
             ),
           ),
         ),
-
-        // Titolo
         Text(
           'Provision List',
           style: GoogleFonts.poppins(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF5A8B9E),
+            color: primaryColor,
           ),
         ),
-
-        // Tasto Aggiungi (Aggiornato al colore di tema)
         GestureDetector(
           onTap: () => _openAddModal(shoppingService),
           child: Container(
@@ -295,22 +500,176 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
+  Widget _buildSearchBar() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+        child: Container(
+          height: 55,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: primaryColor.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: primaryColor.withValues(alpha: 0.2),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search items...',
+                    hintStyle: GoogleFonts.poppins(
+                      color: primaryColor.withValues(alpha: 0.5),
+                      fontSize: 15,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                  style: GoogleFonts.poppins(color: darkTextColor),
+                ),
+              ),
+              Icon(
+                Icons.search_rounded,
+                color: primaryColor,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteModeToggle() {
+    return GestureDetector(
+      onTap: () => setState(() {
+        _isDeleteMode = !_isDeleteMode;
+        if (!_isDeleteMode) {
+          _selectedIdsForDeletion.clear(); 
+        }
+      }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: _isDeleteMode ? expiredColor : Colors.white.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _isDeleteMode ? expiredColor : primaryColor.withValues(alpha: 0.1),
+            width: 1.2,
+          ),
+        ),
+        child: Icon(
+          Icons.checklist_rounded, 
+          size: 22,
+          color: _isDeleteMode ? Colors.white : primaryColor.withValues(alpha: 0.4),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBatchDeleteBar(ShoppingService shoppingService) {
+    final count = _selectedIdsForDeletion.length;
+    final bool hasSelection = count > 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: 70,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: hasSelection 
+                ? expiredColor.withValues(alpha: 0.95) 
+                : Colors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: hasSelection ? expiredColor : darkTextColor.withValues(alpha: 0.1), 
+                width: 1.5
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: hasSelection 
+                    ? expiredColor.withValues(alpha: 0.3) 
+                    : Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ]
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  count == 0 ? 'Select items...' : '$count selected',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: hasSelection ? Colors.white : darkTextColor.withValues(alpha: 0.6),
+                  ),
+                ),
+                if (hasSelection)
+                  GestureDetector(
+                    onTap: () => _deleteSelectedItems(shoppingService),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded, color: expiredColor, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Delete',
+                            style: GoogleFonts.poppins(
+                              color: expiredColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildGlassList(
     List<ShoppingItem> items,
     ShoppingService shoppingService,
   ) {
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.only(bottom: _isDeleteMode ? 100 : 20),
       itemCount: items.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final item = items[index];
         return Dismissible(
           key: ValueKey(item.id),
-          direction: DismissDirection.endToStart,
+          direction: _isDeleteMode ? DismissDirection.none : DismissDirection.endToStart,
           background: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF28482),
+              color: expiredColor,
               borderRadius: BorderRadius.circular(20),
             ),
             alignment: Alignment.centerRight,
@@ -338,44 +697,55 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
 
   Widget _buildListItem(ShoppingItem item, ShoppingService shoppingService) {
     final themeColor = getStatusColor('safe');
+    final isSelected = _selectedIdsForDeletion.contains(item.id);
 
+    Color currentBorderColor = _isDeleteMode && isSelected ? expiredColor : Colors.white.withValues(alpha: 0.8);
     return GestureDetector(
-      onTap: () => _openDetailModal(item, shoppingService),
+      onTap: _isDeleteMode 
+          ? () => _toggleSelection(item.id)
+          : () => _openDetailModal(item, shoppingService),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             height: 70,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  themeColor.withValues(alpha: 0.15),
-                  Colors.white.withValues(alpha: 0.6),
-                ],
+                colors: _isDeleteMode && isSelected
+                    ? [expiredColor.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.8)]
+                    : [themeColor.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.6)],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8),
-                width: 1.5,
+                color: currentBorderColor,
+                width: isSelected ? 2.0 : 1.5,
               ),
             ),
             child: Row(
               children: [
-                // Pallino Vuoto stile Checkbox
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: themeColor.withValues(alpha: 0.5),
-                      width: 2,
+                // Checkbox Dinamica
+                if (_isDeleteMode)
+                  Icon(
+                    isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                    color: isSelected ? expiredColor : Colors.grey.withValues(alpha: 0.5),
+                    size: 28,
+                  )
+                else
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: themeColor.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(width: 16),
 
                 // Nome
@@ -385,15 +755,15 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF3D342C),
+                      color: darkTextColor,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
 
-                // Badge Quantità
-                if (item.quantity > 1)
+                // Badge Quantità (Nascosto in Delete Mode per pulizia)
+                if (item.quantity > 1 && !_isDeleteMode)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -435,7 +805,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
           Text(
             'Your list is empty.',
             style: GoogleFonts.poppins(
-              color: const Color(0xFF3D342C).withValues(alpha: 0.5),
+              color: darkTextColor.withValues(alpha: 0.5),
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -932,7 +1302,6 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                   ],
                 ],
               ),
-
               if (_isSaving)
                 Positioned.fill(
                   child: Container(
@@ -957,6 +1326,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     IconData icon,
     Color accentColor,
   ) {
+    final textColor = const Color(0xFF3D342C);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -987,7 +1357,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                 style: GoogleFonts.poppins(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF3D342C).withValues(alpha: 0.5),
+                  color: textColor.withValues(alpha: 0.5),
                 ),
               ),
             ],
@@ -998,7 +1368,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
             style: GoogleFonts.poppins(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF3D342C),
+              color: textColor,
             ),
           ),
         ],

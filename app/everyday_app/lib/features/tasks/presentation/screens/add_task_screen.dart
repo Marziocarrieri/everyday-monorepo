@@ -91,6 +91,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   @override
   Widget build(BuildContext context) {
     final Color colorSafeAzzurro = getStatusColor('safe');
+    
+    // --- LOGICA DI FILTRAGGIO RICERCA ---
+    final query = _searchController.text.trim().toLowerCase();
+    
+    // Filtra la mappa: mantiene solo le task che matchano la ricerca,
+    // e se una categoria non ha più task al suo interno, la rimuove dalla lista.
+    final filteredEntries = _suggestedTasks.entries.map((entry) {
+      final matchedTasks = entry.value
+          .where((task) => task.toLowerCase().contains(query))
+          .toList();
+      return MapEntry(entry.key, matchedTasks);
+    }).where((entry) => entry.value.isNotEmpty).toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -199,6 +211,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         Expanded(
                           child: TextField(
                             controller: _searchController,
+                            onChanged: (value) {
+                              setState(() {}); // <-- AGGIUNTO: Aggiorna lo stato mentre scrivi
+                            },
                             decoration: InputDecoration(
                               hintText: 'Search templates...',
                               hintStyle: GoogleFonts.poppins(
@@ -232,34 +247,49 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _suggestedTasks.entries.map((entry) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 30.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.key,
+                child: filteredEntries.isEmpty
+                    // Mostriamo un feedback se la ricerca non produce risultati
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 40.0),
+                        child: Center(
+                          child: Text(
+                            'No templates found',
                             style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF3D342C),
+                              color: const Color(0xFF3D342C).withValues(alpha: 0.5),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          ...entry.value.map(
-                            (taskName) => _buildSuggestionPill(
-                              taskName,
-                              colorSafeAzzurro,
+                        ),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: filteredEntries.map((entry) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 30.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  entry.key,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF3D342C),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ...entry.value.map(
+                                  (taskName) => _buildSuggestionPill(
+                                    taskName,
+                                    colorSafeAzzurro,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                          );
+                        }).toList(),
                       ),
-                    );
-                  }).toList(),
-                ),
               ),
             ),
           ],
