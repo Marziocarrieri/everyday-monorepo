@@ -446,4 +446,62 @@ class TaskService {
       );
     }
   }
+
+  // --- NUOVA FUNZIONE: COPIA UN SINGOLO GIORNO CON SOVRASCRITTURA ---
+  Future<void> copyDayTasks({
+    required DateTime sourceDate,
+    required DateTime targetDate,
+  }) async {
+    // 1. Peschiamo tutti i task
+    final allTasks = await getTasksForHousehold();
+
+    // 2. Identifichiamo i task del giorno sorgente e quelli del giorno target
+    final sourceTasks = allTasks.where((t) => 
+      t.task.taskDate.year == sourceDate.year && 
+      t.task.taskDate.month == sourceDate.month && 
+      t.task.taskDate.day == sourceDate.day
+    ).toList();
+
+    final targetTasks = allTasks.where((t) => 
+      t.task.taskDate.year == targetDate.year && 
+      t.task.taskDate.month == targetDate.month && 
+      t.task.taskDate.day == targetDate.day
+    ).toList();
+
+    // 3. ELIMINIAMO i task esistenti nel giorno target (Sovrascrittura)
+    for (final t in targetTasks) {
+      await deleteTask(t.task.id);
+    }
+
+    if (sourceTasks.isEmpty) return;
+
+    // Helper orario
+    TimeOfDay? parseTime(String? timeStr) {
+      if (timeStr == null || timeStr.isEmpty) return null;
+      final parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+      }
+      return null;
+    }
+
+    // 4. CLONIAMO i task sorgente nel giorno target
+    for (final t in sourceTasks) {
+      final checklistTitles = t.subtasks.map((st) => st.title).toList();
+      final assignedMemberIds = t.assignments.map((a) => a.memberId).toList();
+
+      await createTaskWithDetails(
+        title: t.task.title,
+        description: t.task.description,
+        date: targetDate, // Usiamo la data di oggi/target
+        timeFrom: parseTime(t.task.timeFrom),
+        timeTo: parseTime(t.task.timeTo),
+        visibility: t.task.visibility,
+        roomId: t.task.roomId,
+        assignedMemberIds: assignedMemberIds,
+        checklistTitles: checklistTitles,
+        personalOnly: false,
+      );
+    }
+  }
 }
