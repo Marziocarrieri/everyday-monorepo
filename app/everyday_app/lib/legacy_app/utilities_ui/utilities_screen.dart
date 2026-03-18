@@ -1,60 +1,40 @@
 // TODO migrate to features/fridge
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:ui';
-import 'package:everyday_app/core/app_route_names.dart';
 
-class UtilitiesScreen extends StatefulWidget {
+import 'package:everyday_app/core/app_route_names.dart';
+// TODO: Verifica che questi import puntino alla cartella corretta dove hai salvato i widget
+import 'package:everyday_app/features/fridge/presentation/widgets/fridge_utility_module.dart';
+import 'package:everyday_app/features/fridge/presentation/widgets/provision_utility_module.dart';
+
+class UtilitiesScreen extends StatelessWidget {
   const UtilitiesScreen({super.key});
 
   @override
-  State<UtilitiesScreen> createState() => _UtilitiesScreenState();
-}
-
-class _UtilitiesScreenState extends State<UtilitiesScreen> {
-  @override
   Widget build(BuildContext context) {
+    const backgroundColor = Color(0xFFF6F7F9);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // HEADER BLOCCATO (No rimbalzi) E RAFFINATO
-              SizedBox(
-                height: 48,
-                child: Center(
-                  child: Text(
-                    'Utilities',
-                    style: GoogleFonts.poppins(
-                      fontSize: 24, 
-                      fontWeight: FontWeight.w700, 
-                      color: const Color(0xFF5A8B9E),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
+              _buildHeader(),
+              const SizedBox(height: 32),
               
-              // BOTTONI PREMIUM
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pushNamed(AppRouteNames.fridgeKeeping);
-                },
-                child: _buildPremiumMenuButton(icon: Icons.kitchen, text: 'Fridge Keeping'),
-              ),             
+              // Modulo: Fridge Keeping (Gestisce la navigazione internamente tramite i chip)
+              const FridgeUtilityModule(),
+              
               const SizedBox(height: 24),
-              GestureDetector(
+              
+              // Modulo: Provision List (Naviga sull'intera card)
+              ProvisionUtilityModule(
                 onTap: () {
                   Navigator.of(context).pushNamed(AppRouteNames.provisionList);
                 },
-                child: _buildPremiumMenuButton(
-                  icon: Icons.shopping_cart_outlined, // Usa l'icona che preferisci
-                  text: 'Provision List',
-                ),
               ),
             ],
           ),
@@ -63,61 +43,18 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> {
     );
   }
 
-  // --- BOTTONI GRANDI PREMIUM ---
-  Widget _buildPremiumMenuButton({required IconData icon, required String text}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(32), // Curvatura Premium
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
-        child: Container(
-          height: 130, // Un po' più alti per farli respirare
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFF4A261).withValues(alpha: 0.2), 
-                Colors.white.withValues(alpha: 0.5)
-              ],
-            ),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.2), // Riflesso
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFF4A261).withValues(alpha: 0.08), // Ombra morbida arancione
-                blurRadius: 30, offset: const Offset(0, 15)
-              )
-            ],
-          ),
-          child: Row(
-            children: [
-              // L'icona ora è dentro un suo "dischetto" di vetro per risaltare di più
-              Container(
-                width: 60, height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
-                  ]
-                ),
-                child: Icon(icon, color: const Color(0xFF5A8B9E), size: 32),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Text(
-                  text, 
-                  style: GoogleFonts.poppins(
-                    fontSize: 20, 
-                    fontWeight: FontWeight.w700, 
-                    color: const Color(0xFF3D342C),
-                    letterSpacing: -0.5, // Look moderno
-                  )
-                ),
-              ),
-              // Freccina elegante per far capire che è cliccabile
-              Icon(Icons.chevron_right_rounded, color: const Color(0xFF5A8B9E).withValues(alpha: 0.5), size: 32),
-            ],
+  // --- HEADER ---
+  Widget _buildHeader() {
+    return SizedBox(
+      height: 46,
+      child: Center(
+        child: Text(
+          'Utilities',
+          style: GoogleFonts.poppins(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2F4858),
+            letterSpacing: 0.5,
           ),
         ),
       ),

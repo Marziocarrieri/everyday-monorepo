@@ -87,8 +87,12 @@ class AppRouter {
         );
 
       case AppRouteNames.fridgeKeeping:
+        final args = settings.arguments as FridgeKeepingRouteArgs?;
         return MaterialPageRoute(
-          builder: (_) => const FridgeKeepingScreen(),
+          builder: (_) => FridgeKeepingScreen(
+            // Cast dell'argomento, se non c'è passa null
+            initialArea: args?.initialArea, 
+          ),
           settings: settings,
         );
 

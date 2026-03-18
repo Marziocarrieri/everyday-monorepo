@@ -13,7 +13,9 @@ import 'package:everyday_app/shared/utils/date_utils.dart';
 import 'package:everyday_app/shared/utils/status_color_utils.dart';
 
 class FridgeKeepingScreen extends ConsumerStatefulWidget {
-  const FridgeKeepingScreen({super.key});
+  final Object? initialArea; // Argomento in ingresso dal router
+
+  const FridgeKeepingScreen({super.key, this.initialArea});
 
   @override
   ConsumerState<FridgeKeepingScreen> createState() =>
@@ -21,7 +23,7 @@ class FridgeKeepingScreen extends ConsumerStatefulWidget {
 }
 
 class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
-  AreaType _selectedCategory = AreaType.pantry;
+  late AreaType _selectedCategory;
   DateTime? selectedDate;
   final TextEditingController nameController = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
@@ -37,6 +39,13 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   final Color warningColor = const Color(0xFFF4A261); 
   final Color expiredColor = const Color(0xFFF28482); 
   final Color darkTextColor = const Color(0xFF3D342C);
+
+  @override
+  void initState() {
+    super.initState();
+    // Imposta la categoria iniziale se è stata passata, altrimenti usa pantry come default
+    _selectedCategory = (widget.initialArea as AreaType?) ?? AreaType.pantry;
+  }
 
   Color _getItemColor(FridgeItem item) {
     if (item.expirationDate == null) return getStatusColor('safe'); 
@@ -595,12 +604,19 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                 children: [
                   Container(width: 50, height: 5, decoration: BoxDecoration(color: primaryColor.withOpacity(0.2), borderRadius: BorderRadius.circular(10))),
                   const SizedBox(height: 30),
+                  // Nuove opzioni aggiunte!
                   _buildModalOption(AreaType.pantry),
-                  const Divider(color: Colors.black12, height: 30),
+                  const Divider(color: Colors.black12, height: 20),
                   _buildModalOption(AreaType.fridge),
-                  const Divider(color: Colors.black12, height: 30),
+                  const Divider(color: Colors.black12, height: 20),
                   _buildModalOption(AreaType.freezer),
-                  const SizedBox(height: 20),
+                  const Divider(color: Colors.black12, height: 20),
+                  _buildModalOption(AreaType.spirits),
+                  const Divider(color: Colors.black12, height: 20),
+                  _buildModalOption(AreaType.household),
+                  const Divider(color: Colors.black12, height: 20),
+                  _buildModalOption(AreaType.personalCare),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),

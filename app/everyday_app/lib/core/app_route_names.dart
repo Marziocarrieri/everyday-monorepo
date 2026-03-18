@@ -125,3 +125,8 @@ class CohostAddTaskRouteArgs {
 
   const CohostAddTaskRouteArgs({this.initialDate});
 }
+
+class FridgeKeepingRouteArgs {
+  final Object initialArea; // Passiamo Object per non importare AreaType qui creando dipendenze strane, faremo il cast dopo
+  const FridgeKeepingRouteArgs({required this.initialArea});
+}
