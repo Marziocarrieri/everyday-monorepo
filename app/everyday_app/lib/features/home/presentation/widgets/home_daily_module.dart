@@ -32,8 +32,66 @@ class HomeDailyModule extends StatelessWidget {
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFF08A4B);
     const surfaceColor = Color(0xFFFFF3EB);
-    final preview = previewItems.take(3).toList(growable: false);
+    final previewTasks = previewItems.take(3).toList(growable: false);
     final normalizedCompletion = completion.clamp(0.0, 1.0);
+
+    final taskListPreview = previewTasks.isEmpty
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              emptyLabel,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF3D342C).withValues(alpha: 0.75),
+              ),
+            ),
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int i = 0; i < previewTasks.length; i++) ...[
+                SizedBox(
+                  height: 40,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: HomeTaskPreviewTile(
+                      title: previewTasks[i].title,
+                      isCompleted: previewTasks[i].isCompleted,
+                      accentColor: primaryColor,
+                      variant: HomeTaskPreviewVariant.daily,
+                    ),
+                  ),
+                ),
+                if (i != previewTasks.length - 1)
+                  const SizedBox(height: 10),
+              ],
+            ],
+          );
+
+    final progressRow = Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              height: 6,
+              color: primaryColor.withValues(alpha: 0.2),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: normalizedCompletion,
+                  child: Container(
+                    color: primaryColor.withValues(alpha: 0.9),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
 
     return GestureDetector(
       onTap: onTap,
@@ -63,6 +121,7 @@ class HomeDailyModule extends StatelessWidget {
           ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -83,54 +142,9 @@ class HomeDailyModule extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 18),
-            Expanded(
-              child: preview.isEmpty
-                  ? Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        emptyLabel,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF3D342C).withValues(alpha: 0.75),
-                        ),
-                      ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (var index = 0; index < preview.length; index++)
-                          Padding(
-                            padding: EdgeInsets.only(
-                              bottom: index == preview.length - 1 ? 0 : 10,
-                            ),
-                            child: HomeTaskPreviewTile(
-                              title: preview[index].title,
-                              isCompleted: preview[index].isCompleted,
-                              accentColor: primaryColor,
-                              variant: HomeTaskPreviewVariant.daily,
-                            ),
-                          ),
-                      ],
-                    ),
-            ),
-            const SizedBox(height: 18),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                height: 6,
-                color: primaryColor.withValues(alpha: 0.2),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FractionallySizedBox(
-                    widthFactor: normalizedCompletion,
-                    child: Container(
-                      color: primaryColor.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            taskListPreview,
+            const SizedBox(height: 8),
+            progressRow,
           ],
         ),
       ),

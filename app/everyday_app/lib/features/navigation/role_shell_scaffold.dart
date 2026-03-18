@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:everyday_app/legacy_app/household_ui/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'role_tab_config.dart';
@@ -81,73 +83,107 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
 
   // --- BARRA PREMIUM STILE MAIN_LAYOUT ---
   Widget _buildPremiumBottomNav(BuildContext context) {
+    const selectedColor = Color(0xFF243C4A);
+    final unselectedColor = selectedColor.withValues(alpha: 0.35);
+
     return SafeArea(
       bottom: true,
       child: Container(
-        height: 65,
-        margin: const EdgeInsets.only(left: 30, right: 30, bottom: 30), // Margine bottom tornato a 30
+        height: 74,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: Colors.white, width: 2), // Riflesso del vetro
+          borderRadius: BorderRadius.circular(28),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white.withValues(alpha: 0.20),
+              Colors.white.withValues(alpha: 0.05),
+            ],
+          ),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.20),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            )
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(widget.tabs.length, (index) {
-            final tab = widget.tabs[index];
-            final isSelected = _selectedIndex == index;
-            
-            // Verifichiamo se è l'ultimo tab (Profilo)
-            final isProfileTab = index == widget.tabs.length - 1;
-            
-            // Colori premium del MainLayout originale
-            final iconColor = isSelected 
-                ? const Color(0xFFF4A261) // Arancione vivo per la selezione
-                : const Color(0xFF5A8B9E).withValues(alpha: 0.5); // Azzurro spento per gli inattivi
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              color: Colors.transparent,
+              child: Row(
+                children: List.generate(widget.tabs.length, (index) {
+                  final tab = widget.tabs[index];
+                  final isSelected = _selectedIndex == index;
+                  final isProfileTab = index == widget.tabs.length - 1;
+                  final iconColor = isSelected ? selectedColor : unselectedColor;
+                  final labelOpacity = isSelected ? 1.0 : 0.45;
 
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque, // Rende cliccabile tutto lo spazio interno
-              onTap: () {
-                final routeName = tab.routeName;
-                
-                // Controllo accessi originale intatto
-                if (!_canAccess(routeName)) {
-                  widget.onBlockedRoute?.call(context, routeName);
-                  return;
-                }
-                
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
-              
-              // PRESSIONE PROLUNGATA: Apre il menu delle case se siamo sul Profilo
-              onLongPress: isProfileTab 
-                  ? () => showProfileHouseholdBottomSheet(context)
-                  : null,
-                  
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                // Effetto "Rimbalzo/Zoom" sull'icona selezionata
-                child: AnimatedScale(
-                  scale: isSelected ? 1.15 : 1.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    tab.icon,
-                    color: iconColor,
-                    size: 28, // Dimensione tornata a 28
-                  ),
-                ),
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        final routeName = tab.routeName;
+
+                        if (!_canAccess(routeName)) {
+                          widget.onBlockedRoute?.call(context, routeName);
+                          return;
+                        }
+
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                      },
+                      onLongPress: isProfileTab
+                          ? () => showProfileHouseholdBottomSheet(context)
+                          : null,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedScale(
+                              scale: isSelected ? 1.1 : 1.0,
+                              duration: const Duration(milliseconds: 160),
+                              curve: Curves.easeOutCubic,
+                              child: Icon(
+                                tab.icon,
+                                color: iconColor,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Opacity(
+                              opacity: labelOpacity,
+                              child: Text(
+                                tab.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.fade,
+                                softWrap: false,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: selectedColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ),
-            );
-          }),
+            ),
+          ),
         ),
       ),
     );

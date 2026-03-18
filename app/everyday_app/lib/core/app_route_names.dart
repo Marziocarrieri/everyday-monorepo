@@ -45,6 +45,16 @@ class AppRouteNames {
   static const String cohostProvisionList = '/legacy/cohost/provision-list';
 }
 
+class WeekTasksRouteArgs {
+  final String? initialMemberId;
+  final String? initialUserId;
+
+  const WeekTasksRouteArgs({
+    this.initialMemberId,
+    this.initialUserId,
+  });
+}
+
 class AddTaskRouteArgs {
   final Set<String>? assignedMemberIds;
   final String? preselectedAssigneeUserId;

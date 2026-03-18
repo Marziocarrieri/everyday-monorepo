@@ -66,10 +66,11 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
   }
 
   String? _resolveEffectiveTargetMemberId() {
-    final memberId = _isDelegatedMode
-        ? widget.targetMemberId
-        : AppContext.instance.membershipId;
-    final normalized = (memberId ?? '').trim();
+    final delegatedMemberId = (widget.targetMemberId ?? '').trim();
+    final selfMemberId = (AppContext.instance.membershipId ?? '').trim();
+    final normalized = _isDelegatedMode
+        ? delegatedMemberId
+        : (selfMemberId.isNotEmpty ? selfMemberId : delegatedMemberId);
     if (normalized.isEmpty) {
       return null;
     }
@@ -77,10 +78,11 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
   }
 
   String? _resolveEffectiveTargetUserId() {
-    final userId = _isDelegatedMode
-        ? widget.targetUserId
-        : AppContext.instance.userId;
-    final normalized = (userId ?? '').trim();
+    final delegatedUserId = (widget.targetUserId ?? '').trim();
+    final selfUserId = (AppContext.instance.userId ?? '').trim();
+    final normalized = _isDelegatedMode
+        ? delegatedUserId
+        : (selfUserId.isNotEmpty ? selfUserId : delegatedUserId);
     if (normalized.isEmpty) {
       return null;
     }
@@ -240,6 +242,11 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
       return;
     }
 
+    final initialAssigneeMemberIds =
+        (effectiveTargetMemberId == null || effectiveTargetMemberId.isEmpty)
+        ? null
+        : <String>{effectiveTargetMemberId};
+
     final args = _isDelegatedMode
         ? AddTaskRouteArgs(
             initialDate: _selectedWeek,
@@ -247,7 +254,11 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
             preselectedAssigneeUserId: effectiveTargetUserId,
             multiAssignMode: true,
           )
-        : AddTaskRouteArgs(initialDate: _selectedWeek);
+        : AddTaskRouteArgs(
+            initialDate: _selectedWeek,
+            assignedMemberIds: initialAssigneeMemberIds,
+            preselectedAssigneeUserId: effectiveTargetUserId,
+          );
 
     final changed = await Navigator.of(context).pushNamed(
       AppRouteNames.addTask,

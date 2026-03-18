@@ -277,12 +277,9 @@ bool _isTaskAssignedToMember(TaskWithDetails task, String memberId) {
   return task.assignments.any((assignment) => assignment.memberId == memberId);
 }
 
-final homeDailyTasksProvider = Provider<AsyncValue<List<TaskWithDetails>>>((
-  ref,
-) {
+final homeDailyTasksProvider = StreamProvider<List<TaskWithDetails>>((ref) {
   final householdId = ref.watch(currentHouseholdIdProvider);
   final currentUser = ref.watch(currentUserProvider);
-  final tasksAsync = ref.watch(tasksStreamProvider);
   final optimisticSubtaskOverrides = ref.watch(
     optimisticSubtaskOverridesProvider,
   );
@@ -291,12 +288,12 @@ final homeDailyTasksProvider = Provider<AsyncValue<List<TaskWithDetails>>>((
       householdId.isEmpty ||
       currentUser == null ||
       currentUser.id.isEmpty) {
-    return const AsyncValue<List<TaskWithDetails>>.data([]);
+    return Stream.value(const <TaskWithDetails>[]);
   }
 
   final today = DateTime.now();
 
-  return tasksAsync.whenData((tasks) {
+  return ref.watch(tasksStreamProvider.stream).map((tasks) {
     final filtered = tasks
         .where((task) => task.task.householdId == householdId)
         .where((task) => _isSameCalendarDay(task.task.taskDate, today))
@@ -414,32 +411,38 @@ bool _isDateInSpecificWeek(DateTime date, DateTime weekReference) {
 }
 
 // Usiamo .family per poter passare la data selezionata dall'utente
-final weeklyTasksFamilyProvider = Provider.family<AsyncValue<List<TaskWithDetails>>, DateTime>((
-  ref, 
-  selectedWeek
-) {
-  final householdId = ref.watch(currentHouseholdIdProvider);
-  final currentUser = ref.watch(currentUserProvider);
-  final tasksAsync = ref.watch(tasksStreamProvider);
-  final optimisticSubtaskOverrides = ref.watch(optimisticSubtaskOverridesProvider);
+final weeklyTasksFamilyProvider =
+    StreamProvider.family<List<TaskWithDetails>, DateTime>(
+      (ref, selectedWeek) {
+        final householdId = ref.watch(currentHouseholdIdProvider);
+        final currentUser = ref.watch(currentUserProvider);
+        final optimisticSubtaskOverrides = ref.watch(
+          optimisticSubtaskOverridesProvider,
+        );
 
-  if (householdId == null || householdId.isEmpty || currentUser == null || currentUser.id.isEmpty) {
-    return const AsyncValue<List<TaskWithDetails>>.data([]);
-  }
+        if (householdId == null ||
+            householdId.isEmpty ||
+            currentUser == null ||
+            currentUser.id.isEmpty) {
+          return Stream.value(const <TaskWithDetails>[]);
+        }
 
-  return tasksAsync.whenData((tasks) {
-    final filtered = tasks
-        .where((task) => task.task.householdId == householdId)
-        .where((task) => _isDateInSpecificWeek(task.task.taskDate, selectedWeek))
-        .where((task) => _isTaskAssignedToUser(task, currentUser.id))
-        .toList();
+        return ref.watch(tasksStreamProvider.stream).map((tasks) {
+          final filtered = tasks
+              .where((task) => task.task.householdId == householdId)
+              .where(
+                (task) => _isDateInSpecificWeek(task.task.taskDate, selectedWeek),
+              )
+              .where((task) => _isTaskAssignedToUser(task, currentUser.id))
+              .toList();
 
-    return _applyOptimisticSubtaskOverrides(
-      tasks: filtered,
-      overrides: optimisticSubtaskOverrides,
+          return _applyOptimisticSubtaskOverrides(
+            tasks: filtered,
+            overrides: optimisticSubtaskOverrides,
+          );
+        });
+      },
     );
-  });
-});
 
 class WeeklyTasksByMemberQuery {
   final DateTime selectedWeek;

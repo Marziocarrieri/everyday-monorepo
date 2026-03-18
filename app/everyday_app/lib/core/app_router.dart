@@ -32,7 +32,14 @@ class AppRouter {
         );
 
       case AppRouteNames.weekTasks:
-        return MaterialPageRoute(builder: (_) => const WeekTasksScreen());
+        final args = settings.arguments as WeekTasksRouteArgs?;
+        return MaterialPageRoute(
+          builder: (_) => WeekTasksScreen(
+            targetMemberId: args?.initialMemberId,
+            targetUserId: args?.initialUserId,
+          ),
+          settings: settings,
+        );
 
       case AppRouteNames.addTask:
         final args = settings.arguments as AddTaskRouteArgs?;
