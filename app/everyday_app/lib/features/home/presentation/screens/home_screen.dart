@@ -3,8 +3,6 @@ import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/app_router.dart';
-import 'package:everyday_app/features/home/presentation/widgets/home_daily_task_card.dart';
-import 'package:everyday_app/features/home/presentation/widgets/home_weekly_task_card.dart';
 import 'package:everyday_app/features/tasks/data/models/task_with_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,40 +16,47 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tasksAsync = ref.watch(homeDailyTasksProvider);
+    final dailyTasksAsync = ref.watch(homeDailyTasksProvider);
+    final weeklyTasksAsync = ref.watch(homeWeeklyTasksProvider);
     final currentUserId = AppContext.instance.userId;
-    
-    final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
-    final isCohostOrPersonnel = role == 'COHOST' || role == 'PERSONNEL';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF6F7F9),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 48, child: _buildHeader(context)),
-              const SizedBox(height: 40),
-              
-              // Card dei Task Giornalieri (Visibile a tutti)
-              _buildDailyTaskCard(context, tasksAsync, currentUserId),
-              
-              const SizedBox(height: 20), // Spazio uniforme
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const headerHeight = 46.0;
+              const topSpacing = 16.0;
+              const betweenTiles = 20.0;
+              final availableTilesHeight =
+                  constraints.maxHeight - headerHeight - topSpacing - betweenTiles;
+                final tileHeight = availableTilesHeight > 0
+                  ? (availableTilesHeight / 2).clamp(0.0, 260.0)
+                  : 0.0;
 
-              // Card Panoramica Settimanale
-              HomeWeeklyTaskCard(
-                onTap: () {
-                  Navigator.of(context).pushNamed(AppRouteNames.weekTasks);
-                },
-              ),
-
-              if (isCohostOrPersonnel) const SizedBox(height: 20), // Spazio uniforme
-              
-              // Card Family Hub (Visibile solo a Co-host e Personnel)
-              if (isCohostOrPersonnel) _buildFamilyAccessCard(context),
-            ],
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: headerHeight, child: _buildHeader(context)),
+                  const SizedBox(height: topSpacing),
+                  SizedBox(
+                    height: tileHeight,
+                    child: _buildDailyTaskModule(
+                      context,
+                      dailyTasksAsync,
+                      currentUserId,
+                    ),
+                  ),
+                  const SizedBox(height: betweenTiles),
+                  SizedBox(
+                    height: tileHeight,
+                    child: _buildWeeklyTaskModule(context, weeklyTasksAsync),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -61,57 +66,61 @@ class HomeScreen extends ConsumerWidget {
 
   // --- HEADER PREMIUM ---
   Widget _buildHeader(BuildContext context) {
+    const headerColor = Color(0xFF2F4858);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         GestureDetector(
           onTap: () => _showCalendarPopup(context),
-          child: _buildIconBtn(Icons.calendar_today_outlined),
+          child: _buildIconBtn(Icons.calendar_month_rounded),
         ),
 
         Text(
           'Home',
           style: GoogleFonts.poppins(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF5A8B9E),
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: headerColor,
             letterSpacing: 0.5,
           ),
         ),
 
         GestureDetector(
           onTap: () {},
-          child: _buildIconBtn(Icons.notifications_none_rounded),
+          child: _buildIconBtn(Icons.notifications_rounded),
         ),
       ],
     );
   }
 
   Widget _buildIconBtn(IconData icon) {
+    const headerColor = Color(0xFF2F4858);
+
     return Container(
-      width: 48,
-      height: 48,
+      width: 46,
+      height: 46,
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
         border: Border.all(
-          color: const Color(0xFF5A8B9E).withOpacity(0.1),
+          color: headerColor.withOpacity(0.12),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF5A8B9E).withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: headerColor.withOpacity(0.14),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Icon(icon, color: const Color(0xFF5A8B9E), size: 22),
+      child: Icon(icon, color: headerColor, size: 22),
     );
   }
 
-  // --- CARD PREMIUM TASK ---
-  Widget _buildDailyTaskCard(
+  // --- MODULE: DAILY TASK ---
+  Widget _buildDailyTaskModule(
     BuildContext context,
     AsyncValue<List<TaskWithDetails>> tasksAsync,
     String? currentUserId,
@@ -125,132 +134,109 @@ class HomeScreen extends ConsumerWidget {
     }
 
     return tasksAsync.when(
-      loading: () => HomeDailyTaskCard(
-        totalTasks: 0,
+      loading: () => _HomeDailyPreviewTile(
         completion: 0,
-        subtitle: 'Loading your assignments...',
+        previewItems: const [],
+        emptyLabel: 'Loading your assignments...',
         onTap: openDailyTasks,
       ),
-      error: (error, stackTrace) => HomeDailyTaskCard(
-        totalTasks: 0,
+      error: (error, stackTrace) => _HomeDailyPreviewTile(
         completion: 0,
-        subtitle: 'Unable to load assignments',
+        previewItems: const [],
+        emptyLabel: 'Unable to load assignments',
         onTap: openDailyTasks,
       ),
       data: (tasks) {
         final totalTasks = tasks.length;
-        final completedTasks = tasks.where((task) {
-          final ownAssignment = task.assignments
-              .where((assignment) => assignment.member?.userId == currentUserId)
-              .toList();
-          final assignmentDone =
-              ownAssignment.isNotEmpty &&
-              ownAssignment.first.status.toUpperCase() == 'DONE';
-          final subtasksDone =
-              task.subtasks.isNotEmpty &&
-              task.subtasks.every((subtask) => subtask.isDone);
-          return assignmentDone || subtasksDone;
-        }).length;
+        final previewItems = tasks
+            .take(3)
+            .map(
+              (task) => _DailyPreviewItem(
+                title: task.task.title,
+                isCompleted: _isTaskCompletedForUser(task, currentUserId),
+              ),
+            )
+            .toList(growable: false);
+        final completedTasks = tasks
+            .where((task) => _isTaskCompletedForUser(task, currentUserId))
+            .length;
         final completion = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
 
-        final subtitle = totalTasks == 0
-            ? "You're free today ✨"
-            : '$totalTasks assigned task${totalTasks == 1 ? '' : 's'}';
-
-        return HomeDailyTaskCard(
-          totalTasks: totalTasks,
+        return _HomeDailyPreviewTile(
           completion: completion,
-          subtitle: subtitle,
+          previewItems: previewItems,
+          emptyLabel: "You're free today ✨",
           onTap: openDailyTasks,
         );
       },
     );
   }
 
-  // --- CARD: FAMILY HUB ---
-  Widget _buildFamilyAccessCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).pushNamed(AppRouteNames.cohostFamily);
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28), 
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: Container(
-            height: 110, 
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4A261).withOpacity(0.12), // Sfondo Arancio
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5), 
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFF4A261).withOpacity(0.08), 
-                  blurRadius: 20, 
-                  offset: const Offset(0, 10)
-                )
-              ],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 54, height: 54, 
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05), 
-                        blurRadius: 10, 
-                        offset: const Offset(0, 4)
-                      )
-                    ]
-                  ),
-                  // Icona rimasta Azzurra
-                  child: const Icon(Icons.people_alt_rounded, color: Color(0xFF5A8B9E), size: 26),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Family Hub', 
-                        style: GoogleFonts.poppins(
-                          fontSize: 19, 
-                          fontWeight: FontWeight.w700, 
-                          color: const Color(0xFF3D342C),
-                          letterSpacing: -0.5, 
-                        )
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Manage members & roles', 
-                        style: GoogleFonts.poppins(
-                          fontSize: 13, 
-                          fontWeight: FontWeight.w500, 
-                          color: const Color(0xFF3D342C).withOpacity(0.6),
-                        )
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right_rounded, 
-                  // --- MODIFICA: Freccina diventata BLU ---
-                  color: const Color(0xFF5A8B9E).withOpacity(0.5), 
-                  size: 32
-                ),
-              ],
-            ),
-          ),
-        ),
+  bool _isTaskCompletedForUser(TaskWithDetails task, String? currentUserId) {
+    final ownAssignment = task.assignments
+        .where((assignment) => assignment.member?.userId == currentUserId)
+        .toList();
+    final assignmentDone =
+        ownAssignment.isNotEmpty &&
+        ownAssignment.first.status.toUpperCase() == 'DONE';
+    final subtasksDone =
+        task.subtasks.isNotEmpty &&
+        task.subtasks.every((subtask) => subtask.isDone);
+    return assignmentDone || subtasksDone;
+  }
+
+  // --- MODULE: WEEKLY TASK ---
+  Widget _buildWeeklyTaskModule(
+    BuildContext context,
+    AsyncValue<List<TaskWithDetails>> tasksAsync,
+  ) {
+    void openWeeklyTasks() {
+      Navigator.of(context).pushNamed(AppRouteNames.weekTasks);
+    }
+
+    return tasksAsync.when(
+      loading: () => _HomeWeeklyPreviewTile(
+        previewTitles: const [],
+        emptyLabel: 'Loading upcoming tasks...',
+        onTap: openWeeklyTasks,
       ),
+      error: (error, stackTrace) => _HomeWeeklyPreviewTile(
+        previewTitles: const [],
+        emptyLabel: 'Unable to load weekly tasks',
+        onTap: openWeeklyTasks,
+      ),
+      data: (tasks) {
+        final today = _toDay(DateTime.now());
+        final upcomingTasks = tasks
+            .where((task) => !_toDay(task.task.taskDate).isBefore(today))
+            .toList()
+          ..sort((left, right) {
+            final dateCompare = left.task.taskDate.compareTo(right.task.taskDate);
+            if (dateCompare != 0) return dateCompare;
+
+            final leftTime = left.task.timeFrom;
+            final rightTime = right.task.timeFrom;
+
+            if (leftTime == null && rightTime == null) return 0;
+            if (leftTime == null) return 1;
+            if (rightTime == null) return -1;
+
+            return leftTime.compareTo(rightTime);
+          });
+
+        return _HomeWeeklyPreviewTile(
+          previewTitles: upcomingTasks
+              .take(3)
+              .map((task) => task.task.title)
+              .toList(growable: false),
+          emptyLabel: 'No upcoming tasks this week',
+          onTap: openWeeklyTasks,
+        );
+      },
     );
   }
+
+  DateTime _toDay(DateTime date) => DateTime(date.year, date.month, date.day);
 
   // --- TASTO AI PREMIUM ---
   Widget _buildAIButton() {
@@ -285,12 +271,305 @@ class HomeScreen extends ConsumerWidget {
           ),
           child: IconButton(
             icon: const Icon(
-              Icons.lightbulb_outline,
+              Icons.auto_awesome_rounded,
               color: Color(0xFF5A8B9E),
               size: 26,
             ),
             onPressed: () => debugPrint("AI Clicked"),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyPreviewItem {
+  final String title;
+  final bool isCompleted;
+
+  const _DailyPreviewItem({
+    required this.title,
+    required this.isCompleted,
+  });
+}
+
+class _HomeDailyPreviewTile extends StatelessWidget {
+  final double completion;
+  final List<_DailyPreviewItem> previewItems;
+  final String emptyLabel;
+  final VoidCallback onTap;
+
+  const _HomeDailyPreviewTile({
+    required this.completion,
+    required this.previewItems,
+    required this.emptyLabel,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const darkBlue = Color(0xFF2F4858);
+    final normalizedCompletion = completion.clamp(0.0, 1.0);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF08A5D),
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF08A5D).withOpacity(0.35),
+              blurRadius: 30,
+              offset: const Offset(0, 18),
+            ),
+          ],
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFF08A5D),
+              Color(0xFFE07A4F),
+            ],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Daily Tasks',
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${(normalizedCompletion * 100).round()}%',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: darkBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: previewItems.isEmpty
+                  ? Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        emptyLabel,
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < previewItems.length && i < 3; i++)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              bottom: i == previewItems.length - 1 || i == 2
+                                  ? 0
+                                  : 10,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 17,
+                                  height: 17,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: previewItems[i].isCompleted
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.95),
+                                      width: 1.6,
+                                    ),
+                                  ),
+                                  child: previewItems[i].isCompleted
+                                      ? const Icon(
+                                          Icons.check_rounded,
+                                          size: 11,
+                                          color: darkBlue,
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    previewItems[i].title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                height: 6,
+                color: Colors.white.withOpacity(0.28),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: normalizedCompletion,
+                    child: Container(
+                      color: Colors.white.withOpacity(0.94),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeWeeklyPreviewTile extends StatelessWidget {
+  final List<String> previewTitles;
+  final String emptyLabel;
+  final VoidCallback onTap;
+
+  const _HomeWeeklyPreviewTile({
+    required this.previewTitles,
+    required this.emptyLabel,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const darkBlue = Color(0xFF2F4858);
+    final limitedPreview = previewTitles.take(3).toList(growable: false);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xFF7FB77E),
+          borderRadius: BorderRadius.circular(32),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF7FB77E),
+              Color(0xFF6FAF6E),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF7FB77E).withOpacity(0.25),
+              blurRadius: 28,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Weekly Tasks',
+              style: GoogleFonts.poppins(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: limitedPreview.isEmpty
+                  ? Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        emptyLabel,
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < limitedPreview.length; i++)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              bottom: i == limitedPreview.length - 1 ? 0 : 10,
+                            ),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.92),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF7FB77E),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      limitedPreview[i],
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                        color: darkBlue.withOpacity(0.92),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+          ],
         ),
       ),
     );
