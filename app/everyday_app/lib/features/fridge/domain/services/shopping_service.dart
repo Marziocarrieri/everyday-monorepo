@@ -10,11 +10,13 @@ class ShoppingService {
     String householdId,
     String name, {
     int quantity = 1,
+    int? recommendedItemId,
   }) {
     return _repository.addItem(
       householdId,
       name,
       quantity: quantity,
+      recommendedItemId: recommendedItemId,
     );
   }
 

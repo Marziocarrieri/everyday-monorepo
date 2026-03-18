@@ -9,6 +9,8 @@ import 'package:everyday_app/features/fridge/data/models/shopping_item.dart';
 import 'package:everyday_app/features/fridge/domain/services/shopping_service.dart';
 import 'package:everyday_app/features/fridge/presentation/providers/fridge_providers.dart';
 import 'package:everyday_app/shared/utils/status_color_utils.dart'; 
+import 'package:everyday_app/features/fridge/data/models/recommended_item.dart';
+import 'package:everyday_app/features/fridge/data/repositories/recommended_item_repository.dart';
 
 class ProvisionListScreen extends ConsumerStatefulWidget {
   const ProvisionListScreen({super.key});
@@ -465,6 +467,103 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
+  
+
+  // Widget _buildListItem(ShoppingItem item, ShoppingService shoppingService) {
+  //   final themeColor = getStatusColor('safe');
+  //   final isSelected = _selectedIdsForDeletion.contains(item.id);
+
+  //   Color currentBorderColor = _isDeleteMode && isSelected ? expiredColor : Colors.white.withValues(alpha: 0.8);
+  //   return GestureDetector(
+  //     onTap: _isDeleteMode 
+  //         ? () => _toggleSelection(item.id)
+  //         : () => _openDetailModal(item, shoppingService),
+  //     child: ClipRRect(
+  //       borderRadius: BorderRadius.circular(20),
+  //       child: BackdropFilter(
+  //         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+  //         child: AnimatedContainer(
+  //           duration: const Duration(milliseconds: 200),
+  //           height: 70,
+  //           padding: const EdgeInsets.symmetric(horizontal: 20),
+  //           decoration: BoxDecoration(
+  //             gradient: LinearGradient(
+  //               colors: _isDeleteMode && isSelected
+  //                   ? [expiredColor.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.8)]
+  //                   : [themeColor.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.6)],
+  //             ),
+  //             borderRadius: BorderRadius.circular(20),
+  //             border: Border.all(
+  //               color: currentBorderColor,
+  //               width: isSelected ? 2.0 : 1.5,
+  //             ),
+  //           ),
+  //           child: Row(
+  //             children: [
+  //               // Checkbox Dinamica
+  //               if (_isDeleteMode)
+  //                 Icon(
+  //                   isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+  //                   color: isSelected ? expiredColor : Colors.grey.withValues(alpha: 0.5),
+  //                   size: 28,
+  //                 )
+  //               else
+  //                 Container(
+  //                   width: 24,
+  //                   height: 24,
+  //                   decoration: BoxDecoration(
+  //                     color: Colors.white,
+  //                     shape: BoxShape.circle,
+  //                     border: Border.all(
+  //                       color: themeColor.withValues(alpha: 0.5),
+  //                       width: 2,
+  //                     ),
+  //                   ),
+  //                 ),
+  //               const SizedBox(width: 16),
+
+  //               // Nome
+  //               Expanded(
+  //                 child: Text(
+  //                   item.name,
+  //                   style: GoogleFonts.poppins(
+  //                     fontSize: 16,
+  //                     fontWeight: FontWeight.w600,
+  //                     color: darkTextColor,
+  //                   ),
+  //                   maxLines: 1,
+  //                   overflow: TextOverflow.ellipsis,
+  //                 ),
+  //               ),
+
+  //               // Badge Quantità (Nascosto in Delete Mode per pulizia)
+  //               if (item.quantity > 1 && !_isDeleteMode)
+  //                 Container(
+  //                   padding: const EdgeInsets.symmetric(
+  //                     horizontal: 10,
+  //                     vertical: 6,
+  //                   ),
+  //                   decoration: BoxDecoration(
+  //                     color: Colors.white.withValues(alpha: 0.8),
+  //                     borderRadius: BorderRadius.circular(12),
+  //                   ),
+  //                   child: Text(
+  //                     'Qty: ${item.quantity}',
+  //                     style: GoogleFonts.poppins(
+  //                       fontSize: 13,
+  //                       fontWeight: FontWeight.w700,
+  //                       color: themeColor,
+  //                     ),
+  //                   ),
+  //                 ),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
   Widget _buildListItem(ShoppingItem item, ShoppingService shoppingService) {
     final themeColor = getStatusColor('safe');
     final isSelected = _selectedIdsForDeletion.contains(item.id);
@@ -486,6 +585,17 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
               children: [
                 if (_isDeleteMode) Icon(isSelected ? Icons.check_circle_rounded : Icons.circle_outlined, color: isSelected ? archiveColor : Colors.grey.withOpacity(0.5), size: 28)
                 else Container(width: 24, height: 24, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: themeColor.withOpacity(0.5), width: 2))),
+                const SizedBox(width: 12),
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: themeColor.withValues(alpha: 0.1),
+                  backgroundImage: item.recommendedItem?.picture != null 
+                      ? NetworkImage(item.recommendedItem!.picture) 
+                      : null,
+                  child: item.recommendedItem?.picture == null 
+                      ? Icon(Icons.restaurant_rounded, size: 18, color: themeColor) 
+                      : null,
+                ),
                 const SizedBox(width: 16),
                 Expanded(child: Text(item.name, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: darkTextColor), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 if (item.quantity > 1 && !_isDeleteMode)
@@ -539,6 +649,29 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
     text: '1',
   );
   bool _isSaving = false;
+  List<RecommendedItem> recommendedItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecommendations();
+  }
+
+  Future<void> _loadRecommendations() async {
+    try {
+      // You might need to pass the area name based on your logic, e.g., 'pantry'
+      final repo = RecommendedItemRepository();
+      final items = await repo.getItems();
+      
+      if (mounted) {
+        setState(() {
+          recommendedItems = items;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading recommendations: $e");
+    }
+  }
 
   @override
   void dispose() {
@@ -549,6 +682,10 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
 
   Future<void> _save() async {
     final name = _nameController.text.trim();
+    final RecommendedItem? recommendedItem = recommendedItems.cast<RecommendedItem?>().firstWhere(
+    (item) => item?.name.toLowerCase() == name.toLowerCase(),
+    orElse: () => null,
+    );
     if (name.isEmpty) return;
 
     final parsedQuantity = int.tryParse(_quantityController.text.trim());
@@ -562,6 +699,7 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
       widget.householdId,
       name,
       quantity: quantity,
+      recommendedItemId: recommendedItem?.id,
     );
 
     if (!mounted) return;
@@ -620,12 +758,13 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
                       physics: const BouncingScrollPhysics(),
                       child: Column(
                         children: [
-                          _buildPremiumTextField(
+                          _buildPremiumAutocompleteField(
                             'Name',
                             true,
                             false,
                             _nameController,
                             themeColor,
+                            recommendedItems,
                           ),
                           const SizedBox(height: 16),
                           _buildPremiumTextField(
@@ -734,6 +873,205 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
   }
 }
 
+
+// Widget _buildPremiumAutocompleteField(
+//   String label,
+//   bool isRequired,
+//   bool isNumber,
+//   TextEditingController controller,
+//   Color accentColor,
+//   List<RecommendedItem> recommendations, // Now takes the object list
+// ) {
+//   final displayLabel = isRequired ? '$label *' : label;
+
+//   return Autocomplete<RecommendedItem>(
+//     // Tells Flutter which string to show in the text box when an item is picked
+//     displayStringForOption: (RecommendedItem option) => option.name,
+    
+//     optionsBuilder: (TextEditingValue textEditingValue) {
+//       if (textEditingValue.text.isEmpty) {
+//         return const Iterable<RecommendedItem>.empty();
+//       }
+//       return recommendations.where((RecommendedItem option) {
+//         return option.name.toLowerCase().contains(textEditingValue.text.toLowerCase());
+//       });
+//     },
+    
+//     onSelected: (RecommendedItem selection) {
+//       controller.text = selection.name;
+//     },
+    
+//     fieldViewBuilder: (context, autoController, focusNode, onFieldSubmitted) {
+//       // Syncing controllers
+//       if (autoController.text != controller.text) {
+//         autoController.text = controller.text;
+//       }
+      
+//       autoController.addListener(() {
+//         controller.text = autoController.text;
+//       });
+
+//     return Container(
+//       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+//       decoration: BoxDecoration(
+//         color: accentColor.withOpacity(0.05),
+//         borderRadius: BorderRadius.circular(20),
+//         border: Border.all(
+//           color: accentColor.withOpacity(0.2),
+//           width: 1.5,
+//         ),
+//       ),
+//       child: TextField(
+//         controller: controller,
+//         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+//         style: GoogleFonts.poppins(
+//           fontSize: 18,
+//           fontWeight: FontWeight.w700,
+//           color: const Color(0xFF3D342C),
+//         ),
+//         decoration: InputDecoration(
+//           border: InputBorder.none,
+//           labelText: displayLabel,
+//           labelStyle: GoogleFonts.poppins(
+//             fontSize: 14,
+//             fontWeight: FontWeight.w500,
+//             color: isRequired
+//                 ? const Color(0xFFF28482)
+//                 : const Color(0xFF3D342C).withOpacity(0.6),
+//           ),
+//           floatingLabelBehavior: FloatingLabelBehavior.always,
+//           hintText: 'Tap to enter...',
+//           hintStyle: GoogleFonts.poppins(
+//             color: const Color(0xFF3D342C).withOpacity(0.3),
+//             fontSize: 16,
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+Widget _buildPremiumAutocompleteField(
+  String label,
+  bool isRequired,
+  bool isNumber,
+  TextEditingController controller,
+  Color accentColor,
+  List<RecommendedItem> recommendations, // Now takes the object list
+) {
+  final displayLabel = isRequired ? '$label *' : label;
+
+  return Autocomplete<RecommendedItem>(
+    // Tells Flutter which string to show in the text box when an item is picked
+    displayStringForOption: (RecommendedItem option) => option.name,
+    
+    optionsBuilder: (TextEditingValue textEditingValue) {
+      if (textEditingValue.text.isEmpty) {
+        return const Iterable<RecommendedItem>.empty();
+      }
+      return recommendations.where((RecommendedItem option) {
+        return option.name.toLowerCase().contains(textEditingValue.text.toLowerCase());
+      });
+    },
+    
+    onSelected: (RecommendedItem selection) {
+      controller.text = selection.name;
+    },
+    
+    fieldViewBuilder: (context, autoController, focusNode, onFieldSubmitted) {
+      // Syncing controllers
+      if (autoController.text != controller.text) {
+        autoController.text = controller.text;
+      }
+      
+      autoController.addListener(() {
+        controller.text = autoController.text;
+      });
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: accentColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: accentColor.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
+        ),
+        child: TextField(
+          controller: autoController,
+          focusNode: focusNode,
+          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF3D342C),
+          ),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            labelText: displayLabel,
+            labelStyle: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isRequired
+                  ? const Color(0xFFF28482)
+                  : const Color(0xFF3D342C).withValues(alpha: 0.6),
+            ),
+            floatingLabelBehavior: FloatingLabelBehavior.always,
+            hintText: 'Tap to type...',
+            hintStyle: GoogleFonts.poppins(
+              color: const Color(0xFF3D342C).withValues(alpha: 0.3),
+              fontSize: 16,
+            ),
+          ),
+        ),
+      );
+    },
+    
+    optionsViewBuilder: (context, onSelected, options) {
+      return Align(
+        alignment: Alignment.topLeft,
+        child: Material(
+          elevation: 8,
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          child: Container(
+            width: MediaQuery.of(context).size.width - 40,
+            constraints: const BoxConstraints(maxHeight: 250),
+            // Clip to ensure the images don't bleed over the border radius
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final RecommendedItem option = options.elementAt(index);
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: accentColor.withValues(alpha: 0.1),
+                      backgroundImage: NetworkImage(option.picture),
+                    ),
+                    title: Text(
+                      option.name,
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF3D342C),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () => onSelected(option),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
 // ==========================================
 // MODAL: EDIT PROVISION
 // ==========================================
@@ -795,6 +1133,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
       name: name,
       quantity: quantity,
       status: widget.item.status,
+      recommendedItem: widget.item.recommendedItem,
     );
 
     try {

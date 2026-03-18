@@ -49,19 +49,21 @@ class ShoppingRepository {
     String householdId,
     String name, {
     int quantity = 1,
+    int? recommendedItemId,
   }) async {
     await supabase.from('shopping_item').insert({
       'household_id': householdId,
       'name': name,
       'status': 'PENDING', // Di default è da comprare
       'quantity': quantity,
+      'recommended_item_id': recommendedItemId,
     });
   }
 
   Future<List<ShoppingItem>> getList(String householdId) async {
     final response = await supabase
         .from('shopping_item')
-        .select()
+        .select('*,recommended_item:recommended_item_id (*)')
         .eq('household_id', householdId)
         .order('created_at');
 
@@ -71,78 +73,71 @@ class ShoppingRepository {
   }
 
   Stream<List<ShoppingItem>> watchShoppingItems(String householdId) async* {
+    // Keeping track of signatures to avoid unnecessary UI rebuilds
     String? lastSnapshotSignature;
-    var previousRowSignaturesById = <String, String>{};
 
-    await for (final rows
-        in supabase.from('shopping_item').stream(primaryKey: ['id'])) {
-      final nextRowsById = <String, Map<String, dynamic>>{};
+    await for (final rows in supabase.from('shopping_item').stream(primaryKey: ['id'])) {
+      
+      // 1. Filter rows for the current household
+      // Use .toString() on household_id to ensure String comparison
+      final filteredRows = rows.where((row) {
+        return row['household_id']?.toString() == householdId;
+      }).toList();
 
-      for (final row in rows) {
-        final incoming = Map<String, dynamic>.from(row);
-        final id = _readString(incoming['id']);
-        if (id == null) {
-          continue;
-        }
+      // 2. Extract unique Recommended Item IDs (as Integers)
+      final recommendedIds = filteredRows
+          .map((row) => row['recommended_item_id'])
+          .where((id) => id != null)
+          .map((id) => (id as num).toInt()) // The "Fix" for the type cast error
+          .toSet()
+          .toList();
 
-        final previous = _cachedShoppingRowsById[id];
-        nextRowsById[id] = previous == null
-            ? incoming
-            : <String, dynamic>{...previous, ...incoming};
-      }
-
-      _cachedShoppingRowsById
-        ..clear()
-        ..addAll(nextRowsById);
-
-      final filteredRows = _cachedShoppingRowsById.values
-          .where((row) => _readString(row['household_id']) == householdId)
-          .map((row) => Map<String, dynamic>.from(row))
-          .toList(growable: false);
-
-      final currentRowSignaturesById = <String, String>{};
-      for (final row in filteredRows) {
-        final id = _readString(row['id']);
-        if (id == null) {
-          continue;
-        }
-
-        final signature = _buildRowSignature(row);
-        currentRowSignaturesById[id] = signature;
-
-        final previousSignature = previousRowSignaturesById[id];
-        if (previousSignature != null && previousSignature != signature) {
-          if (kDebugMode) {
-            debugPrint('UTILITY UPDATE EVENT id=$id');
+      // 3. Fetch details for these recommendations from Supabase
+      Map<int, Map<String, dynamic>> recommendedDataMap = {};
+      
+      if (recommendedIds.isNotEmpty) {
+        try {
+          final recItems = await supabase
+              .from('recommended_item')
+              .select()
+              .inFilter('id', recommendedIds);
+          
+          for (var item in recItems) {
+            final int id = (item['id'] as num).toInt();
+            recommendedDataMap[id] = Map<String, dynamic>.from(item);
           }
+        } catch (e) {
+          debugPrint('Error fetching recommendations: $e');
         }
       }
-      previousRowSignaturesById = Map<String, String>.from(
-        currentRowSignaturesById,
-      );
 
+      // 4. Stitch the data together into ShoppingItem objects
+      final newList = filteredRows.map((row) {
+        try {
+          final rowData = Map<String, dynamic>.from(row);
+          final dynamic rawRecId = rowData['recommended_item_id'];
+
+          if (rawRecId != null) {
+            final int recId = (rawRecId as num).toInt();
+            // Inject the nested object so ShoppingItem.fromJson works
+            rowData['recommended_item'] = recommendedDataMap[recId];
+          } else {
+            rowData['recommended_item'] = null;
+          }
+
+          return ShoppingItem.fromJson(rowData);
+        } catch (e) {
+          debugPrint('Error parsing item: $e');
+          return null;
+        }
+      }).whereType<ShoppingItem>().toList();
+
+      // 5. Build snapshot signature and yield list
       final snapshotSignature = _buildSnapshotSignature(filteredRows);
-      if (snapshotSignature == lastSnapshotSignature) {
-        continue;
+      if (snapshotSignature != lastSnapshotSignature) {
+        lastSnapshotSignature = snapshotSignature;
+        yield newList;
       }
-      lastSnapshotSignature = snapshotSignature;
-
-      final newList = filteredRows
-          .map((row) {
-            try {
-              return ShoppingItem.fromJson(Map<String, dynamic>.from(row));
-            } catch (_) {
-              return null;
-            }
-          })
-          .whereType<ShoppingItem>()
-          .toList(growable: false);
-
-      if (kDebugMode) {
-        debugPrint('UTILITY SNAPSHOT EMITTED length=${newList.length}');
-      }
-
-      yield List<ShoppingItem>.from(newList);
     }
   }
 
