@@ -1,7 +1,7 @@
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/features/home/presentation/screens/home_screen.dart';
+import 'package:everyday_app/features/home/presentation/screens/home_placeholder_screen.dart';
 import 'package:everyday_app/legacy_app/screens/family_screen.dart';
-import 'package:everyday_app/legacy_app/screens/profile_screen.dart';
 import 'package:everyday_app/legacy_app/screens/utilities_screen.dart';
 import 'package:everyday_app/features/personnel/presentation/screens/personnel_screen.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +42,7 @@ class RoleTabSets {
         routeName: AppRouteNames.hostTabHome,
         label: 'Home',
         icon: Icons.home_filled,
-        builder: (_) => const HomeScreen(),
+        builder: (_) => const HomePlaceholderScreen(),
       ),
       RoleTabConfig(
         routeName: AppRouteNames.hostTabFamily,
@@ -55,8 +55,7 @@ class RoleTabSets {
         routeName: AppRouteNames.hostTabProfile,
         label: 'Profile',
         icon: Icons.person_outline,
-        // TODO(role-shell): replace legacy profile wrapper with role-native profile experience.
-        builder: (_) => const ProfileScreen(),
+        builder: (_) => const HomeScreen(),
       ),
     ];
   }
@@ -74,14 +73,13 @@ class RoleTabSets {
         routeName: AppRouteNames.cohostTabHome,
         label: 'Home',
         icon: Icons.home_filled,
-        builder: (_) => const HomeScreen(),
+        builder: (_) => const HomePlaceholderScreen(),
       ),
       RoleTabConfig(
         routeName: AppRouteNames.cohostTabProfile,
         label: 'Profile',
         icon: Icons.person_outline,
-
-        builder: (_) => const ProfileScreen(),
+        builder: (_) => const HomeScreen(),
       ),
     ];
   }
@@ -99,14 +97,13 @@ class RoleTabSets {
         routeName: AppRouteNames.personnelTabHome,
         label: 'Home',
         icon: Icons.home_filled,
-        builder: (_) => const HomeScreen(),
+        builder: (_) => const HomePlaceholderScreen(),
       ),
       RoleTabConfig(
         routeName: AppRouteNames.personnelTabProfile,
         label: 'Profile',
         icon: Icons.person_outline,
-        // TODO(role-shell): replace legacy profile wrapper with personnel-native profile tab.
-        builder: (_) => const ProfileScreen(),
+        builder: (_) => const HomeScreen(),
       ),
     ];
   }

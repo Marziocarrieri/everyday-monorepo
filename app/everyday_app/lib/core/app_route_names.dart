@@ -30,6 +30,7 @@ class AppRouteNames {
   static const String householdOnboarding = '/household/onboarding';
   static const String createHousehold = '/household/create';
   static const String joinHousehold = '/household/join';
+  static const String profileSettings = '/settings/profile';
   static const String welcome = '/legacy/welcome';
   static const String login2 = '/legacy/login2';
   static const String mainLayout = '/legacy/main-layout';
@@ -49,10 +50,7 @@ class WeekTasksRouteArgs {
   final String? initialMemberId;
   final String? initialUserId;
 
-  const WeekTasksRouteArgs({
-    this.initialMemberId,
-    this.initialUserId,
-  });
+  const WeekTasksRouteArgs({this.initialMemberId, this.initialUserId});
 }
 
 class AddTaskRouteArgs {
@@ -137,6 +135,18 @@ class CohostAddTaskRouteArgs {
 }
 
 class FridgeKeepingRouteArgs {
-  final Object initialArea; // Passiamo Object per non importare AreaType qui creando dipendenze strane, faremo il cast dopo
-  const FridgeKeepingRouteArgs({required this.initialArea});
+  final Object
+  initialArea; // Passiamo Object per non importare AreaType qui creando dipendenze strane, faremo il cast dopo
+  final bool openAddOnLaunch;
+
+  const FridgeKeepingRouteArgs({
+    required this.initialArea,
+    this.openAddOnLaunch = false,
+  });
+}
+
+class ProvisionListRouteArgs {
+  final bool openAddOnLaunch;
+
+  const ProvisionListRouteArgs({this.openAddOnLaunch = false});
 }

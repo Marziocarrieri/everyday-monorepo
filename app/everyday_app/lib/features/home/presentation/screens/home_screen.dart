@@ -68,7 +68,7 @@ class HomeScreen extends ConsumerWidget {
         ),
 
         Text(
-          'Home',
+          'My Space',
           style: GoogleFonts.manrope(
             fontSize: 26,
             fontWeight: FontWeight.w800,
@@ -76,7 +76,11 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
 
-        _buildIconBtn(Icons.notifications_none_rounded, () {}),
+        _buildIconBtn(
+          Icons.settings_rounded,
+          () =>
+              AppRouter.navigate<void>(context, AppRouteNames.profileSettings),
+        ),
       ],
     );
   }
@@ -87,11 +91,7 @@ class HomeScreen extends ConsumerWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Icon(
-          icon,
-          size: 26,
-          color: const Color(0xFF1F3A44),
-        ),
+        child: Icon(icon, size: 26, color: const Color(0xFF1F3A44)),
       ),
     );
   }
@@ -281,9 +281,8 @@ class HomeScreen extends ConsumerWidget {
 
     final sorted = [...incomplete]
       ..sort(
-        (a, b) => _scheduledMomentForTask(a).compareTo(
-          _scheduledMomentForTask(b),
-        ),
+        (a, b) =>
+            _scheduledMomentForTask(a).compareTo(_scheduledMomentForTask(b)),
       );
 
     final now = DateTime.now();
@@ -316,9 +315,7 @@ class HomeScreen extends ConsumerWidget {
       return day.add(const Duration(hours: 23, minutes: 59));
     }
 
-    final hour = parsedHour < 0
-        ? 0
-        : (parsedHour > 23 ? 23 : parsedHour);
+    final hour = parsedHour < 0 ? 0 : (parsedHour > 23 ? 23 : parsedHour);
     final minute = parsedMinute < 0
         ? 0
         : (parsedMinute > 59 ? 59 : parsedMinute);
@@ -345,17 +342,13 @@ class HomeScreen extends ConsumerWidget {
         return 'Sun';
     }
   }
-
 }
 
 class _TaskPreviewItem {
   final String title;
   final bool isCompleted;
 
-  const _TaskPreviewItem({
-    required this.title,
-    required this.isCompleted,
-  });
+  const _TaskPreviewItem({required this.title, required this.isCompleted});
 }
 
 Widget _buildPreviewChip({
@@ -370,10 +363,7 @@ Widget _buildPreviewChip({
     decoration: BoxDecoration(
       color: containerColor.withOpacity(0.14),
       borderRadius: BorderRadius.circular(26),
-      border: Border.all(
-        color: Colors.white.withOpacity(0.12),
-        width: 1,
-      ),
+      border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withOpacity(0.04),
@@ -516,15 +506,9 @@ class _HomeDailyPreviewTile extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF8FD14F),
-              Color(0xFF6BCB3C),
-            ],
+            colors: [Color(0xFF8FD14F), Color(0xFF6BCB3C)],
           ),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.25),
-            width: 1.2,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.2),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
@@ -612,10 +596,7 @@ class _HomeWeeklyPreviewTile extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF5ED0C4),
-              Color(0xFF43B8AD),
-            ],
+            colors: [Color(0xFF5ED0C4), Color(0xFF43B8AD)],
           ),
           boxShadow: [
             BoxShadow(
@@ -629,10 +610,7 @@ class _HomeWeeklyPreviewTile extends StatelessWidget {
               offset: const Offset(-6, -6),
             ),
           ],
-          border: Border.all(
-            color: Colors.white.withOpacity(0.25),
-            width: 1.2,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.2),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(36),
@@ -737,7 +715,9 @@ class _WeeklyTimelineRow extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final pillWidth = (constraints.maxWidth / 7).clamp(28.0, 44.0).toDouble();
+        final pillWidth = (constraints.maxWidth / 7)
+            .clamp(28.0, 44.0)
+            .toDouble();
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -825,11 +805,7 @@ class _WeekdayPillState extends State<_WeekdayPill> {
               ),
               const SizedBox(height: 6),
               if (isDone)
-                const Icon(
-                  Icons.check_rounded,
-                  size: 14,
-                  color: Colors.white,
-                )
+                const Icon(Icons.check_rounded, size: 14, color: Colors.white)
               else
                 Text(
                   isEmpty ? '–' : '${widget.item.pendingCount}',
@@ -867,15 +843,15 @@ void _showCalendarPopup(BuildContext context) {
   DateTime focusedDay = DateTime.now();
   DateTime? selectedDay = DateTime.now();
 
-  final Color colorAzzurro = const Color(0xFF5A8B9E); 
-  final Color colorOrange = const Color(0xFFF4A261); 
+  final Color colorAzzurro = const Color(0xFF5A8B9E);
+  final Color colorOrange = const Color(0xFFF4A261);
 
   showDialog(
     context: context,
-    barrierColor: colorAzzurro.withOpacity(0.15), 
+    barrierColor: colorAzzurro.withOpacity(0.15),
     builder: (context) {
       return BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8), 
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24),
@@ -884,7 +860,7 @@ void _showCalendarPopup(BuildContext context) {
               return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.85), 
+                  color: Colors.white.withOpacity(0.85),
                   borderRadius: BorderRadius.circular(40),
                   border: Border.all(color: Colors.white, width: 2),
                   boxShadow: [
@@ -902,7 +878,8 @@ void _showCalendarPopup(BuildContext context) {
                       firstDay: DateTime.utc(2020, 1, 1),
                       lastDay: DateTime.utc(2030, 12, 31),
                       focusedDay: focusedDay,
-                      selectedDayPredicate: (day) => isSameDay(selectedDay, day),
+                      selectedDayPredicate: (day) =>
+                          isSameDay(selectedDay, day),
                       headerStyle: HeaderStyle(
                         formatButtonVisible: false,
                         titleCentered: true,
@@ -980,7 +957,7 @@ void _showCalendarPopup(BuildContext context) {
 
                         Future.delayed(const Duration(milliseconds: 250), () {
                           if (!rootNavigator.mounted) return;
-                          rootNavigator.pop(); 
+                          rootNavigator.pop();
                           AppRouter.navigate<void>(
                             rootNavigator.context,
                             AppRouteNames.dailyTask,

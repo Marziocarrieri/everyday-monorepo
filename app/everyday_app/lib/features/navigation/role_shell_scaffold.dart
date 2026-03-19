@@ -69,54 +69,50 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white, // Sfondo bianco ripristinato
-      // extendBody a false previene che il contenuto vada sotto la barra
-      extendBody: false, 
+      backgroundColor: Colors.transparent,
+      extendBody: true,
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
       ),
-      // Sostituiamo il BottomNavigationBar nativo con la barra Premium
       bottomNavigationBar: _buildPremiumBottomNav(context),
     );
   }
 
-  // --- BARRA PREMIUM STILE MAIN_LAYOUT ---
+  IconData _refinedIcon(IconData icon) {
+    if (icon == Icons.home_filled) return Icons.home_rounded;
+    if (icon == Icons.person_outline) return Icons.person_rounded;
+    return icon;
+  }
+
   Widget _buildPremiumBottomNav(BuildContext context) {
     const selectedColor = Color(0xFF243C4A);
-    final unselectedColor = selectedColor.withValues(alpha: 0.35);
+    final unselectedColor = selectedColor.withValues(alpha: 0.42);
 
     return SafeArea(
       bottom: true,
       child: Container(
-        height: 74,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        height: 62,
+        margin: const EdgeInsets.fromLTRB(18, 0, 18, 10),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.white.withValues(alpha: 0.20),
-              Colors.white.withValues(alpha: 0.05),
-            ],
-          ),
+          borderRadius: BorderRadius.circular(24),
+          color: Colors.white.withValues(alpha: 0.18),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.20),
+            color: Colors.white.withValues(alpha: 0.22),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+              color: Colors.black.withValues(alpha: 0.045),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
             child: Container(
               color: Colors.transparent,
               child: Row(
@@ -125,7 +121,7 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
                   final isSelected = _selectedIndex == index;
                   final isProfileTab = index == widget.tabs.length - 1;
                   final iconColor = isSelected ? selectedColor : unselectedColor;
-                  final labelOpacity = isSelected ? 1.0 : 0.45;
+                  final displayIcon = _refinedIcon(tab.icon);
 
                   return Expanded(
                     child: GestureDetector(
@@ -146,36 +142,20 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
                           ? () => showProfileHouseholdBottomSheet(context)
                           : null,
                       child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AnimatedScale(
-                              scale: isSelected ? 1.1 : 1.0,
-                              duration: const Duration(milliseconds: 160),
-                              curve: Curves.easeOutCubic,
-                              child: Icon(
-                                tab.icon,
-                                color: iconColor,
-                                size: 24,
-                              ),
+                        child: Semantics(
+                          label: tab.label,
+                          selected: isSelected,
+                          button: true,
+                          child: AnimatedScale(
+                            scale: isSelected ? 1.08 : 1.0,
+                            duration: const Duration(milliseconds: 160),
+                            curve: Curves.easeOutCubic,
+                            child: Icon(
+                              displayIcon,
+                              color: iconColor,
+                              size: 23,
                             ),
-                            const SizedBox(height: 3),
-                            Opacity(
-                              opacity: labelOpacity,
-                              child: Text(
-                                tab.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.fade,
-                                softWrap: false,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: selectedColor,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),

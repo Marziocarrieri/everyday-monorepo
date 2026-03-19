@@ -8,22 +8,27 @@ import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
 import '../../features/personnel/data/models/household_member.dart';
 // IMPORTA IL NUOVO WIDGET CONDIVISO
-import 'package:everyday_app/shared/widgets/avatar_image.dart'; 
+import 'package:everyday_app/shared/widgets/avatar_image.dart';
+
+enum FamilyMemberSelectionFlowMode { addTask, viewActivity }
+
+void openFamilyMemberSelectionSheet(
+  BuildContext context,
+  AsyncValue<List<HouseholdMember>> members, {
+  FamilyMemberSelectionFlowMode flowMode =
+      FamilyMemberSelectionFlowMode.addTask,
+}) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) =>
+        SelectFamilyMemberSheet(members: members, flowMode: flowMode),
+  );
+}
 
 class FamilyScreen extends ConsumerWidget {
   const FamilyScreen({super.key});
-
-  void _openMemberSelectionSheet(
-    BuildContext context,
-    AsyncValue<List<HouseholdMember>> members,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => SelectFamilyMemberSheet(members: members),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,9 +38,12 @@ class FamilyScreen extends ConsumerWidget {
     // --- CONTROLLO RUOLI ---
     final role = AppContext.instance.activeMembership?.role.toUpperCase() ?? '';
     final isHost = role == 'HOST';
-    
+
     // Pulisco la stringa per controllare il Personnel con sicurezza
-    final cleanRole = role.replaceAll('-', '').replaceAll('_', '').replaceAll(' ', '');
+    final cleanRole = role
+        .replaceAll('-', '')
+        .replaceAll('_', '')
+        .replaceAll(' ', '');
     final isPersonnel = cleanRole == 'PERSONNEL';
 
     return Scaffold(
@@ -78,7 +86,7 @@ class FamilyScreen extends ConsumerWidget {
                       isHost ? Icons.add_rounded : Icons.pets,
                       onTap: () {
                         if (isHost) {
-                          _openMemberSelectionSheet(context, membersAsync);
+                          openFamilyMemberSelectionSheet(context, membersAsync);
                         } else {
                           Navigator.of(context).pushNamed(AppRouteNames.pets);
                         }
@@ -100,7 +108,8 @@ class FamilyScreen extends ConsumerWidget {
                       final memberRole = member.role.toUpperCase();
                       final isFamilyRole =
                           memberRole == 'HOST' || memberRole == 'COHOST';
-                      final isCurrentUser = currentUserId != null &&
+                      final isCurrentUser =
+                          currentUserId != null &&
                           member.userId == currentUserId;
                       return isFamilyRole && !isCurrentUser;
                     }).toList();
@@ -116,16 +125,19 @@ class FamilyScreen extends ConsumerWidget {
                         final member = familyMembers[index];
 
                         // --- LOGICA DI FALLBACK NICKNAME -> NOME PROFILO ---
-                        final displayName = (member.nickname != null && member.nickname!.trim().isNotEmpty)
+                        final displayName =
+                            (member.nickname != null &&
+                                member.nickname!.trim().isNotEmpty)
                             ? member.nickname!
                             : (member.profile?.name ?? 'Unknown');
-                            
-                        final displayInitial = displayName.isNotEmpty 
-                            ? displayName[0].toUpperCase() 
+
+                        final displayInitial = displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
                             : '?';
 
                         // Recuperiamo l'avatar (priorità a quello del membro, poi a quello del profilo)
-                        final avatarUrl = member.avatarUrl ?? member.profile?.avatarUrl;
+                        final avatarUrl =
+                            member.avatarUrl ?? member.profile?.avatarUrl;
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
@@ -133,12 +145,12 @@ class FamilyScreen extends ConsumerWidget {
                             context: context,
                             memberId: member.id,
                             userId: member.userId,
-                            name: displayName, 
-                            initial: displayInitial, 
+                            name: displayName,
+                            initial: displayInitial,
                             avatarUrl: avatarUrl, // PASSATO ALLA CARD
                             color: const Color(0xFFF4A261),
                             role: member.role,
-                            isPersonnel: isPersonnel, 
+                            isPersonnel: isPersonnel,
                           ),
                         );
                       },
@@ -194,7 +206,6 @@ class FamilyScreen extends ConsumerWidget {
     required bool isPersonnel,
     String? avatarUrl, // NUOVO PARAMETRO
   }) {
-    
     // Il widget base della Card (separato dal GestureDetector)
     Widget cardContent = ClipRRect(
       borderRadius: BorderRadius.circular(32),
@@ -274,7 +285,7 @@ class FamilyScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              
+
               // SE NON È PERSONNEL: Mostra la linea e la scritta "View Activity"
               if (!isPersonnel) ...[
                 Container(
@@ -340,8 +351,13 @@ class FamilyScreen extends ConsumerWidget {
 // ==========================================
 class SelectFamilyMemberSheet extends StatefulWidget {
   final AsyncValue<List<HouseholdMember>> members;
+  final FamilyMemberSelectionFlowMode flowMode;
 
-  const SelectFamilyMemberSheet({super.key, required this.members});
+  const SelectFamilyMemberSheet({
+    super.key,
+    required this.members,
+    this.flowMode = FamilyMemberSelectionFlowMode.addTask,
+  });
 
   @override
   State<SelectFamilyMemberSheet> createState() =>
@@ -351,9 +367,15 @@ class SelectFamilyMemberSheet extends StatefulWidget {
 class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
   final Set<String> _selectedMemberIds = {};
 
+  bool get _isViewActivityMode {
+    return widget.flowMode == FamilyMemberSelectionFlowMode.viewActivity;
+  }
+
   bool _isAssignableRole(String role) {
-    final normalized = role.toUpperCase().replaceAll('_', '');
-    return normalized == 'HOST' || normalized == 'COHOST';
+    final normalized = role.toUpperCase().replaceAll(RegExp(r'[-_\s]'), '');
+    return normalized == 'HOST' ||
+        normalized == 'COHOST' ||
+        normalized == 'PERSONNEL';
   }
 
   List<HouseholdMember> _assignableMembers(List<HouseholdMember> members) {
@@ -363,6 +385,8 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
   }
 
   bool get _isAllSelected {
+    if (_isViewActivityMode) return false;
+
     final list = _assignableMembers(widget.members.value ?? []);
     final assignableIds = list.map((member) => member.id).toSet();
     final selectedAssignableCount = _selectedMemberIds
@@ -373,6 +397,17 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
 
   void _toggleSelection(String id) {
     setState(() {
+      if (_isViewActivityMode) {
+        if (_selectedMemberIds.contains(id)) {
+          _selectedMemberIds.clear();
+        } else {
+          _selectedMemberIds
+            ..clear()
+            ..add(id);
+        }
+        return;
+      }
+
       if (_selectedMemberIds.contains(id)) {
         _selectedMemberIds.remove(id);
       } else {
@@ -382,6 +417,8 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
   }
 
   void _toggleSelectAll() {
+    if (_isViewActivityMode) return;
+
     final list = widget.members.value;
 
     if (list == null) return;
@@ -401,12 +438,13 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final Color titleInk = const Color(0xFF1F3A44);
     final Color brandBlue = const Color(0xFF5A8B9E);
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+        filter: ImageFilter.blur(sigmaX: 18.0, sigmaY: 18.0),
         child: Container(
           padding: EdgeInsets.only(
             left: 24,
@@ -415,8 +453,26 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
             bottom: MediaQuery.of(context).viewInsets.bottom + 30,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.9),
-            border: Border.all(color: Colors.white, width: 1.5),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFF7F3EF).withValues(alpha: 0.95),
+                Colors.white.withValues(alpha: 0.82),
+              ],
+            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.9),
+              width: 1.4,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 24,
+                offset: const Offset(0, -6),
+              ),
+            ],
           ),
           child: widget.members.when(
             loading: () => const SizedBox(
@@ -435,6 +491,12 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
               final selectedAssignableIds = _selectedMemberIds
                   .where((memberId) => assignableIds.contains(memberId))
                   .toSet();
+              final canContinue = _isViewActivityMode
+                  ? selectedAssignableIds.length == 1
+                  : selectedAssignableIds.isNotEmpty;
+              final title = _isViewActivityMode
+                  ? 'View Activity For...'
+                  : 'Assign Task To...';
 
               return Column(
                 mainAxisSize: MainAxisSize.min,
@@ -453,52 +515,96 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Assign Task To...',
-                        style: GoogleFonts.poppins(
-                          fontSize: 22,
+                        title,
+                        style: GoogleFonts.manrope(
+                          fontSize: 24,
                           fontWeight: FontWeight.w800,
-                          color: brandBlue,
+                          color: titleInk,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: _toggleSelectAll,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                      if (_isViewActivityMode)
+                        Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: _isAllSelected
-                                ? brandBlue
-                                : brandBlue.withValues(alpha: 0.1),
+                            color: Colors.white.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: brandBlue.withValues(alpha: 0.25),
+                              width: 1,
+                            ),
                           ),
                           child: Text(
-                            _isAllSelected ? 'Deselect All' : 'Select All',
-                            style: GoogleFonts.poppins(
+                            'Single select',
+                            style: GoogleFonts.manrope(
                               fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _isAllSelected ? Colors.white : brandBlue,
+                              fontWeight: FontWeight.w700,
+                              color: brandBlue,
+                            ),
+                          ),
+                        )
+                      else
+                        GestureDetector(
+                          onTap: _toggleSelectAll,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _isAllSelected
+                                  ? brandBlue
+                                  : Colors.white.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: _isAllSelected
+                                    ? brandBlue.withValues(alpha: 0.7)
+                                    : brandBlue.withValues(alpha: 0.25),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              _isAllSelected ? 'Deselect All' : 'Select All',
+                              style: GoogleFonts.manrope(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _isAllSelected
+                                    ? Colors.white
+                                    : brandBlue,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
 
                   ...assignableMembers.map((member) {
-                    final isSelected = selectedAssignableIds.contains(member.id);
-                    
+                    final isSelected = selectedAssignableIds.contains(
+                      member.id,
+                    );
+
                     // --- LOGICA DI FALLBACK ---
-                    final displayName = (member.nickname != null && member.nickname!.trim().isNotEmpty)
+                    final displayName =
+                        (member.nickname != null &&
+                            member.nickname!.trim().isNotEmpty)
                         ? member.nickname!
                         : (member.profile?.name ?? 'Unknown Member');
-                    final displayInitial = displayName.isNotEmpty 
-                        ? displayName[0].toUpperCase() 
+                    final displayInitial = displayName.isNotEmpty
+                        ? displayName[0].toUpperCase()
                         : '?';
-                    final avatarUrl = member.avatarUrl ?? member.profile?.avatarUrl;
+                    final avatarUrl =
+                        member.avatarUrl ?? member.profile?.avatarUrl;
 
                     return GestureDetector(
                       onTap: () => _toggleSelection(member.id),
@@ -510,21 +616,31 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? brandBlue.withValues(alpha: 0.1)
-                              : Colors.white,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isSelected
+                                ? [
+                                    const Color(0xFFE3EFF4),
+                                    const Color(0xFFF7FAFC),
+                                  ]
+                                : [
+                                    Colors.white.withValues(alpha: 0.88),
+                                    Colors.white.withValues(alpha: 0.56),
+                                  ],
+                          ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isSelected
-                                ? brandBlue.withValues(alpha: 0.5)
-                                : Colors.white,
+                                ? brandBlue.withValues(alpha: 0.42)
+                                : Colors.white.withValues(alpha: 0.9),
                             width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 14,
+                              offset: const Offset(0, 7),
                             ),
                           ],
                         ),
@@ -540,10 +656,10 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                             Expanded(
                               child: Text(
                                 displayName,
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.manrope(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF3D342C),
+                                  fontWeight: FontWeight.w700,
+                                  color: titleInk,
                                 ),
                               ),
                             ),
@@ -553,7 +669,7 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                                   : Icons.circle_outlined,
                               color: isSelected
                                   ? brandBlue
-                                  : Colors.grey.withValues(alpha: 0.4),
+                                  : titleInk.withValues(alpha: 0.35),
                               size: 26,
                             ),
                           ],
@@ -566,8 +682,8 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
-                        'No host/cohost members available',
-                        style: GoogleFonts.poppins(
+                        'No host/cohost/personnel members available',
+                        style: GoogleFonts.manrope(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Colors.grey.withValues(alpha: 0.8),
@@ -578,9 +694,32 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                   const SizedBox(height: 30),
 
                   GestureDetector(
-                    onTap: selectedAssignableIds.isEmpty
+                    onTap: !canContinue
                         ? null
                         : () {
+                            if (_isViewActivityMode) {
+                              final selectedMemberId =
+                                  selectedAssignableIds.first;
+
+                              String? selectedUserId;
+                              for (final member in assignableMembers) {
+                                if (member.id == selectedMemberId) {
+                                  selectedUserId = member.userId;
+                                  break;
+                                }
+                              }
+
+                              Navigator.pop(context);
+                              Navigator.of(context).pushNamed(
+                                AppRouteNames.userTaskHistory,
+                                arguments: UserTaskHistoryRouteArgs(
+                                  targetMemberId: selectedMemberId,
+                                  targetUserId: selectedUserId,
+                                ),
+                              );
+                              return;
+                            }
+
                             String? preselectedAssigneeUserId;
                             if (selectedAssignableIds.length == 1) {
                               for (final member in assignableMembers) {
@@ -607,16 +746,31 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                       width: double.infinity,
                       height: 60,
                       decoration: BoxDecoration(
-                        color: selectedAssignableIds.isEmpty
+                        gradient: !canContinue
+                            ? null
+                            : const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF5A8B9E), Color(0xFF3E6D81)],
+                              ),
+                        color: !canContinue
                             ? Colors.grey.withValues(alpha: 0.5)
-                            : brandBlue,
+                            : null,
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: selectedAssignableIds.isEmpty
+                        border: Border.all(
+                          color: !canContinue
+                              ? Colors.white.withValues(alpha: 0.55)
+                              : Colors.white.withValues(alpha: 0.7),
+                          width: 1,
+                        ),
+                        boxShadow: !canContinue
                             ? []
                             : [
                                 BoxShadow(
-                                  color: brandBlue.withValues(alpha: 0.3),
-                                  blurRadius: 20,
+                                  color: const Color(
+                                    0xFF3E6D81,
+                                  ).withValues(alpha: 0.32),
+                                  blurRadius: 18,
                                   offset: const Offset(0, 10),
                                 ),
                               ],
@@ -624,10 +778,10 @@ class _SelectFamilyMemberSheetState extends State<SelectFamilyMemberSheet> {
                       child: Center(
                         child: Text(
                           'Continue',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.manrope(
                             color: Colors.white,
                             fontSize: 17,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),

@@ -10,6 +10,7 @@ import 'package:everyday_app/features/navigation/role_shell_gate.dart';
 import 'package:everyday_app/legacy_app/screens/diet_screen.dart';
 import 'package:everyday_app/legacy_app/screens/family_screen.dart';
 import 'package:everyday_app/legacy_app/screens/login2_screen.dart';
+import 'package:everyday_app/legacy_app/screens/profile_screen.dart';
 import 'package:everyday_app/features/pets/presentation/screens/pet_activities_screen.dart';
 import 'package:everyday_app/features/pets/presentation/screens/pets_screen.dart';
 import 'package:everyday_app/legacy_app/screens/welcome_screen.dart';
@@ -19,8 +20,7 @@ import 'package:everyday_app/features/tasks/presentation/screens/add_task_screen
 import 'package:everyday_app/features/tasks/presentation/screens/daily_task_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:everyday_app/features/tasks/presentation/screens/week_tasks_screen.dart';
-import 'package:everyday_app/features/fridge/presentation/screens/provision_history_screen.dart'; 
-
+import 'package:everyday_app/features/fridge/presentation/screens/provision_history_screen.dart';
 
 class AppRouter {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
@@ -98,14 +98,18 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => FridgeKeepingScreen(
             // Cast dell'argomento, se non c'è passa null
-            initialArea: args?.initialArea, 
+            initialArea: args?.initialArea,
+            openAddOnLaunch: args?.openAddOnLaunch ?? false,
           ),
           settings: settings,
         );
 
       case AppRouteNames.provisionList:
+        final args = settings.arguments as ProvisionListRouteArgs?;
         return MaterialPageRoute(
-          builder: (_) => const ProvisionListScreen(),
+          builder: (_) => ProvisionListScreen(
+            openAddOnLaunch: args?.openAddOnLaunch ?? false,
+          ),
           settings: settings,
         );
 
@@ -175,6 +179,12 @@ class AppRouter {
       case AppRouteNames.joinHousehold:
         return MaterialPageRoute(
           builder: (_) => const JoinHouseholdScreen(),
+          settings: settings,
+        );
+
+      case AppRouteNames.profileSettings:
+        return MaterialPageRoute(
+          builder: (_) => const ProfileScreen(),
           settings: settings,
         );
 
@@ -250,8 +260,11 @@ class AppRouter {
         );
 
       case AppRouteNames.cohostProvisionList:
+        final args = settings.arguments as ProvisionListRouteArgs?;
         return MaterialPageRoute(
-          builder: (_) => const ProvisionListScreen(),
+          builder: (_) => ProvisionListScreen(
+            openAddOnLaunch: args?.openAddOnLaunch ?? false,
+          ),
           settings: settings,
         );
 
