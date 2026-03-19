@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'home_completion_badge.dart';
-import 'home_task_preview_tile.dart';
+// Richiama solo la righina dei task, nient'altro!
+import 'home_task_preview_tile.dart'; 
 
 class HomeDailyPreviewItem {
   final String title;
@@ -30,121 +30,123 @@ class HomeDailyModule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFFF08A4B);
-    const surfaceColor = Color(0xFFFFF3EB);
+    const brightColor = Color(0xFF8C6AEC);
+    const darkColor = Color(0xFF5D3FAD);
+    
     final previewTasks = previewItems.take(3).toList(growable: false);
     final normalizedCompletion = completion.clamp(0.0, 1.0);
-
-    final taskListPreview = previewTasks.isEmpty
-        ? Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              emptyLabel,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF3D342C).withValues(alpha: 0.75),
-              ),
-            ),
-          )
-        : Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (int i = 0; i < previewTasks.length; i++) ...[
-                SizedBox(
-                  height: 40,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: HomeTaskPreviewTile(
-                      title: previewTasks[i].title,
-                      isCompleted: previewTasks[i].isCompleted,
-                      accentColor: primaryColor,
-                      variant: HomeTaskPreviewVariant.daily,
-                    ),
-                  ),
-                ),
-                if (i != previewTasks.length - 1)
-                  const SizedBox(height: 10),
-              ],
-            ],
-          );
-
-    final progressRow = Row(
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              height: 6,
-              color: primaryColor.withValues(alpha: 0.2),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: normalizedCompletion,
-                  child: Container(
-                    color: primaryColor.withValues(alpha: 0.9),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(18), 
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          gradient: LinearGradient(
+          borderRadius: BorderRadius.circular(32),
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              surfaceColor,
-              const Color(0xFFFFF8F4),
-            ],
-          ),
-          border: Border.all(
-            color: primaryColor.withValues(alpha: 0.2),
-            width: 1.2,
+            colors: [brightColor, darkColor],
           ),
           boxShadow: [
             BoxShadow(
-              color: primaryColor.withValues(alpha: 0.12),
-              blurRadius: 22,
-              offset: const Offset(0, 12),
+              color: brightColor.withOpacity(0.35),
+              blurRadius: 30,
+              offset: const Offset(0, 18),
             ),
           ],
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // HEADER 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Daily Tasks',
                   style: GoogleFonts.poppins(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF3D342C),
+                    color: Colors.white,
                   ),
                 ),
-                HomeCompletionBadge(
-                  percent: (normalizedCompletion * 100).round(),
-                  accentColor: primaryColor,
+                // --- BADGE DELLA PERCENTUALE DA SOLO ---
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2), 
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${(normalizedCompletion * 100).round()}%',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            taskListPreview,
-            const SizedBox(height: 8),
-            progressRow,
+            
+            const SizedBox(height: 16), 
+            
+            // --- LISTA SCORREVOLE ANTI-ERRORE ---
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: previewTasks.isEmpty
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          emptyLabel,
+                          style: GoogleFonts.manrope(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          for (int i = 0; i < previewTasks.length; i++) ...[
+                            HomeTaskPreviewTile(
+                              title: previewTasks[i].title,
+                              isCompleted: previewTasks[i].isCompleted,
+                              variant: HomeTaskPreviewVariant.daily,
+                              themeColor: brightColor, 
+                            ),
+                            if (i != previewTasks.length - 1) 
+                              const SizedBox(height: 8),
+                          ],
+                        ],
+                      ),
+              ),
+            ),
+              
+            const SizedBox(height: 12),
+            
+            // PROGRESS BAR
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                height: 6,
+                color: Colors.white.withOpacity(0.25),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: normalizedCompletion,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

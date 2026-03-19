@@ -6,14 +6,14 @@ enum HomeTaskPreviewVariant { daily, weekly }
 class HomeTaskPreviewTile extends StatelessWidget {
   final String title;
   final bool isCompleted;
-  final Color accentColor;
   final HomeTaskPreviewVariant variant;
+  final Color themeColor;
 
   const HomeTaskPreviewTile({
     super.key,
     required this.title,
-    required this.accentColor,
     required this.variant,
+    required this.themeColor,
     this.isCompleted = false,
   });
 
@@ -21,29 +21,32 @@ class HomeTaskPreviewTile extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (variant) {
       case HomeTaskPreviewVariant.daily:
-        return Opacity(
-          opacity: 0.9,
+        return Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15), // Vetro semi-trasparente
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1,
+            ),
+          ),
           child: Row(
             children: [
               Container(
-                width: 16,
-                height: 16,
+                width: 18,
+                height: 18,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isCompleted
-                      ? accentColor.withValues(alpha: 0.95)
-                      : Colors.transparent,
+                  color: isCompleted ? Colors.white : Colors.transparent,
                   border: Border.all(
-                    color: accentColor.withValues(alpha: 0.5),
+                    color: Colors.white.withValues(alpha: isCompleted ? 1.0 : 0.5),
                     width: 1.6,
                   ),
                 ),
                 child: isCompleted
-                    ? const Icon(
-                        Icons.check_rounded,
-                        size: 11,
-                        color: Colors.white,
-                      )
+                    ? Icon(Icons.check_rounded, size: 12, color: themeColor)
                     : null,
               ),
               const SizedBox(width: 10),
@@ -52,31 +55,38 @@ class HomeTaskPreviewTile extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.manrope(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF3D342C),
+                    color: Colors.white.withValues(alpha: 0.95), // Testo bianco
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
               ),
             ],
           ),
         );
+        
       case HomeTaskPreviewVariant.weekly:
         return Container(
-          height: 32,
+          height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: Colors.white.withValues(alpha: 0.15), 
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
               Container(
                 width: 8,
                 height: 8,
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.9),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -86,10 +96,10 @@ class HomeTaskPreviewTile extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.manrope(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF3D342C).withValues(alpha: 0.88),
+                    color: Colors.white.withValues(alpha: 0.95),
                   ),
                 ),
               ),

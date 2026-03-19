@@ -72,7 +72,6 @@ final householdMembersStreamProvider = StreamProvider<List<HouseholdMember>>((
   return repository.watchMembers(householdId);
 });
 
-// --- INIZIO PARTE MODIFICATA ---
 final dietStreamProvider = StreamProvider<DietDocument?>((ref) {
   final householdId = ref.watch(currentHouseholdIdProvider);
   
@@ -90,4 +89,3 @@ final dietStreamProvider = StreamProvider<DietDocument?>((ref) {
   // 3. Passiamo entrambi i parametri al repository aggiornato
   return repository.watchDiet(householdId, userId);
 });
-// --- FINE PARTE MODIFICATA ---

@@ -1,90 +1,208 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'home_task_preview_tile.dart';
 
+enum WeeklyDayState { empty, pending, done }
+
+class WeeklyTimelineItem {
+  final String label;
+  final int pendingCount;
+  final WeeklyDayState state;
+
+  const WeeklyTimelineItem({
+    required this.label,
+    required this.pendingCount,
+    required this.state,
+  });
+}
+
+class NextWeeklyTaskPreviewData {
+  final String title;
+  final bool isCompleted;
+
+  const NextWeeklyTaskPreviewData({
+    required this.title,
+    required this.isCompleted,
+  });
+}
+
 class HomeWeeklyModule extends StatelessWidget {
-  final List<String> previewTitles;
-  final String emptyLabel;
+  final List<WeeklyTimelineItem> timelineItems;
+  final NextWeeklyTaskPreviewData? nextTask;
+  final String? statusLabel;
   final VoidCallback onTap;
 
   const HomeWeeklyModule({
     super.key,
-    required this.previewTitles,
-    required this.emptyLabel,
+    required this.timelineItems,
+    this.nextTask,
+    this.statusLabel,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF6FAE95);
-    const surfaceColor = Color(0xFFEDF6F2);
-    final preview = previewTitles.take(4).toList(growable: false);
+    const brightColor = Color(0xFF38C19E);
+    const darkColor = Color(0xFF288C72);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
-            color: primaryColor.withValues(alpha: 0.24),
-            width: 1.2,
+          borderRadius: BorderRadius.circular(32),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [brightColor, darkColor],
           ),
           boxShadow: [
             BoxShadow(
-              color: primaryColor.withValues(alpha: 0.12),
-              blurRadius: 22,
-              offset: const Offset(0, 12),
+              color: brightColor.withOpacity(0.35),
+              blurRadius: 30,
+              offset: const Offset(0, 18),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // HEADER (Senza icona calendario)
             Text(
               'Weekly Tasks',
               style: GoogleFonts.poppins(
-                fontSize: 20,
+                fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF3D342C),
+                color: Colors.white,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16), 
+            
+            // TIMELINE PILLS
+            _WeeklyTimelineRow(items: timelineItems, themeColor: brightColor),
+            
+            const SizedBox(height: 16),
+            Text(
+              'Next',
+              style: GoogleFonts.manrope(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Colors.white.withOpacity(0.8),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            
+            // --- FIX OVERFLOW & DESIGN ---
             Expanded(
-              child: preview.isEmpty
-                  ? Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        emptyLabel,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF3D342C).withValues(alpha: 0.72),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: nextTask != null
+                  ? HomeTaskPreviewTile(
+                      title: nextTask!.title,
+                      isCompleted: nextTask!.isCompleted,
+                      variant: HomeTaskPreviewVariant.daily, // ORA USA LO STESSO DESIGN DEL DAILY!
+                      themeColor: brightColor,
+                    )
+                  : SizedBox(
+                      height: 44,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          statusLabel ?? 'All weekly tasks completed',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.manrope(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white.withOpacity(0.96),
+                          ),
                         ),
                       ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (var index = 0; index < preview.length; index++)
-                          Padding(
-                            padding: EdgeInsets.only(
-                              bottom: index == preview.length - 1 ? 0 : 8,
-                            ),
-                            child: HomeTaskPreviewTile(
-                              title: preview[index],
-                              accentColor: primaryColor,
-                              variant: HomeTaskPreviewVariant.weekly,
-                            ),
-                          ),
-                      ],
                     ),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _WeeklyTimelineRow extends StatelessWidget {
+  final List<WeeklyTimelineItem> items;
+  final Color themeColor;
+
+  const _WeeklyTimelineRow({required this.items, required this.themeColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final safeItems = items.length >= 7
+        ? items.take(7).toList(growable: false)
+        : [
+            ...items,
+            ...List<WeeklyTimelineItem>.generate(
+              7 - items.length,
+              (_) => const WeeklyTimelineItem(label: '-', pendingCount: 0, state: WeeklyDayState.empty),
+            ),
+          ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pillWidth = (constraints.maxWidth / 7).clamp(28.0, 44.0).toDouble();
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            for (final item in safeItems)
+              SizedBox(width: pillWidth, height: 56, child: _WeekdayPill(item: item, themeColor: themeColor)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _WeekdayPill extends StatelessWidget {
+  final WeeklyTimelineItem item;
+  final Color themeColor;
+
+  const _WeekdayPill({required this.item, required this.themeColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final isEmpty = item.state == WeeklyDayState.empty;
+    final isPending = item.state == WeeklyDayState.pending;
+    final isDone = item.state == WeeklyDayState.done;
+
+    final backgroundColor = isDone
+        ? Colors.white 
+        : (isPending ? Colors.white.withOpacity(0.25) : Colors.white.withOpacity(0.1));
+    
+    final textColor = isDone ? themeColor : (isPending ? Colors.white : Colors.white.withOpacity(0.5));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isPending ? Colors.white.withOpacity(0.4) : Colors.transparent),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            item.label,
+            style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700, color: textColor),
+          ),
+          const SizedBox(height: 6),
+          if (isDone)
+            Icon(Icons.check_rounded, size: 14, color: themeColor)
+          else
+            Text(
+              isEmpty ? '–' : '${item.pendingCount}',
+              style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w800, color: textColor),
+            ),
+        ],
       ),
     );
   }
