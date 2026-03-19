@@ -10,12 +10,12 @@ import 'package:everyday_app/features/pets/presentation/providers/pets_providers
 import 'package:everyday_app/features/pets/presentation/sheets/select_pet_sheet.dart';
 import 'package:everyday_app/legacy_app/utilities_ui/family_screen.dart'
     show openFamilyMemberSelectionSheet, FamilyMemberSelectionFlowMode;
+import 'package:everyday_app/shared/widgets/main_tab_screen_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _homeBackground = Color(0xFFF4F1ED);
 const _homeInk = Color(0xFF1F3A44);
 const _maxActiveQuickActions = 6;
 const _quickActionsPrefsKey = 'home.quick_actions.active.v1';
@@ -216,29 +216,38 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
         : ref.watch(petsStreamProvider(householdId));
 
     return Scaffold(
-      backgroundColor: _homeBackground,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 24),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildAgentReportCard(context),
-                      const SizedBox(height: 20),
-                      _buildQuickActionsCard(context, membersAsync, petsAsync),
-                    ],
+      backgroundColor: Colors.transparent,
+      body: MainTabScreenBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 20.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildAgentReportCard(context),
+                        const SizedBox(height: 20),
+                        _buildQuickActionsCard(
+                          context,
+                          membersAsync,
+                          petsAsync,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -251,7 +260,7 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
 
   Widget _buildAgentReportCard(BuildContext context) {
     return _GlassSectionCard(
-      gradientColors: const [Color(0xCC809AAA), Color(0xB35A7484)],
+      gradientColors: const [Color(0xFF6B8EA5), Color(0xFF3D5D72)],
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 210),
         child: Column(
@@ -490,7 +499,7 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
     }
 
     return _GlassSectionCard(
-      gradientColors: const [Color(0xCCE7C6B1), Color(0xB3A0D2CB)],
+      gradientColors: const [Color(0xFFDABBA4), Color(0xFF8FAFA8)],
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 260),
         child: Column(
@@ -640,12 +649,12 @@ class _GlassSectionCard extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 28,
-                offset: const Offset(0, 14),
+                color: gradientColors.first.withValues(alpha: 0.35),
+                blurRadius: 30,
+                offset: const Offset(0, 18),
               ),
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.14),
+                color: Colors.white.withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(-4, -4),
               ),

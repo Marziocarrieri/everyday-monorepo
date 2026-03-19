@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // Richiama solo la righina dei task, nient'altro!
-import 'home_task_preview_tile.dart'; 
+import 'home_task_preview_tile.dart';
 
 class HomeDailyPreviewItem {
   final String title;
   final bool isCompleted;
 
-  const HomeDailyPreviewItem({
-    required this.title,
-    required this.isCompleted,
-  });
+  const HomeDailyPreviewItem({required this.title, required this.isCompleted});
 }
 
 class HomeDailyModule extends StatelessWidget {
@@ -30,9 +27,9 @@ class HomeDailyModule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brightColor = Color(0xFF8C6AEC);
-    const darkColor = Color(0xFF5D3FAD);
-    
+    const brightColor = Color(0xFFC98D74);
+    const darkColor = Color(0xFFB06F59);
+
     final previewTasks = previewItems.take(3).toList(growable: false);
     final normalizedCompletion = completion.clamp(0.0, 1.0);
 
@@ -40,7 +37,7 @@ class HomeDailyModule extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(18), 
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
           gradient: const LinearGradient(
@@ -50,7 +47,7 @@ class HomeDailyModule extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: brightColor.withOpacity(0.35),
+              color: brightColor.withValues(alpha: 0.35),
               blurRadius: 30,
               offset: const Offset(0, 18),
             ),
@@ -59,7 +56,7 @@ class HomeDailyModule extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER 
+            // HEADER
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -73,9 +70,12 @@ class HomeDailyModule extends StatelessWidget {
                 ),
                 // --- BADGE DELLA PERCENTUALE DA SOLO ---
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2), 
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -89,9 +89,9 @@ class HomeDailyModule extends StatelessWidget {
                 ),
               ],
             ),
-            
-            const SizedBox(height: 16), 
-            
+
+            const SizedBox(height: 16),
+
             // --- LISTA SCORREVOLE ANTI-ERRORE ---
             Expanded(
               child: SingleChildScrollView(
@@ -104,7 +104,7 @@ class HomeDailyModule extends StatelessWidget {
                           style: GoogleFonts.manrope(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                       )
@@ -115,24 +115,24 @@ class HomeDailyModule extends StatelessWidget {
                               title: previewTasks[i].title,
                               isCompleted: previewTasks[i].isCompleted,
                               variant: HomeTaskPreviewVariant.daily,
-                              themeColor: brightColor, 
+                              themeColor: brightColor,
                             ),
-                            if (i != previewTasks.length - 1) 
+                            if (i != previewTasks.length - 1)
                               const SizedBox(height: 8),
                           ],
                         ],
                       ),
               ),
             ),
-              
+
             const SizedBox(height: 12),
-            
+
             // PROGRESS BAR
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: Container(
                 height: 6,
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: FractionallySizedBox(

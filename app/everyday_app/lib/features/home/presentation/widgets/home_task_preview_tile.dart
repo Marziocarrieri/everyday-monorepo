@@ -22,11 +22,13 @@ class HomeTaskPreviewTile extends StatelessWidget {
     switch (variant) {
       case HomeTaskPreviewVariant.daily:
         return Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15), // Vetro semi-trasparente
-            borderRadius: BorderRadius.circular(20),
+            color: Colors.white.withValues(
+              alpha: 0.15,
+            ), // Vetro semi-trasparente
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.25),
               width: 1,
@@ -41,7 +43,9 @@ class HomeTaskPreviewTile extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: isCompleted ? Colors.white : Colors.transparent,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: isCompleted ? 1.0 : 0.5),
+                    color: Colors.white.withValues(
+                      alpha: isCompleted ? 1.0 : 0.5,
+                    ),
                     width: 1.6,
                   ),
                 ),
@@ -67,13 +71,13 @@ class HomeTaskPreviewTile extends StatelessWidget {
             ],
           ),
         );
-        
+
       case HomeTaskPreviewVariant.weekly:
         return Container(
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15), 
+            color: Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.25),

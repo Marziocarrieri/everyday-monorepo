@@ -6,11 +6,22 @@ import 'dart:ui';
 import 'package:everyday_app/core/app_context.dart';
 import 'package:everyday_app/core/app_route_names.dart';
 import 'package:everyday_app/core/providers/app_state_providers.dart';
+import 'package:everyday_app/shared/widgets/main_tab_screen_background.dart';
 import '../../features/personnel/data/models/household_member.dart';
 // IMPORTA IL NUOVO WIDGET CONDIVISO
 import 'package:everyday_app/shared/widgets/avatar_image.dart';
 
 enum FamilyMemberSelectionFlowMode { addTask, viewActivity }
+
+const _familyInk = Color(0xFF1F3A44);
+const _familyAccent = Color(0xFF5A8B9E);
+const _familyActionInk = Color(0xFF243C4A);
+const _memberCardTintPalette = <Color>[
+  Color(0xFF9FC8E8),
+  Color(0xFF9FD8CF),
+  Color(0xFFD8C4AE),
+  Color(0xFFB7D5A5),
+];
 
 void openFamilyMemberSelectionSheet(
   BuildContext context,
@@ -47,115 +58,196 @@ class FamilyScreen extends ConsumerWidget {
     final isPersonnel = cleanRole == 'PERSONNEL';
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            children: [
-              // HEADER PREMIUM DINAMICO IN BASE AL RUOLO
-              SizedBox(
-                height: 48,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Tasto Sinistro: Pets (se Host), Back (se Cohost/Personnel)
-                    _buildHeaderIcon(
-                      isHost ? Icons.pets : Icons.arrow_back_ios_new_rounded,
-                      onTap: () {
-                        if (isHost) {
-                          Navigator.of(context).pushNamed(AppRouteNames.pets);
-                        } else {
-                          Navigator.pop(context);
-                        }
-                      },
-                    ),
+      backgroundColor: Colors.transparent,
+      body: MainTabScreenBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 20.0,
+            ),
+            child: Column(
+              children: [
+                _buildFamilyHeader(context: context, isHost: isHost),
+                const SizedBox(height: 24),
 
-                    Text(
-                      'Family',
-                      style: GoogleFonts.poppins(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF5A8B9E),
-                        letterSpacing: 0.5,
+                Expanded(
+                  child: membersAsync.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, _) => Center(
+                      child: Text(
+                        'Error: $error',
+                        style: GoogleFonts.manrope(
+                          color: _familyInk.withValues(alpha: 0.72),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
+                    data: (members) {
+                      final familyMembers = members.where((member) {
+                        final memberRole = member.role.toUpperCase();
+                        final isFamilyRole =
+                            memberRole == 'HOST' || memberRole == 'COHOST';
+                        final isCurrentUser =
+                            currentUserId != null &&
+                            member.userId == currentUserId;
+                        return isFamilyRole && !isCurrentUser;
+                      }).toList();
 
-                    // Tasto Destro: Add (se Host), Pets (se Cohost/Personnel)
-                    _buildHeaderIcon(
-                      isHost ? Icons.add_rounded : Icons.pets,
+                      if (familyMembers.isEmpty) {
+                        return _buildEmptyState(message: 'No members found');
+                      }
+
+                      return ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: familyMembers.length,
+                        itemBuilder: (context, index) {
+                          final member = familyMembers[index];
+
+                          // --- LOGICA DI FALLBACK NICKNAME -> NOME PROFILO ---
+                          final displayName =
+                              (member.nickname != null &&
+                                  member.nickname!.trim().isNotEmpty)
+                              ? member.nickname!
+                              : (member.profile?.name ?? 'Unknown');
+
+                          final displayInitial = displayName.isNotEmpty
+                              ? displayName[0].toUpperCase()
+                              : '?';
+
+                          // Recuperiamo l'avatar (priorità a quello del membro, poi a quello del profilo)
+                          final avatarUrl =
+                              member.avatarUrl ?? member.profile?.avatarUrl;
+
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: index == familyMembers.length - 1
+                                  ? 8
+                                  : 14,
+                            ),
+                            child: _buildPremiumFamilyCard(
+                              context: context,
+                              memberId: member.id,
+                              userId: member.userId,
+                              name: displayName,
+                              initial: displayInitial,
+                              avatarUrl: avatarUrl, // PASSATO ALLA CARD
+                              color:
+                                  _memberCardTintPalette[index %
+                                      _memberCardTintPalette.length],
+                              role: member.role,
+                              isPersonnel: isPersonnel,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                if (isHost) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.center,
+                    child: _buildMultiassignButton(
                       onTap: () {
-                        if (isHost) {
-                          openFamilyMemberSelectionSheet(context, membersAsync);
-                        } else {
-                          Navigator.of(context).pushNamed(AppRouteNames.pets);
-                        }
+                        openFamilyMemberSelectionSheet(context, membersAsync);
                       },
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 4),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFamilyHeader({
+    required BuildContext context,
+    required bool isHost,
+  }) {
+    return SizedBox(
+      height: 46,
+      child: Row(
+        children: [
+          _buildHeaderIcon(
+            icon: isHost
+                ? Icons.pets_rounded
+                : Icons.arrow_back_ios_new_rounded,
+            onTap: () {
+              if (isHost) {
+                Navigator.of(context).pushNamed(AppRouteNames.pets);
+              } else {
+                Navigator.pop(context);
+              }
+            },
+          ),
+          Expanded(
+            child: Center(
+              child: Text(
+                'Family',
+                style: GoogleFonts.manrope(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: _familyInk,
                 ),
               ),
-              const SizedBox(height: 30),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
 
-              // LISTA CARD PREMIUM (MODIFICATA PER IL CLICK E L'AVATAR)
-              Expanded(
-                child: membersAsync.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => Center(child: Text('Error: $error')),
-                  data: (members) {
-                    final familyMembers = members.where((member) {
-                      final memberRole = member.role.toUpperCase();
-                      final isFamilyRole =
-                          memberRole == 'HOST' || memberRole == 'COHOST';
-                      final isCurrentUser =
-                          currentUserId != null &&
-                          member.userId == currentUserId;
-                      return isFamilyRole && !isCurrentUser;
-                    }).toList();
+  Widget _buildHeaderIcon({
+    required IconData icon,
+    VoidCallback? onTap,
+    String? tooltip,
+  }) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, color: _familyInk, size: 26),
+      splashRadius: 22,
+      tooltip: tooltip,
+    );
+  }
 
-                    if (familyMembers.isEmpty) {
-                      return const Center(child: Text('No members found'));
-                    }
-
-                    return ListView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: familyMembers.length,
-                      itemBuilder: (context, index) {
-                        final member = familyMembers[index];
-
-                        // --- LOGICA DI FALLBACK NICKNAME -> NOME PROFILO ---
-                        final displayName =
-                            (member.nickname != null &&
-                                member.nickname!.trim().isNotEmpty)
-                            ? member.nickname!
-                            : (member.profile?.name ?? 'Unknown');
-
-                        final displayInitial = displayName.isNotEmpty
-                            ? displayName[0].toUpperCase()
-                            : '?';
-
-                        // Recuperiamo l'avatar (priorità a quello del membro, poi a quello del profilo)
-                        final avatarUrl =
-                            member.avatarUrl ?? member.profile?.avatarUrl;
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 20.0),
-                          child: _buildPremiumFamilyCard(
-                            context: context,
-                            memberId: member.id,
-                            userId: member.userId,
-                            name: displayName,
-                            initial: displayInitial,
-                            avatarUrl: avatarUrl, // PASSATO ALLA CARD
-                            color: const Color(0xFFF4A261),
-                            role: member.role,
-                            isPersonnel: isPersonnel,
-                          ),
-                        );
-                      },
-                    );
-                  },
+  Widget _buildMultiassignButton({VoidCallback? onTap}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: _familyActionInk.withValues(alpha: 0.08),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.assignment_ind_rounded,
+                size: 18,
+                color: _familyActionInk,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                'Multiassign',
+                style: GoogleFonts.manrope(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _familyActionInk,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
@@ -165,31 +257,26 @@ class FamilyScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeaderIcon(
-    IconData icon, {
-    VoidCallback? onTap,
-    Color? activeColor,
-  }) {
-    final iconColor = activeColor ?? const Color(0xFF5A8B9E);
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: iconColor.withValues(alpha: 0.1), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: iconColor.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+  Widget _buildEmptyState({required String message}) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.groups_2_rounded,
+            size: 52,
+            color: _familyAccent.withValues(alpha: 0.45),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: GoogleFonts.manrope(
+              color: _familyInk.withValues(alpha: 0.72),
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
             ),
-          ],
-        ),
-        child: Icon(icon, color: iconColor, size: 24),
+          ),
+        ],
       ),
     );
   }
@@ -204,53 +291,57 @@ class FamilyScreen extends ConsumerWidget {
     required String initial,
     required Color color,
     required bool isPersonnel,
-    String? avatarUrl, // NUOVO PARAMETRO
+    String? avatarUrl,
   }) {
-    // Il widget base della Card (separato dal GestureDetector)
     Widget cardContent = ClipRRect(
-      borderRadius: BorderRadius.circular(32),
+      borderRadius: BorderRadius.circular(30),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          height: 120,
+          height: 116,
           decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
+                color.withValues(alpha: 0.34),
+                Colors.white.withValues(alpha: 0.92),
                 color.withValues(alpha: 0.2),
-                Colors.white.withValues(alpha: 0.5),
               ],
             ),
-            borderRadius: BorderRadius.circular(32),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.8),
-              width: 1.2,
+              color: Colors.white.withValues(alpha: 0.82),
+              width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: color.withValues(alpha: 0.08),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: color.withValues(alpha: 0.14),
+                blurRadius: 12,
+                offset: const Offset(-1, -1),
               ),
             ],
           ),
           child: Row(
             children: [
               Expanded(
-                flex: 3,
+                flex: 6,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
+                    horizontal: 18,
+                    vertical: 8,
                   ),
                   child: Row(
                     children: [
-                      // SOSTITUITO IL CONTAINER CON IL NUOVO WIDGET
                       AvatarImage(
                         avatarUrl: avatarUrl,
                         initial: initial,
-                        size: 48,
+                        size: 62,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -260,22 +351,25 @@ class FamilyScreen extends ConsumerWidget {
                           children: [
                             Text(
                               name,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
-                                color: const Color(0xFF3D342C),
+                              style: GoogleFonts.manrope(
+                                color: _familyInk,
                                 fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.3,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              role,
+                              role.toUpperCase(),
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
-                                color: const Color(0xFF3D342C),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                              style: GoogleFonts.manrope(
+                                color: _familyInk.withValues(alpha: 0.58),
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.7,
                               ),
                             ),
                           ],
@@ -285,35 +379,50 @@ class FamilyScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-
-              // SE NON È PERSONNEL: Mostra la linea e la scritta "View Activity"
               if (!isPersonnel) ...[
                 Container(
                   width: 1,
-                  margin: const EdgeInsets.symmetric(vertical: 20),
+                  margin: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.white.withValues(alpha: 0.0),
-                        Colors.white.withValues(alpha: 0.6),
+                        Colors.white.withValues(alpha: 0.72),
                         Colors.white.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
                 ),
-                Expanded(
+                Flexible(
                   flex: 2,
-                  child: Center(
-                    child: Text(
-                      'View\nActivity',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF5A8B9E),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: _familyInk,
+                            size: 18,
+                          ),
+                          Text(
+                            'View\nActivity',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.manrope(
+                              color: _familyInk,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -325,12 +434,10 @@ class FamilyScreen extends ConsumerWidget {
       ),
     );
 
-    // SE È PERSONNEL: Restituisci la card NON CLICCABILE
     if (isPersonnel) {
       return cardContent;
     }
 
-    // ALTRIMENTI: Restituisci la card con il GestureDetector
     return GestureDetector(
       onTap: () {
         Navigator.of(context).pushNamed(

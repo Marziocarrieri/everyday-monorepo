@@ -1,6 +1,7 @@
 // TODO migrate to features/fridge
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:everyday_app/shared/widgets/main_tab_screen_background.dart';
 
 import 'package:everyday_app/core/app_route_names.dart';
 // TODO: Verifica che questi import puntino alla cartella corretta dove hai salvato i widget
@@ -12,31 +13,36 @@ class UtilitiesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const backgroundColor = Color(0xFFF6F7F9);
-
     return Scaffold(
-      backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 32),
-              
-              // Modulo: Fridge Keeping (Gestisce la navigazione internamente tramite i chip)
-              const FridgeUtilityModule(),
-              
-              const SizedBox(height: 24),
-              
-              // Modulo: Provision List (Naviga sull'intera card)
-              ProvisionUtilityModule(
-                onTap: () {
-                  Navigator.of(context).pushNamed(AppRouteNames.provisionList);
-                },
-              ),
-            ],
+      backgroundColor: Colors.transparent,
+      body: MainTabScreenBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 20.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 32),
+
+                // Modulo: Fridge Keeping (Gestisce la navigazione internamente tramite i chip)
+                const FridgeUtilityModule(),
+
+                const SizedBox(height: 24),
+
+                // Modulo: Provision List (Naviga sull'intera card)
+                ProvisionUtilityModule(
+                  onTap: () {
+                    Navigator.of(
+                      context,
+                    ).pushNamed(AppRouteNames.provisionList);
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

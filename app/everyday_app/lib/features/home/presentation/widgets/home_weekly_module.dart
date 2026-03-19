@@ -42,8 +42,8 @@ class HomeWeeklyModule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brightColor = Color(0xFF38C19E);
-    const darkColor = Color(0xFF288C72);
+    const brightColor = Color(0xFF45B9A7);
+    const darkColor = Color(0xFF1F7568);
 
     return GestureDetector(
       onTap: onTap,
@@ -59,7 +59,7 @@ class HomeWeeklyModule extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: brightColor.withOpacity(0.35),
+              color: brightColor.withValues(alpha: 0.35),
               blurRadius: 30,
               offset: const Offset(0, 18),
             ),
@@ -77,50 +77,51 @@ class HomeWeeklyModule extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 16), 
-            
+            const SizedBox(height: 16),
+
             // TIMELINE PILLS
             _WeeklyTimelineRow(items: timelineItems, themeColor: brightColor),
-            
+
             const SizedBox(height: 16),
             Text(
               'Next',
               style: GoogleFonts.manrope(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 letterSpacing: 0.3,
               ),
             ),
             const SizedBox(height: 8),
-            
+
             // --- FIX OVERFLOW & DESIGN ---
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: nextTask != null
-                  ? HomeTaskPreviewTile(
-                      title: nextTask!.title,
-                      isCompleted: nextTask!.isCompleted,
-                      variant: HomeTaskPreviewVariant.daily, // ORA USA LO STESSO DESIGN DEL DAILY!
-                      themeColor: brightColor,
-                    )
-                  : SizedBox(
-                      height: 44,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          statusLabel ?? 'All weekly tasks completed',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.manrope(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white.withOpacity(0.96),
+                    ? HomeTaskPreviewTile(
+                        title: nextTask!.title,
+                        isCompleted: nextTask!.isCompleted,
+                        variant: HomeTaskPreviewVariant
+                            .daily, // ORA USA LO STESSO DESIGN DEL DAILY!
+                        themeColor: brightColor,
+                      )
+                    : SizedBox(
+                        height: 44,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            statusLabel ?? 'All weekly tasks completed',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.manrope(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white.withValues(alpha: 0.96),
+                            ),
                           ),
                         ),
                       ),
-                    ),
               ),
             ),
           ],
@@ -144,18 +145,28 @@ class _WeeklyTimelineRow extends StatelessWidget {
             ...items,
             ...List<WeeklyTimelineItem>.generate(
               7 - items.length,
-              (_) => const WeeklyTimelineItem(label: '-', pendingCount: 0, state: WeeklyDayState.empty),
+              (_) => const WeeklyTimelineItem(
+                label: '-',
+                pendingCount: 0,
+                state: WeeklyDayState.empty,
+              ),
             ),
           ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final pillWidth = (constraints.maxWidth / 7).clamp(28.0, 44.0).toDouble();
+        final pillWidth = (constraints.maxWidth / 7)
+            .clamp(28.0, 44.0)
+            .toDouble();
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             for (final item in safeItems)
-              SizedBox(width: pillWidth, height: 56, child: _WeekdayPill(item: item, themeColor: themeColor)),
+              SizedBox(
+                width: pillWidth,
+                height: 56,
+                child: _WeekdayPill(item: item, themeColor: themeColor),
+              ),
           ],
         );
       },
@@ -176,23 +187,35 @@ class _WeekdayPill extends StatelessWidget {
     final isDone = item.state == WeeklyDayState.done;
 
     final backgroundColor = isDone
-        ? Colors.white 
-        : (isPending ? Colors.white.withOpacity(0.25) : Colors.white.withOpacity(0.1));
-    
-    final textColor = isDone ? themeColor : (isPending ? Colors.white : Colors.white.withOpacity(0.5));
+        ? Colors.white
+        : (isPending
+              ? Colors.white.withValues(alpha: 0.25)
+              : Colors.white.withValues(alpha: 0.1));
+
+    final textColor = isDone
+        ? themeColor
+        : (isPending ? Colors.white : Colors.white.withValues(alpha: 0.5));
 
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isPending ? Colors.white.withOpacity(0.4) : Colors.transparent),
+        border: Border.all(
+          color: isPending
+              ? Colors.white.withValues(alpha: 0.4)
+              : Colors.transparent,
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             item.label,
-            style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700, color: textColor),
+            style: GoogleFonts.manrope(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
           ),
           const SizedBox(height: 6),
           if (isDone)
@@ -200,7 +223,11 @@ class _WeekdayPill extends StatelessWidget {
           else
             Text(
               isEmpty ? '–' : '${item.pendingCount}',
-              style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w800, color: textColor),
+              style: GoogleFonts.manrope(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: textColor,
+              ),
             ),
         ],
       ),
