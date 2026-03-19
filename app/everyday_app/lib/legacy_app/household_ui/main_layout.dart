@@ -7,7 +7,7 @@ import 'package:everyday_app/features/personnel/presentation/screens/personnel_s
 // Assicurati che i nomi di questi file corrispondano esattamente ai tuoi!
 import '../utilities_ui/utilities_screen.dart';
 import '../utilities_ui/family_screen.dart';
-import 'profile_screen.dart';
+import '../../features/profile/profile_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});

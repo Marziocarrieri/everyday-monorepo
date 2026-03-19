@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:everyday_app/legacy_app/household_ui/profile_screen.dart';
+import 'package:everyday_app/features/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'role_tab_config.dart';
 
