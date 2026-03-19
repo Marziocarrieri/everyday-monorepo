@@ -19,6 +19,7 @@ class PantryService {
     int? weight,
     String? unit,
     DateTime? expirationDate,
+    int? recommendedItemId,
   }) {
     return _repository.addItem(
       householdId: householdId,
@@ -28,6 +29,7 @@ class PantryService {
       weight: weight,
       unit: unit,
       expirationDate: expirationDate,
+      recommendedItemId: recommendedItemId
     );
   }
 

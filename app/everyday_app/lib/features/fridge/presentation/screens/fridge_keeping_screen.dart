@@ -11,6 +11,8 @@ import 'package:everyday_app/features/fridge/domain/services/pantry_service.dart
 import 'package:everyday_app/features/fridge/presentation/providers/fridge_providers.dart';
 import 'package:everyday_app/shared/utils/date_utils.dart';
 import 'package:everyday_app/shared/utils/status_color_utils.dart';
+import 'package:everyday_app/features/fridge/data/models/recommended_item.dart';
+import 'package:everyday_app/features/fridge/data/repositories/recommended_item_repository.dart';
 
 class FridgeKeepingScreen extends ConsumerStatefulWidget {
   final Object? initialArea; // Argomento in ingresso dal router
@@ -45,10 +47,12 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   final Color warningColor = const Color(0xFFF4A261);
   final Color expiredColor = const Color(0xFFF28482);
   final Color darkTextColor = const Color(0xFF3D342C);
+  List<RecommendedItem> recommendedItems = [];
 
   @override
   void initState() {
     super.initState();
+    _loadRecommendations();
     // Imposta la categoria iniziale se è stata passata, altrimenti usa pantry come default
     _selectedCategory = (widget.initialArea as AreaType?) ?? AreaType.pantry;
 
@@ -58,6 +62,22 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         _didOpenAddOnLaunch = true;
         _showAddElementModal(context);
       });
+    }
+  }
+
+  Future<void> _loadRecommendations() async {
+    try {
+      // You might need to pass the area name based on your logic, e.g., 'pantry'
+      final repo = RecommendedItemRepository();
+      final items = await repo.getItems();
+
+      if (mounted) {
+        setState(() {
+          recommendedItems = items;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading recommendations: $e");
     }
   }
 
@@ -111,6 +131,12 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 
   Future<bool> _addItem() async {
     final trimmedName = nameController.text.trim();
+    final RecommendedItem? recommendedItem = recommendedItems
+        .cast<RecommendedItem?>()
+        .firstWhere(
+          (item) => item?.name.toLowerCase() == trimmedName.toLowerCase(),
+          orElse: () => null,
+        );
     if (trimmedName.isEmpty) return false;
     final parsedQuantity = int.tryParse(quantityController.text.trim());
     final parsedWeight = int.tryParse(weightController.text.trim());
@@ -128,6 +154,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         weight: parsedWeight,
         unit: 'g',
         expirationDate: selectedDate,
+        recommendedItemId: recommendedItem?.id,
       );
       return true;
     } catch (error) {
@@ -1193,11 +1220,40 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                       ),
                     ],
                   ),
-                  child: Icon(
-                    Icons.kitchen_outlined,
-                    color: baseIconColor,
-                    size: 28,
-                  ),
+                  child: item.recommendedItem?.picture != null && item.recommendedItem!.picture.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        item.recommendedItem!.picture,
+                        width: 28,
+                        height: 28,
+                        fit: BoxFit.cover,
+                        // Error handling in case the URL is broken
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.kitchen_outlined,
+                          color: baseIconColor,
+                          size: 28,
+                        ),
+                        // Optional: Show a tiny loader while the image loads
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: SizedBox(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(baseIconColor.withOpacity(0.3)),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Icon(
+                      Icons.kitchen_outlined,
+                      color: baseIconColor,
+                      size: 28,
+                    ),
                 ),
                 const SizedBox(width: 20),
                 Expanded(
@@ -1451,6 +1507,129 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   // MODAL ADD ELEMENT
   // ==========================================
 
+  Widget _buildPremiumAutocompleteField(
+    String label,
+    bool isRequired,
+    bool isNumber,
+    TextEditingController? controller,
+    List<RecommendedItem> recommendations,
+    ){
+    final accentColor = getStatusColor('safe');
+    final displayLabel = isRequired ? '$label *' : label;
+
+    return Autocomplete<RecommendedItem>(
+      // Tells Flutter which string to show in the text box when an item is picked
+      displayStringForOption: (RecommendedItem option) => option.name,
+
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return const Iterable<RecommendedItem>.empty();
+        }
+        return recommendations.where((RecommendedItem option) {
+          return option.name.toLowerCase().contains(
+            textEditingValue.text.toLowerCase(),
+          );
+        });
+      },
+
+      onSelected: (RecommendedItem selection) {
+        controller?.text = selection.name;
+      },
+
+      fieldViewBuilder: (context, autoController, focusNode, onFieldSubmitted) {
+        // Syncing controllers
+        if (autoController.text != controller?.text) {
+          autoController.text = controller?.text ?? '';
+        }
+
+        autoController.addListener(() {
+          controller?.text = autoController.text;
+        });
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: accentColor.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
+          ),
+          child: TextField(
+            controller: autoController,
+            focusNode: focusNode,
+            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF3D342C),
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              labelText: displayLabel,
+              labelStyle: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isRequired
+                    ? const Color(0xFFF28482)
+                    : const Color(0xFF3D342C).withValues(alpha: 0.6),
+              ),
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+              hintText: 'Tap to type...',
+              hintStyle: GoogleFonts.poppins(
+                color: const Color(0xFF3D342C).withValues(alpha: 0.3),
+                fontSize: 16,
+              ),
+            ),
+          ),
+        );
+      },
+
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.white,
+            child: Container(
+              width: MediaQuery.of(context).size.width - 40,
+              constraints: const BoxConstraints(maxHeight: 250),
+              // Clip to ensure the images don't bleed over the border radius
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final RecommendedItem option = options.elementAt(index);
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: accentColor.withValues(alpha: 0.1),
+                        backgroundImage: NetworkImage(option.picture),
+                      ),
+                      title: Text(
+                        option.name,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF3D342C),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onTap: () => onSelected(option),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
   Future<void> _showAddElementModal(BuildContext context) async {
     nameController.clear();
     quantityController.clear();
@@ -1510,11 +1689,18 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                       physics: const BouncingScrollPhysics(),
                       child: Column(
                         children: [
-                          _buildModalTextField(
+                          // _buildModalTextField(
+                          //   'Name',
+                          //   true,
+                          //   false,
+                          //   controller: nameController,
+                          // ),
+                          _buildPremiumAutocompleteField(
                             'Name',
                             true,
                             false,
-                            controller: nameController,
+                            nameController,
+                            recommendedItems
                           ),
                           const SizedBox(height: 16),
                           _buildModalTextField(

@@ -1,3 +1,5 @@
+import 'package:everyday_app/features/fridge/data/models/recommended_item.dart';
+
 class PantryItem {
   final String id;
   final String householdId;
@@ -6,6 +8,8 @@ class PantryItem {
   final String area; // 'FRIDGE', 'PANTRY', 'FREEZER'
   final DateTime? expirationDate;
   final String? barcode;
+  final RecommendedItem? recommendedItem ;
+
 
   PantryItem({
     required this.id,
@@ -15,6 +19,8 @@ class PantryItem {
     required this.area,
     this.expirationDate,
     this.barcode,
+    this.recommendedItem,
+
   });
 
   factory PantryItem.fromJson(Map<String, dynamic> json) {
@@ -28,6 +34,9 @@ class PantryItem {
           ? DateTime.parse(json['expiration_date']) 
           : null,
       barcode: json['barcode'],
+      recommendedItem: json['recommended_item'] != null 
+        ? RecommendedItem.fromJson(json['recommended_item'] as Map<String, dynamic>) 
+        : null,
     );
   }
 }

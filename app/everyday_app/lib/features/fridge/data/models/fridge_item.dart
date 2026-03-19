@@ -1,4 +1,5 @@
 import 'area_type.dart';
+import 'package:everyday_app/features/fridge/data/models/recommended_item.dart';
 
 class FridgeItem {
   final String id;
@@ -10,6 +11,7 @@ class FridgeItem {
   final AreaType area;
   final DateTime? expirationDate;
   final DateTime? createdAt;
+  final RecommendedItem? recommendedItem;
 
   FridgeItem({
     required this.id,
@@ -21,6 +23,7 @@ class FridgeItem {
     this.unit,
     this.expirationDate,
     this.createdAt,
+    this.recommendedItem,
   });
 
   factory FridgeItem.fromJson(Map<String, dynamic> json) {
@@ -42,6 +45,9 @@ class FridgeItem {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
+      recommendedItem: json['recommended_item'] != null 
+        ? RecommendedItem.fromJson(json['recommended_item'] as Map<String, dynamic>) 
+        : null,
     );
   }
 

@@ -66,95 +66,166 @@ class FridgeRepository {
         .toList();
   }
 
-  Stream<List<FridgeItem>> watchPantryItems(String householdId) async* {
-    String? lastSnapshotSignature;
-    var previousRowSignaturesById = <String, String>{};
+  // Stream<List<FridgeItem>> watchPantryItems(String householdId) async* {
+  //   String? lastSnapshotSignature;
+  //   var previousRowSignaturesById = <String, String>{};
 
-    await for (final rows
-        in supabase.from('pantry_item').stream(primaryKey: ['id'])) {
-      final nextRowsById = <String, Map<String, dynamic>>{};
+  //   await for (final rows
+  //       in supabase.from('pantry_item').stream(primaryKey: ['id'])) {
+  //     final nextRowsById = <String, Map<String, dynamic>>{};
 
-      for (final row in rows) {
-        final incoming = Map<String, dynamic>.from(row);
-        final id = _readString(incoming['id']);
-        if (id == null) {
-          continue;
-        }
+  //     for (final row in rows) {
+  //       final incoming = Map<String, dynamic>.from(row);
+  //       final id = _readString(incoming['id']);
+  //       if (id == null) {
+  //         continue;
+  //       }
 
-        final previous = _cachedPantryRowsById[id];
-        nextRowsById[id] = previous == null
-            ? incoming
-            : <String, dynamic>{...previous, ...incoming};
-      }
+  //       final previous = _cachedPantryRowsById[id];
+  //       nextRowsById[id] = previous == null
+  //           ? incoming
+  //           : <String, dynamic>{...previous, ...incoming};
+  //     }
 
-      _cachedPantryRowsById
-        ..clear()
-        ..addAll(nextRowsById);
+  //     _cachedPantryRowsById
+  //       ..clear()
+  //       ..addAll(nextRowsById);
 
-      final filteredRows = _cachedPantryRowsById.values
-          .where((row) => _readString(row['household_id']) == householdId)
-          .map((row) => Map<String, dynamic>.from(row))
-          .toList(growable: false);
+  //     final filteredRows = _cachedPantryRowsById.values
+  //         .where((row) => _readString(row['household_id']) == householdId)
+  //         .map((row) => Map<String, dynamic>.from(row))
+  //         .toList(growable: false);
 
-      final currentRowSignaturesById = <String, String>{};
-      for (final row in filteredRows) {
-        final id = _readString(row['id']);
-        if (id == null) {
-          continue;
-        }
+  //     final currentRowSignaturesById = <String, String>{};
+  //     for (final row in filteredRows) {
+  //       final id = _readString(row['id']);
+  //       if (id == null) {
+  //         continue;
+  //       }
 
-        final signature = _buildRowSignature(row);
-        currentRowSignaturesById[id] = signature;
+  //       final signature = _buildRowSignature(row);
+  //       currentRowSignaturesById[id] = signature;
 
-        final previousSignature = previousRowSignaturesById[id];
-        if (previousSignature != null && previousSignature != signature) {
-          if (kDebugMode) {
-            debugPrint('UTILITY UPDATE EVENT id=$id');
-          }
-        }
-      }
-      previousRowSignaturesById = Map<String, String>.from(
-        currentRowSignaturesById,
-      );
+  //       final previousSignature = previousRowSignaturesById[id];
+  //       if (previousSignature != null && previousSignature != signature) {
+  //         if (kDebugMode) {
+  //           debugPrint('UTILITY UPDATE EVENT id=$id');
+  //         }
+  //       }
+  //     }
+  //     previousRowSignaturesById = Map<String, String>.from(
+  //       currentRowSignaturesById,
+  //     );
 
-      final snapshotSignature = _buildSnapshotSignature(filteredRows);
-      if (snapshotSignature == lastSnapshotSignature) {
-        continue;
-      }
-      lastSnapshotSignature = snapshotSignature;
+  //     final snapshotSignature = _buildSnapshotSignature(filteredRows);
+  //     if (snapshotSignature == lastSnapshotSignature) {
+  //       continue;
+  //     }
+  //     lastSnapshotSignature = snapshotSignature;
 
-      final newList = filteredRows
-          .map((row) {
-            try {
-              return FridgeItem.fromJson(Map<String, dynamic>.from(row));
-            } catch (error) {
-              debugPrint('Skipping invalid pantry stream row: $error');
-              return null;
-            }
-          })
-          .whereType<FridgeItem>()
-          .toList(); // <-- Rimosso growable: false per poterla ordinare!
+  //     final newList = filteredRows
+  //         .map((row) {
+  //           try {
+  //             return FridgeItem.fromJson(Map<String, dynamic>.from(row));
+  //           } catch (error) {
+  //             debugPrint('Skipping invalid pantry stream row: $error');
+  //             return null;
+  //           }
+  //         })
+  //         .whereType<FridgeItem>()
+  //         .toList(); // <-- Rimosso growable: false per poterla ordinare!
 
-      // --- LOGICA DI ORDINAMENTO (SORTING) ---
-      newList.sort((a, b) {
-        // Se entrambi non hanno la data, mantieni l'ordine attuale
-        if (a.expirationDate == null && b.expirationDate == null) return 0;
-        // Se 'a' non ha la data, mettilo dopo 'b'
-        if (a.expirationDate == null) return 1;
-        // Se 'b' non ha la data, metti 'a' prima di 'b'
-        if (b.expirationDate == null) return -1;
+  //     // --- LOGICA DI ORDINAMENTO (SORTING) ---
+  //     newList.sort((a, b) {
+  //       // Se entrambi non hanno la data, mantieni l'ordine attuale
+  //       if (a.expirationDate == null && b.expirationDate == null) return 0;
+  //       // Se 'a' non ha la data, mettilo dopo 'b'
+  //       if (a.expirationDate == null) return 1;
+  //       // Se 'b' non ha la data, metti 'a' prima di 'b'
+  //       if (b.expirationDate == null) return -1;
         
-        // Entrambi hanno la data: ordina in ordine crescente (le date più vecchie prima)
-        return a.expirationDate!.compareTo(b.expirationDate!);
-      });
+  //       // Entrambi hanno la data: ordina in ordine crescente (le date più vecchie prima)
+  //       return a.expirationDate!.compareTo(b.expirationDate!);
+  //     });
 
-      if (kDebugMode) {
-        debugPrint('UTILITY SNAPSHOT EMITTED length=${newList.length}');
+  //     if (kDebugMode) {
+  //       debugPrint('UTILITY SNAPSHOT EMITTED length=${newList.length}');
+  //     }
+
+  //     yield List<FridgeItem>.from(newList);
+  //   }
+  // }
+
+  Stream<List<FridgeItem>> watchPantryItems(String householdId) async* {
+  String? lastSnapshotSignature;
+
+  // 1. Fetch the recommended items first to have a "lookup table"
+  // You can also move this inside the loop if recommendations change frequently
+  final List<dynamic> recData = await supabase.from('recommended_item').select();
+  final recommendationsMap = {for (var item in recData) item['id'].toString(): item};
+
+  await for (final rows in supabase.from('pantry_item').stream(primaryKey: ['id'])) {
+    final nextRowsById = <String, Map<String, dynamic>>{};
+
+    for (final row in rows) {
+      final incoming = Map<String, dynamic>.from(row);
+      final id = _readString(incoming['id']);
+      if (id == null) continue;
+
+      // 2. ATTACH RECOMMENDED DATA
+      // Check if this row has a recommended_item_id
+      final recId = incoming['recommended_item_id']?.toString();
+      if (recId != null && recommendationsMap.containsKey(recId)) {
+        // We nest the recommended item data inside the row
+        // Your FridgeItem.fromJson needs to be able to handle this nested 'recommended_item' key
+        incoming['recommended_item'] = recommendationsMap[recId];
       }
 
-      yield List<FridgeItem>.from(newList);
+      final previous = _cachedPantryRowsById[id];
+      nextRowsById[id] = previous == null
+          ? incoming
+          : <String, dynamic>{...previous, ...incoming};
     }
+
+    _cachedPantryRowsById
+      ..clear()
+      ..addAll(nextRowsById);
+
+    final filteredRows = _cachedPantryRowsById.values
+        .where((row) => _readString(row['household_id']) == householdId)
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList(growable: false);
+
+    // ... (Your signature and hashing logic remains the same) ...
+    
+    final snapshotSignature = _buildSnapshotSignature(filteredRows);
+    if (snapshotSignature == lastSnapshotSignature) continue;
+    lastSnapshotSignature = snapshotSignature;
+
+    final newList = filteredRows
+        .map((row) {
+          try {
+            // FridgeItem.fromJson will now receive a Map containing the 'recommended_item' data
+            return FridgeItem.fromJson(Map<String, dynamic>.from(row));
+          } catch (error) {
+            debugPrint('Skipping invalid pantry stream row: $error');
+            return null;
+          }
+        })
+        .whereType<FridgeItem>()
+        .toList();
+
+    // --- SORTING LOGIC ---
+    newList.sort((a, b) {
+      if (a.expirationDate == null && b.expirationDate == null) return 0;
+      if (a.expirationDate == null) return 1;
+      if (b.expirationDate == null) return -1;
+      return a.expirationDate!.compareTo(b.expirationDate!);
+    });
+
+    yield List<FridgeItem>.from(newList);
   }
+}
 
   Future<void> addItem({
     required String householdId,
@@ -164,6 +235,7 @@ class FridgeRepository {
     int? weight,
     String? unit,
     DateTime? expirationDate,
+    int? recommendedItemId,
   }) async {
     debugPrint('INSERT PAYLOAD: ${{
       'household_id': householdId,
@@ -173,6 +245,7 @@ class FridgeRepository {
       'weight': weight,
       'unit': unit,
       'expiration_date': expirationDate,
+      'recommended_item_id': recommendedItemId,
     }}');
 
     await supabase.from('pantry_item').insert({
@@ -183,6 +256,7 @@ class FridgeRepository {
       'weight': weight,
       'unit': unit,
       'expiration_date': expirationDate?.toIso8601String(),
+      'recommended_item_id': recommendedItemId
     });
   }
 
