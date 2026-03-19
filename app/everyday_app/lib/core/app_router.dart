@@ -153,8 +153,11 @@ class AppRouter {
         }
 
         return MaterialPageRoute(
-          builder: (_) =>
-              PetActivitiesScreen(petId: args.petId, petColor: args.petColor),
+          builder: (_) => PetActivitiesScreen(
+            petId: args.petId,
+            petColor: args.petColor,
+            openAddOnLaunch: args.openAddOnLaunch,
+          ),
           settings: settings,
         );
 

@@ -118,8 +118,13 @@ class WelcomeRouteArgs {
 class PetActivitiesRouteArgs {
   final String petId;
   final Color petColor;
+  final bool openAddOnLaunch;
 
-  const PetActivitiesRouteArgs({required this.petId, required this.petColor});
+  const PetActivitiesRouteArgs({
+    required this.petId,
+    required this.petColor,
+    this.openAddOnLaunch = false,
+  });
 }
 
 class CohostDailyTaskRouteArgs {
