@@ -10,6 +10,13 @@ import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/legacy_app/services/diet_document_service.dart';
 import 'package:everyday_app/shared/models/diet_document.dart';
 
+// --- COLORI DEL DESIGN SYSTEM ---
+const _bgColor = Color(0xFFF4F1ED);
+const _inkColor = Color(0xFF1F3A44);
+const _appTeal = Color(0xFF5A8B9E);
+const _appCoral = Color(0xFFF28482);
+const _appOrange = Color(0xFFF4A261);
+
 class DietScreen extends ConsumerStatefulWidget {
   const DietScreen({super.key});
 
@@ -29,8 +36,16 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
         behavior: SnackBarBehavior.floating,
+        backgroundColor: _appTeal,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -123,7 +138,7 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     final dietAsync = ref.watch(dietStreamProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _bgColor, // Sfondo Crema
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
@@ -135,8 +150,17 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
               Expanded(
                 child: dietAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => Center(child: Text(error.toString())),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(_appTeal),
+                    ),
+                  ),
+                  error: (error, _) => Center(
+                    child: Text(
+                      error.toString(),
+                      style: GoogleFonts.manrope(color: _appCoral),
+                    ),
+                  ),
                   data: (currentDiet) {
                     if (currentDiet == null) {
                       return _buildUploadView();
@@ -159,120 +183,129 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: const Color(0xFF5A8B9E).withValues(alpha: 0.1),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF5A8B9E).withValues(alpha: 0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+        // Pulsante Indietro Minimalista (senza sfondo)
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 44,
+                height: 44,
+                color: Colors.transparent,
+                alignment: Alignment.centerLeft,
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: _inkColor,
+                  size: 24,
                 ),
-              ],
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF5A8B9E),
-              size: 20,
+              ),
             ),
           ),
         ),
+        // Titolo Centrato
         Text(
           'Diet Plan',
-          style: GoogleFonts.poppins(
-            fontSize: 22,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.manrope(
+            fontSize: 26,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF5A8B9E),
+            color: _inkColor,
+            letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(width: 48), // Bilancia la freccia
+        // Spazio vuoto per bilanciare l'header
+        const Expanded(child: SizedBox()),
       ],
     );
   }
 
+  // --- UPLOAD VIEW: PANNELLO "VETRO SMOKED" ---
   Widget _buildUploadView() {
-    return GestureDetector(
-      onTap: _isUploading ? null : _uploadPdf,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFFF4A261).withValues(alpha: 0.15),
-                  Colors.white.withValues(alpha: 0.6),
-                ], // Toni pesca/arancio
+    return Center(
+      child: GestureDetector(
+        onTap: _isUploading ? null : _uploadPdf,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              // Ombra morbida per elevare il pannello
+              BoxShadow(
+                color: _inkColor.withOpacity(0.08),
+                blurRadius: 30,
+                offset: const Offset(0, 18),
               ),
-              borderRadius: BorderRadius.circular(32),
-              // Un bel bordo tratteggiato (simulato) o marcato per far capire che è una dropzone
-              border: Border.all(
-                color: const Color(0xFFF4A261).withValues(alpha: 0.4),
-                width: 2,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFF4A261).withValues(alpha: 0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: double.infinity,
+                height: 300, // Altezza fissa per un bell'effetto visivo
+                decoration: BoxDecoration(
+                  color: _inkColor.withOpacity(0.03), // Leggera patina scura
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.7), // Bordo bianco satinato
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.4), // Cerchio più chiaro
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _appOrange.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: _isUploading
-                      ? const SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: CircularProgressIndicator(strokeWidth: 3),
-                        )
-                      : const Icon(
-                          Icons.cloud_upload_outlined,
-                          color: Color(0xFFF4A261),
-                          size: 40,
-                        ),
+                      child: _isUploading
+                          ? const SizedBox(
+                              width: 40,
+                              height: 40,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                valueColor: AlwaysStoppedAnimation<Color>(_appOrange),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.cloud_upload_outlined,
+                              color: _appOrange,
+                              size: 40,
+                            ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Upload your Diet',
+                      style: GoogleFonts.manrope(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: _inkColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap here to select a PDF file',
+                      style: GoogleFonts.manrope(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _inkColor.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Upload your Diet',
-                  style: GoogleFonts.poppins(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF3D342C),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap here to select a PDF file',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF3D342C).withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -280,132 +313,140 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     );
   }
 
+  // --- PDF VIEW: PANNELLO "VETRO SATINATO" ---
   Widget _buildPdfReadyView(DietDocument currentDiet) {
     final uploadedAt = currentDiet.uploadedAt;
     final subtitle =
-      'Added on ${uploadedAt.day.toString().padLeft(2, '0')}/${uploadedAt.month.toString().padLeft(2, '0')}/${uploadedAt.year}';
+        'Added on ${uploadedAt.day.toString().padLeft(2, '0')}/${uploadedAt.month.toString().padLeft(2, '0')}/${uploadedAt.year}';
 
     return Column(
       children: [
-        // CARD DEL FILE IN VETRO
-        ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF5A8B9E).withValues(alpha: 0.1),
-                    Colors.white.withValues(alpha: 0.8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: _inkColor.withOpacity(0.08),
+                blurRadius: 30,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: _inkColor.withOpacity(0.03), // Leggera patina
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.7),
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: _appCoral.withOpacity(0.1), // Sfondo leggero rosso
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.picture_as_pdf_rounded,
+                        color: _appCoral,
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Diet Document',
+                      style: GoogleFonts.manrope(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: _inkColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.manrope(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _inkColor.withOpacity(0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // TASTO APRI (Pulsante Pieno Teal)
+                    GestureDetector(
+                      onTap: () => _openPdf(currentDiet),
+                      child: Container(
+                        width: double.infinity,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: _appTeal,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _appTeal.withOpacity(0.3),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Open PDF',
+                            style: GoogleFonts.manrope(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF5A8B9E).withValues(alpha: 0.05),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.picture_as_pdf_rounded,
-                    color: Color(0xFFE76F51),
-                    size: 60,
-                  ), // Icona PDF Rossa/Corallo
-                  const SizedBox(height: 16),
-                  Text(
-                    'Diet Document',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF3D342C),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF3D342C).withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // TASTO APRI
-                  GestureDetector(
-                    onTap: () => _openPdf(currentDiet),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF5A8B9E), Color(0xFF3A5F6E)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF5A8B9E,
-                            ).withValues(alpha: 0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Open PDF',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 32),
 
-        // TASTO RIMUOVI/SOSTITUISCI (Sottile, meno invasivo)
+        // TASTO RIMUOVI/SOSTITUISCI (Pulsante Outlined Rosso)
         GestureDetector(
           onTap: () => _removePdf(currentDiet),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
             decoration: BoxDecoration(
-              color: const Color(0xFFE76F51).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _appCoral.withOpacity(0.5),
+                width: 1.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
                   Icons.delete_outline_rounded,
-                  color: Color(0xFFE76F51),
+                  color: _appCoral,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Remove and upload new',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.manrope(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFFE76F51),
+                    fontWeight: FontWeight.w700,
+                    color: _appCoral,
                   ),
                 ),
               ],

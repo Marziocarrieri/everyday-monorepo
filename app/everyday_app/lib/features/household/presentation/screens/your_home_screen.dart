@@ -11,6 +11,13 @@ import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/household/presentation/providers/household_providers.dart';
 import 'package:everyday_app/core/app_context.dart'; 
 
+// --- COLORI DEL DESIGN SYSTEM ---
+const _bgColor = Color(0xFFF4F1ED);
+const _inkColor = Color(0xFF1F3A44);
+const _appOrange = Color(0xFFF4A261);
+const _appCoral = Color(0xFFF28482);
+const _appTeal = Color(0xFF5A8B9E);
+
 class YourHomeScreen extends ConsumerStatefulWidget {
   const YourHomeScreen({super.key});
 
@@ -22,9 +29,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   // Stato: Piano selezionato e Modalità Modifica
   String? _selectedFloorId;
   bool _isEditMode = false;
+  String _searchQuery = '';
 
-  final HomeConfigurationService _homeConfigurationService =
-      HomeConfigurationService();
+  final HomeConfigurationService _homeConfigurationService = HomeConfigurationService();
+  
   static const List<String> _roomTypes = [
     'kitchen',
     'bathroom',
@@ -34,10 +42,6 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     'garden',
     'other',
   ];
-
-  final Color primaryColor = const Color(0xFF5A8B9E);
-  final Color accentColor = const Color(0xFFF4A261);
-  final Color errorColor = const Color(0xFFF28482);
 
   // --- CONTROLLO RUOLO: Ritorna true solo se l'utente è HOST ---
   bool get _isHost {
@@ -52,10 +56,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     return normalized
         .split(' ')
         .where((word) => word.isNotEmpty)
-        .map(
-          (word) =>
-              '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
-        )
+        .map((word) => '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}')
         .join(' ');
   }
 
@@ -64,25 +65,23 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     if (roomType == null || roomType.trim().isEmpty) {
       return room.name;
     }
-    return '${room.name}\n(${_formatRoomTypeLabel(roomType)})'; // A capo per design
+    return '${room.name}\n(${_formatRoomTypeLabel(roomType)})'; 
   }
 
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
             color: Colors.white,
           ),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: primaryColor,
+        backgroundColor: _appTeal,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 2),
       ),
@@ -105,10 +104,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     return exists ? selectedFloorId : floors.first.id;
   }
 
-  String _selectedFloorName(
-    List<HouseholdFloor> floors,
-    String? selectedFloorId,
-  ) {
+  String _selectedFloorName(List<HouseholdFloor> floors, String? selectedFloorId) {
     if (selectedFloorId == null) return '';
     for (final floor in floors) {
       if (floor.id == selectedFloorId) {
@@ -118,17 +114,11 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     return '';
   }
 
-  Future<void> _addRoom({
-    required String roomName,
-    required String floorId,
-    String? roomType,
-  }) async {
-    if (!_isHost) return; // Blocco di sicurezza extra
+  Future<void> _addRoom({required String roomName, required String floorId, String? roomType}) async {
+    if (!_isHost) return; 
 
     final householdId = ref.read(currentHouseholdIdProvider);
-    if (householdId == null || householdId.isEmpty) {
-      return;
-    }
+    if (householdId == null || householdId.isEmpty) return;
 
     try {
       await _homeConfigurationService.addRoom(
@@ -143,8 +133,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString(), style: GoogleFonts.poppins()),
-          backgroundColor: errorColor,
+          content: Text(error.toString(), style: GoogleFonts.manrope()),
+          backgroundColor: _appCoral,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -152,16 +142,12 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   }
 
   Future<void> _addFloor(String floorName) async {
-    if (!_isHost) return; // Blocco di sicurezza extra
+    if (!_isHost) return;
 
     final householdId = ref.read(currentHouseholdIdProvider);
-    if (householdId == null || householdId.isEmpty) {
-      return;
-    }
+    if (householdId == null || householdId.isEmpty) return;
 
-    final floors = ref
-        .read(floorsStreamProvider(householdId))
-        .maybeWhen(
+    final floors = ref.read(floorsStreamProvider(householdId)).maybeWhen(
           data: (value) => value,
           orElse: () => const <HouseholdFloor>[],
         );
@@ -178,8 +164,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString(), style: GoogleFonts.poppins()),
-          backgroundColor: errorColor,
+          content: Text(error.toString(), style: GoogleFonts.manrope()),
+          backgroundColor: _appCoral,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -193,12 +179,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   }
 
   Future<void> _removeRoom(String id) async {
-    if (!_isHost) return; // Blocco di sicurezza extra
+    if (!_isHost) return; 
 
     final householdId = ref.read(currentHouseholdIdProvider);
-    if (householdId == null || householdId.isEmpty) {
-      return;
-    }
+    if (householdId == null || householdId.isEmpty) return;
 
     try {
       await _homeConfigurationService.removeRoom(id);
@@ -208,8 +192,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString(), style: GoogleFonts.poppins()),
-          backgroundColor: errorColor,
+          content: Text(error.toString(), style: GoogleFonts.manrope()),
+          backgroundColor: _appCoral,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -218,7 +202,6 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Forza la disattivazione dell'edit mode se l'utente non è host (caso estremo)
     if (!_isHost && _isEditMode) {
       _isEditMode = false;
     }
@@ -233,26 +216,19 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
 
     return floorsAsync.when(
       loading: () => _buildScaffoldBody(isLoading: true),
-      error: (error, _) =>
-          _buildScaffoldBody(isLoading: false, streamError: error),
+      error: (error, _) => _buildScaffoldBody(isLoading: false, streamError: error),
       data: (floors) {
         final sortedFloors = _sortedFloors(floors);
         final selectedFloorId = _resolveSelectedFloorId(sortedFloors);
-        final selectedFloorName = _selectedFloorName(
-          sortedFloors,
-          selectedFloorId,
-        );
+        final selectedFloorName = _selectedFloorName(sortedFloors, selectedFloorId);
 
         return roomsAsync.when(
           loading: () => _buildScaffoldBody(isLoading: true),
-          error: (error, _) =>
-              _buildScaffoldBody(isLoading: false, streamError: error),
+          error: (error, _) => _buildScaffoldBody(isLoading: false, streamError: error),
           data: (rooms) {
             final visibleRooms = selectedFloorId == null
                 ? const <HouseholdRoom>[]
-                : rooms
-                    .where((room) => room.floorId == selectedFloorId)
-                    .toList();
+                : rooms.where((room) => room.floorId == selectedFloorId).toList();
 
             return _buildScaffoldBody(
               isLoading: false,
@@ -276,327 +252,259 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
     List<HouseholdRoom> visibleRooms = const [],
   }) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF6F9FA),
-              Color(0xFFE3EDF2),
-            ], // Sfondo Premium App
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 20.0,
-                ),
-                child: _buildHeader(context),
-              ),
+      backgroundColor: _bgColor,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 32),
 
-              if (!isLoading) ...[
-                if (floors.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  if (!isLoading && floors.isNotEmpty) ...[
+                    // RIGA: SELETTORE PIANO A DESTRA
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // PULSANTE EDIT ROOMS (VISIBILE SOLO ALL'HOST)
-                            if (_isHost)
-                              GestureDetector(
-                                onTap: () =>
-                                    setState(() => _isEditMode = !_isEditMode),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _isEditMode
-                                        ? errorColor.withValues(alpha: 0.1)
-                                        : Colors.white.withValues(alpha: 0.6),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: _isEditMode
-                                          ? errorColor.withValues(alpha: 0.4)
-                                          : primaryColor.withValues(alpha: 0.2),
-                                      width: 1.5,
-                                    ),
-                                    boxShadow: _isEditMode
-                                        ? []
-                                        : [
-                                            BoxShadow(
-                                              color: primaryColor.withValues(
-                                                alpha: 0.05,
-                                              ),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 3),
-                                            ),
-                                          ],
-                                  ),
-                                  child: Text(
-                                    _isEditMode ? 'Done' : 'Edit Rooms',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: _isEditMode
-                                          ? errorColor
-                                          : primaryColor,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
-                              const SizedBox(), // Spazio vuoto per mantenere il selettore piano a destra
-
-                            // SELETTORE PIANO
-                            GestureDetector(
-                              onTap: () => _showFloorSelectorModal(
-                                context,
-                                floors: floors,
-                                selectedFloorId: selectedFloorId,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: const Color(
-                                      0xFF3D342C,
-                                    ).withValues(alpha: 0.1),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF3D342C,
-                                      ).withValues(alpha: 0.05),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      selectedFloorName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF3D342C),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      color: Color(0xFF3D342C),
-                                      size: 18,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                        _buildFloorSelectorButton(
+                          context, 
+                          floors: floors, 
+                          selectedFloorId: selectedFloorId, 
+                          selectedFloorName: selectedFloorName
                         ),
                       ],
                     ),
-                  ),
-                const SizedBox(height: 8),
-              ],
-              const SizedBox(height: 12),
-
-              if (streamError != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 8.0,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: errorColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: errorColor.withValues(alpha: 0.3),
+                    const SizedBox(height: 24),
+                    
+                    // RIGA: SELECT A SINISTRA
+                    if (_isHost) 
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          _buildEditModeToggle(),
+                        ],
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline, color: errorColor, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            streamError.toString(),
-                            style: GoogleFonts.poppins(
-                              color: errorColor,
-                              fontWeight: FontWeight.w500,
-                            ),
+                  ],
+                ],
+              ),
+            ),
+
+            if (streamError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _appCoral.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _appCoral.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: _appCoral, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          streamError.toString(),
+                          style: GoogleFonts.manrope(
+                            color: _appCoral,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-
-              // GRIGLIA DELLE STANZE IN VETRO
-              Expanded(
-                child: isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(color: primaryColor),
-                      )
-                    : (selectedFloorId == null
-                        ? _buildNoFloorsState()
-                        : visibleRooms.isEmpty && !_isHost // Se è vuoto e NON sei host
-                            ? _buildNoRoomsState(
-                                selectedFloorName: selectedFloorName,
-                                selectedFloorId: selectedFloorId,
-                              )
-                            : GridView.builder(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24.0,
-                                  vertical: 10.0,
-                                ),
-                                physics: const BouncingScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2, // 2 colonne
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
-                                  childAspectRatio: 1.0, // Quadrati perfetti
-                                ),
-                                // Se è HOST aggiunge 1 per la card "+", sennò mostra solo le stanze
-                                itemCount: visibleRooms.length + (_isHost ? 1 : 0),
-                                itemBuilder: (context, index) {
-                                  if (_isHost && index == visibleRooms.length) {
-                                    return _buildAddRoomCard(
-                                      selectedFloorId: selectedFloorId,
-                                      selectedFloorName: selectedFloorName,
-                                    );
-                                  }
-                                  final room = visibleRooms[index];
-                                  return _buildRoomCard(room);
-                                },
-                              )),
               ),
-            ],
-          ),
+
+            // GRIGLIA DELLE STANZE IN VETRO SATINATO
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator(color: _appTeal))
+                  : (selectedFloorId == null
+                      ? _buildNoFloorsState()
+                      : visibleRooms.isEmpty && !_isHost 
+                          ? _buildNoRoomsState(
+                              selectedFloorName: selectedFloorName,
+                              selectedFloorId: selectedFloorId,
+                            )
+                          : GridView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+                              physics: const BouncingScrollPhysics(),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2, 
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 1.0, 
+                              ),
+                              itemCount: visibleRooms.length + (_isHost ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (_isHost && index == visibleRooms.length) {
+                                  return _buildAddRoomCard(
+                                    selectedFloorId: selectedFloorId,
+                                    selectedFloorName: selectedFloorName,
+                                  );
+                                }
+                                final room = visibleRooms[index];
+                                return _buildRoomCard(room);
+                              },
+                            )),
+            ),
+          ],
         ),
       ),
     );
   }
 
   // ==========================================
-  // WIDGET PRINCIPALI
+  // UI PRINCIPALE 
   // ==========================================
 
   Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Pulsante Indietro (Nudo)
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: primaryColor.withValues(alpha: 0.1),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: primaryColor.withValues(alpha: 0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Icon(
+            width: 44,
+            height: 44,
+            color: Colors.transparent,
+            alignment: Alignment.centerLeft,
+            child: const Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: primaryColor,
-              size: 20,
+              color: _inkColor,
+              size: 24,
             ),
           ),
         ),
+        // Titolo Centrato
         Text(
           'Your Home',
-          style: GoogleFonts.poppins(
-            fontSize: 22,
+          style: GoogleFonts.manrope(
+            fontSize: 26,
             fontWeight: FontWeight.w800,
-            color: primaryColor,
+            color: _inkColor,
+            letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(width: 48), // Bilancia lo spazio
+        // Bilancia Spazio (QR rimosso come richiesto)
+        const SizedBox(width: 44), 
       ],
     );
   }
 
-  // --- CARD STANZA SINGOLA ---
-  Widget _buildRoomCard(HouseholdRoom room) {
-    return _buildInnerRoomCard(room, isHovered: false);
+  // BOTTONE ARANCIONE SELEZIONA PIANO CON GRADIENTE (STILE FRIDGE)
+  Widget _buildFloorSelectorButton(
+    BuildContext context, {
+    required List<HouseholdFloor> floors, 
+    required String? selectedFloorId, 
+    required String selectedFloorName
+  }) {
+    return GestureDetector(
+      onTap: () => _showFloorSelectorModal(
+        context,
+        floors: floors,
+        selectedFloorId: selectedFloorId,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [_appOrange, Color(0xFFE76F51)], 
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: _appOrange.withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              selectedFloorName,
+              style: GoogleFonts.manrope(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  // --- CONTENUTO GRAFICO DELLA CARD ---
-  Widget _buildInnerRoomCard(HouseholdRoom room, {required bool isHovered}) {
+  // TASTO SELECT MINIMAL
+  Widget _buildEditModeToggle() {
+    return GestureDetector(
+      onTap: () => setState(() => _isEditMode = !_isEditMode),
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _isEditMode ? Icons.close_rounded : Icons.checklist_rounded,
+              size: 20,
+              color: _inkColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _isEditMode ? 'Cancel' : 'Select',
+              style: GoogleFonts.manrope(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: _inkColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- CARD STANZA (VETRO SATINATO) ---
+  Widget _buildRoomCard(HouseholdRoom room) {
     return Stack(
       children: [
-        // Animazione fluida quando ci passi sopra con un'altra card!
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          transform: Matrix4.identity()
-            ..scaleByDouble(
-              isHovered ? 1.05 : 1.0,
-              isHovered ? 1.05 : 1.0,
-              1.0,
-              1.0,
-            ), // Si ingrandisce
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(color: _inkColor.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 8)),
+            ],
+          ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(28), // Più tondo
+            borderRadius: BorderRadius.circular(24), 
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+              filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      // Se ci passi sopra si illumina di pesca, sennò è il solito vetro
-                      isHovered
-                          ? accentColor.withValues(alpha: 0.2)
-                          : Colors.white.withValues(alpha: 0.9),
-                      isHovered
-                          ? Colors.white.withValues(alpha: 0.9)
-                          : Colors.white.withValues(alpha: 0.5),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(28),
+                  color: _inkColor.withOpacity(0.03), 
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isHovered
-                        ? accentColor.withValues(alpha: 0.5)
-                        : Colors.white,
-                    width: isHovered ? 2.0 : 1.5,
+                    color: Colors.white.withOpacity(0.8), // Bordo satinato
+                    width: 1.5,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryColor.withValues(alpha: 0.05),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
                 child: Center(
                   child: Padding(
@@ -606,8 +514,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                       children: [
                         Icon(
                           _getIconForRoomType(room.roomType),
-                          color: primaryColor.withValues(alpha: 0.6),
-                          size: 32,
+                          color: _inkColor.withOpacity(0.8),
+                          size: 36,
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -615,10 +523,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                           textAlign: TextAlign.center,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF3D342C),
+                          style: GoogleFonts.manrope(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: _inkColor,
                             height: 1.2,
                           ),
                         ),
@@ -631,22 +539,22 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
           ),
         ),
 
-        // Badge "Rimuovi" (visibile solo se hai premuto "Edit Rooms" e sei HOST)
+        // Badge "Rimuovi" 
         if (_isEditMode && _isHost)
           Positioned(
-            top: 0,
-            right: 0,
+            top: 8,
+            right: 8,
             child: GestureDetector(
               onTap: () async => _removeRoom(room.id),
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: errorColor,
+                  color: _appCoral,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: errorColor.withValues(alpha: 0.3),
+                      color: _appCoral.withOpacity(0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -701,36 +609,46 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
           roomType: newRoom.roomType,
         );
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(
-                alpha: 0.05,
-              ), // Leggerissimo azzurro
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: primaryColor.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryColor.withValues(alpha: 0.15),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _inkColor.withOpacity(0.03), 
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7),
+                  width: 1.5,
                 ),
-                child: Icon(Icons.add_rounded, color: primaryColor, size: 32),
+              ),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _inkColor, 
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _inkColor.withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+                ),
               ),
             ),
           ),
@@ -740,7 +658,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
   }
 
   // ==========================================
-  // MODAL: SELETTORE PIANO (Stile pulito richiesto)
+  // MODAL: SELETTORE PIANO (Molto chiaro e pulito)
   // ==========================================
   void _showFloorSelectorModal(
     BuildContext context, {
@@ -752,10 +670,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
         SnackBar(
           content: Text(
             'No floors available yet',
-            style: GoogleFonts.poppins(),
+            style: GoogleFonts.manrope(),
           ),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: errorColor,
+          backgroundColor: _appCoral,
         ),
       );
       return;
@@ -766,91 +684,90 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(
-              0xFFF8F9FA,
-            ), // Sfondo grigio chiarissimo / bianco sporco
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          padding: const EdgeInsets.only(
-            top: 15,
-            left: 24,
-            right: 24,
-            bottom: 40,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Trattino per lo swipe (Drag handle)
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3D342C).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95), // Sfondo molto chiaro e pulito come da screen
+                border: Border.all(color: Colors.white, width: 2),
               ),
-              const SizedBox(height: 25),
-
-              // Generazione della lista dei piani
-              ...floors.asMap().entries.map((entry) {
-                final index = entry.key;
-                final floor = entry.value;
-                // È l'ultimo se non sono l'host. Se sono l'host c'è il bottone "Add" dopo.
-                final isLast = !_isHost && index == floors.length - 1;
-
-                return _buildFloorOption(
-                  context,
-                  floor,
-                  floor.id == selectedFloorId,
-                  isLast,
-                );
-              }),
-
-              // Tasto Aggiungi Piano visibile solo all'HOST
-              if (_isHost) ...[
-                const SizedBox(height: 6),
-                Container(
-                  height: 1,
-                  color: const Color(0xFF3D342C).withValues(alpha: 0.08),
-                ),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await _openAddFloorFlow();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Row(
-                      children: [
-                        Icon(Icons.add_rounded, color: primaryColor),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Add floor',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: primaryColor,
-                          ),
-                        ),
-                      ],
+              padding: EdgeInsets.only(
+                top: 15,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 40,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: _inkColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ],
+                  const SizedBox(height: 25),
+
+                  ...floors.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final floor = entry.value;
+                    final isLast = !_isHost && index == floors.length - 1;
+
+                    return _buildFloorOption(
+                      context,
+                      floor,
+                      floor.id == selectedFloorId,
+                      isLast,
+                    );
+                  }),
+
+                  if (_isHost) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 1,
+                      color: _inkColor.withOpacity(0.08),
+                    ),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await _openAddFloorFlow();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.add_rounded, color: _appTeal),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Add floor',
+                              style: GoogleFonts.manrope(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: _appTeal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         );
       },
     );
   }
 
-  // --- SINGOLA OPZIONE PIANO ---
   Widget _buildFloorOption(
     BuildContext context,
     HouseholdFloor floor,
@@ -862,18 +779,17 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
         setState(() {
           _selectedFloorId = floor.id;
         });
-        Navigator.pop(context); // Chiude il modal dopo la selezione
+        Navigator.pop(context); 
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
           color: Colors.transparent,
-          // Aggiunge la linea sottile grigia in basso, tranne per l'ultimo elemento
           border: isLast
               ? null
               : Border(
                   bottom: BorderSide(
-                    color: const Color(0xFF3D342C).withValues(alpha: 0.08),
+                    color: _inkColor.withOpacity(0.08),
                     width: 1,
                   ),
                 ),
@@ -883,16 +799,14 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
           children: [
             Text(
               floor.name,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.manrope(
                 fontSize: 18,
-                // Grassetto e arancione se attivo, normale e scuro se inattivo
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive ? accentColor : const Color(0xFF3D342C),
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                color: isActive ? _appOrange : _inkColor,
               ),
             ),
-            // Spunta arancione visibile solo se è l'elemento attivo
             if (isActive)
-              Icon(Icons.check_circle, color: accentColor, size: 24),
+              const Icon(Icons.check_circle, color: _appOrange, size: 24),
           ],
         ),
       ),
@@ -909,9 +823,9 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
       context: context,
       builder: (context) {
         return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Dialog(
-            backgroundColor: Colors.white.withValues(alpha: 0.95),
+            backgroundColor: Colors.white.withOpacity(0.95), // Chiaro e pulito
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(32),
               side: const BorderSide(color: Colors.white, width: 2),
@@ -923,23 +837,23 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                 children: [
                   Text(
                     'Select Room Type',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF3D342C),
+                      color: _inkColor,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Divider(color: primaryColor.withValues(alpha: 0.2)),
+                  Divider(color: _inkColor.withOpacity(0.1)),
 
                   ListTile(
                     title: Text(
                       'None',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.manrope(
                         color: currentSelection == null
-                            ? primaryColor
-                            : const Color(0xFF3D342C).withValues(alpha: 0.5),
+                            ? _appOrange
+                            : _inkColor.withOpacity(0.5),
                         fontWeight: currentSelection == null
                             ? FontWeight.w800
                             : FontWeight.w600,
@@ -951,9 +865,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                       Navigator.pop(context);
                     },
                   ),
-                  Divider(color: primaryColor.withValues(alpha: 0.1)),
+                  Divider(color: _inkColor.withOpacity(0.1)),
 
-                  // Limitiamo l'altezza se ci sono troppi tipi per evitare che il dialog sia troppo lungo
                   Flexible(
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -967,10 +880,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                                 title: Text(
                                   _formatRoomTypeLabel(type),
                                   textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.manrope(
                                     color: isSelected
-                                        ? primaryColor
-                                        : const Color(0xFF3D342C),
+                                        ? _appOrange
+                                        : _inkColor,
                                     fontWeight: isSelected
                                         ? FontWeight.w800
                                         : FontWeight.w600,
@@ -983,7 +896,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                                 },
                               ),
                               Divider(
-                                color: primaryColor.withValues(alpha: 0.1),
+                                color: _inkColor.withOpacity(0.1),
                               ),
                             ],
                           );
@@ -1010,7 +923,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
       isScrollControlled: true,
       builder: (BuildContext context) {
         return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
             child: Container(
@@ -1021,8 +934,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                 bottom: MediaQuery.of(context).viewInsets.bottom + 30,
               ),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                border: Border.all(color: Colors.white, width: 1.5),
+                color: Colors.white.withOpacity(0.95), // Chiaro e pulito
+                border: Border.all(color: Colors.white, width: 2),
               ),
               child: SafeArea(
                 top: false,
@@ -1035,9 +948,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                         width: 48,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: const Color(
-                            0xFF3D342C,
-                          ).withValues(alpha: 0.15),
+                          color: _inkColor.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -1045,40 +956,47 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                     const SizedBox(height: 24),
                     Text(
                       'Add a new floor',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.manrope(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        color: primaryColor,
+                        color: _inkColor,
                       ),
                     ),
                     const SizedBox(height: 24),
+                    // Vetro TextField
                     Container(
-                      height: 60,
+                      height: 56,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       decoration: BoxDecoration(
-                        color: primaryColor.withValues(alpha: 0.05),
+                        color: _inkColor.withOpacity(0.03),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: primaryColor.withValues(alpha: 0.2),
+                          color: Colors.white.withOpacity(0.8),
                           width: 1.5,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _inkColor.withOpacity(0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          )
+                        ]
                       ),
                       child: Center(
                         child: TextField(
                           controller: floorNameController,
                           autofocus: true,
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.manrope(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF3D342C),
+                            fontWeight: FontWeight.w700,
+                            color: _inkColor,
                           ),
                           decoration: InputDecoration(
                             border: InputBorder.none,
                             hintText: 'e.g. Ground Floor',
-                            hintStyle: GoogleFonts.poppins(
-                              color: const Color(
-                                0xFF3D342C,
-                              ).withValues(alpha: 0.3),
+                            hintStyle: GoogleFonts.manrope(
+                              color: _inkColor.withOpacity(0.4),
+                              fontWeight: FontWeight.w600
                             ),
                           ),
                         ),
@@ -1093,24 +1011,24 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                       },
                       child: Container(
                         width: double.infinity,
-                        height: 60,
+                        height: 56,
                         decoration: BoxDecoration(
-                          color: primaryColor,
+                          color: _appTeal,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: primaryColor.withValues(alpha: 0.3),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              color: _appTeal.withOpacity(0.3),
+                              blurRadius: 15,
+                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
                         child: Center(
                           child: Text(
                             'Save Floor',
-                            style: GoogleFonts.poppins(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
+                            style: GoogleFonts.manrope(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
                               color: Colors.white,
                             ),
                           ),
@@ -1141,7 +1059,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
       isScrollControlled: true,
       builder: (BuildContext context) {
         return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
             child: Container(
@@ -1152,14 +1070,13 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                 bottom: MediaQuery.of(context).viewInsets.bottom + 30,
               ),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: Colors.white.withOpacity(0.95), // Chiaro e pulito
                 border: Border.all(color: Colors.white, width: 1.5),
               ),
               child: SafeArea(
                 top: false,
                 child: StatefulBuilder(
                   builder: (context, setModalState) {
-                    // Helper locale per ricavare la label o il placeholder
                     String typeDisplayText = 'Select a type';
                     if (selectedRoomType != null) {
                       typeDisplayText = _formatRoomTypeLabel(selectedRoomType!);
@@ -1174,9 +1091,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                             width: 48,
                             height: 5,
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF3D342C,
-                              ).withValues(alpha: 0.15),
+                              color: _inkColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
@@ -1184,52 +1099,55 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                         const SizedBox(height: 24),
                         Text(
                           'Add a new Room',
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
+                          style: GoogleFonts.manrope(
+                            fontSize: 26,
                             fontWeight: FontWeight.w800,
-                            color: primaryColor,
+                            color: _inkColor,
                           ),
                         ),
                         Text(
                           'It will be added to $selectedFloorName',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.manrope(
                             fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(
-                              0xFF3D342C,
-                            ).withValues(alpha: 0.6),
+                            fontWeight: FontWeight.w600,
+                            color: _inkColor.withOpacity(0.6),
                           ),
                         ),
                         const SizedBox(height: 24),
 
-                        // Text Field in Vetro
+                        // Text Field Vetro
                         Container(
-                          height: 60,
+                          height: 56,
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           decoration: BoxDecoration(
-                            color: primaryColor.withValues(alpha: 0.05),
+                            color: _inkColor.withOpacity(0.03),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: primaryColor.withValues(alpha: 0.2),
+                              color: Colors.white.withOpacity(0.8),
                               width: 1.5,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _inkColor.withOpacity(0.08),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              )
+                            ]
                           ),
                           child: Center(
                             child: TextField(
                               controller: roomNameController,
                               autofocus: true,
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.manrope(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF3D342C),
+                                fontWeight: FontWeight.w700,
+                                color: _inkColor,
                               ),
                               decoration: InputDecoration(
                                 border: InputBorder.none,
                                 hintText: 'e.g. Living Room',
-                                hintStyle: GoogleFonts.poppins(
-                                  color: const Color(
-                                    0xFF3D342C,
-                                  ).withValues(alpha: 0.3),
+                                hintStyle: GoogleFonts.manrope(
+                                  color: _inkColor.withOpacity(0.4),
                                 ),
                               ),
                             ),
@@ -1239,17 +1157,15 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
 
                         Text(
                           'Room type (optional)',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.manrope(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(
-                              0xFF3D342C,
-                            ).withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w700,
+                            color: _inkColor.withOpacity(0.8),
                           ),
                         ),
                         const SizedBox(height: 10),
 
-                        // --- NUOVO SELETTORE TIPO STANZA ---
+                        // --- SELETTORE TIPO STANZA VETRO ---
                         GestureDetector(
                           onTap: () {
                             _showRoomTypePickerModal(context, (
@@ -1261,38 +1177,41 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                             }, selectedRoomType);
                           },
                           child: Container(
-                            height: 60,
+                            height: 56,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: _inkColor.withOpacity(0.03),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(
-                                  0xFF3D342C,
-                                ).withValues(alpha: 0.1),
+                                color: Colors.white.withOpacity(0.8),
                                 width: 1.5,
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _inkColor.withOpacity(0.08),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                )
+                              ]
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
                                   typeDisplayText,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.manrope(
                                     color: selectedRoomType == null
-                                        ? const Color(
-                                            0xFF3D342C,
-                                          ).withValues(alpha: 0.4)
-                                        : const Color(0xFF3D342C),
+                                        ? _inkColor.withOpacity(0.4)
+                                        : _inkColor,
                                     fontWeight: selectedRoomType == null
-                                        ? FontWeight.w500
-                                        : FontWeight.w600,
+                                        ? FontWeight.w600
+                                        : FontWeight.w700,
                                     fontSize: 16,
                                   ),
                                 ),
                                 const Icon(
                                   Icons.keyboard_arrow_down_rounded,
-                                  color: Color(0xFF3D342C),
+                                  color: _inkColor,
                                 ),
                               ],
                             ),
@@ -1317,33 +1236,33 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                                 SnackBar(
                                   content: Text(
                                     'Name is required',
-                                    style: GoogleFonts.poppins(),
+                                    style: GoogleFonts.manrope(),
                                   ),
-                                  backgroundColor: errorColor,
+                                  backgroundColor: _appCoral,
                                 ),
                               );
                             }
                           },
                           child: Container(
                             width: double.infinity,
-                            height: 60,
+                            height: 56,
                             decoration: BoxDecoration(
-                              color: primaryColor,
+                              color: _appTeal,
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: primaryColor.withValues(alpha: 0.3),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
+                                  color: _appTeal.withOpacity(0.3),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 6),
                                 ),
                               ],
                             ),
                             child: Center(
                               child: Text(
                                 'Save Room',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
+                                style: GoogleFonts.manrope(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                 ),
                               ),
@@ -1371,45 +1290,43 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withOpacity(0.4),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: primaryColor.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.8),
                   width: 2,
                 ),
               ),
               child: Icon(
                 Icons.layers_clear_outlined,
                 size: 48,
-                color: primaryColor.withValues(alpha: 0.5),
+                color: _appTeal.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 24),
             Text(
               'No floors yet',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.manrope(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF3D342C),
+                color: _inkColor,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              // Messaggio diverso in base al ruolo!
               _isHost
                   ? 'Start by adding the first floor\nof your beautiful home.'
                   : 'Your host hasn\'t added\nany floors yet.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.manrope(
                 fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF3D342C).withValues(alpha: 0.6),
+                fontWeight: FontWeight.w600,
+                color: _inkColor.withOpacity(0.6),
               ),
             ),
             
-            // Bottone per aggiungere visibile solo all'HOST
             if (_isHost) ...[
               const SizedBox(height: 32),
               GestureDetector(
@@ -1420,11 +1337,11 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    color: primaryColor,
+                    color: _inkColor, 
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: primaryColor.withValues(alpha: 0.3),
+                        color: _inkColor.withOpacity(0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -1441,9 +1358,9 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                       const SizedBox(width: 8),
                       Text(
                         'Add Floor',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.manrope(
                           color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 15,
                         ),
                       ),
@@ -1469,45 +1386,43 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withOpacity(0.4),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: primaryColor.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.8),
                   width: 2,
                 ),
               ),
               child: Icon(
                 Icons.meeting_room_outlined,
                 size: 48,
-                color: primaryColor.withValues(alpha: 0.5),
+                color: _appTeal.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 24),
             Text(
               'This floor is empty',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.manrope(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF3D342C),
+                color: _inkColor,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              // Messaggio diverso in base al ruolo!
               _isHost
                   ? 'Add your first room to $selectedFloorName.'
                   : 'There are no rooms on this floor yet.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.manrope(
                 fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF3D342C).withValues(alpha: 0.6),
+                fontWeight: FontWeight.w600,
+                color: _inkColor.withOpacity(0.6),
               ),
             ),
             
-            // Bottone per aggiungere visibile solo all'HOST
             if (_isHost) ...[
               const SizedBox(height: 32),
               GestureDetector(
@@ -1529,11 +1444,11 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    color: primaryColor,
+                    color: _inkColor, 
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: primaryColor.withValues(alpha: 0.3),
+                        color: _inkColor.withOpacity(0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -1550,9 +1465,9 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                       const SizedBox(width: 8),
                       Text(
                         'Add Room',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.manrope(
                           color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 15,
                         ),
                       ),
