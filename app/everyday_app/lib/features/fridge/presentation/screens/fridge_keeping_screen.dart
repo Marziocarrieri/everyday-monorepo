@@ -8,11 +8,18 @@ import 'package:everyday_app/core/providers/app_state_providers.dart';
 import 'package:everyday_app/features/fridge/data/models/area_type.dart';
 import 'package:everyday_app/features/fridge/data/models/fridge_item.dart';
 import 'package:everyday_app/features/fridge/domain/services/pantry_service.dart';
+import 'package:everyday_app/features/fridge/domain/services/shopping_service.dart';
 import 'package:everyday_app/features/fridge/presentation/providers/fridge_providers.dart';
 import 'package:everyday_app/shared/utils/date_utils.dart';
-import 'package:everyday_app/shared/utils/status_color_utils.dart';
 import 'package:everyday_app/features/fridge/data/models/recommended_item.dart';
 import 'package:everyday_app/features/fridge/data/repositories/recommended_item_repository.dart';
+
+// --- COLORI DEL DESIGN SYSTEM ---
+const _bgColor = Color(0xFFF4F1ED);
+const _inkColor = Color(0xFF1F3A44);
+const _appTeal = Color(0xFF5A8B9E);
+const _appCoral = Color(0xFFF28482);
+const _appOrange = Color(0xFFF4A261);
 
 class FridgeKeepingScreen extends ConsumerStatefulWidget {
   final Object? initialArea; // Argomento in ingresso dal router
@@ -43,10 +50,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   String _searchQuery = '';
   final Set<String> _selectedIdsForDeletion = {};
 
-  final Color primaryColor = const Color(0xFF5A8B9E);
-  final Color warningColor = const Color(0xFFF4A261);
-  final Color expiredColor = const Color(0xFFF28482);
-  final Color darkTextColor = const Color(0xFF3D342C);
   List<RecommendedItem> recommendedItems = [];
 
   @override
@@ -67,7 +70,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 
   Future<void> _loadRecommendations() async {
     try {
-      // You might need to pass the area name based on your logic, e.g., 'pantry'
       final repo = RecommendedItemRepository();
       final items = await repo.getItems();
 
@@ -82,7 +84,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   }
 
   Color _getItemColor(FridgeItem item) {
-    if (item.expirationDate == null) return getStatusColor('safe');
+    if (item.expirationDate == null) return _appTeal;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final expDate = DateTime(
@@ -93,11 +95,29 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     final difference = expDate.difference(today).inDays;
 
     if (difference <= 0)
-      return expiredColor;
+      return _appCoral;
     else if (difference <= 2)
-      return warningColor;
+      return _appOrange;
     else
-      return getStatusColor('safe');
+      return _appTeal;
+  }
+
+  // --- HELPER PER LE ICONE DINAMICHE ---
+  IconData _getIconForArea(AreaType area) {
+    switch (area) {
+      case AreaType.fridge:
+        return Icons.kitchen_rounded;
+      case AreaType.freezer:
+        return Icons.ac_unit_rounded;
+      case AreaType.pantry:
+        return Icons.inventory_2_rounded;
+      case AreaType.spirits:
+        return Icons.wine_bar_rounded;
+      case AreaType.household:
+        return Icons.cleaning_services_rounded;
+      case AreaType.personalCare:
+        return Icons.spa_rounded;
+    }
   }
 
   void _showSuccessSnackBar(String message) {
@@ -107,13 +127,13 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
             color: Colors.white,
           ),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: primaryColor,
+        backgroundColor: _appTeal,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 2),
       ),
@@ -172,7 +192,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       context: context,
       builder: (dialogContext) {
         return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Dialog(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -184,7 +204,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                 border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryColor.withOpacity(0.15),
+                    color: _appTeal.withOpacity(0.15),
                     blurRadius: 30,
                     offset: const Offset(0, 10),
                   ),
@@ -197,50 +217,48 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: _appTeal.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.shopping_cart_outlined,
-                      color: primaryColor,
+                      color: _appTeal,
                       size: 30,
                     ),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     'Out of stock?',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      color: darkTextColor,
+                      color: _inkColor,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Do you want to add "${item.name}" to your shopping list before removing it?',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: darkTextColor.withOpacity(0.6),
+                      fontWeight: FontWeight.w600,
+                      color: _inkColor.withOpacity(0.6),
                     ),
                   ),
                   const SizedBox(height: 30),
                   Column(
                     children: [
                       GestureDetector(
-                        onTap: () => Navigator.of(
-                          dialogContext,
-                        ).pop('cart'), // Aggiungi al carrello
+                        onTap: () => Navigator.of(dialogContext).pop('cart'),
                         child: Container(
                           height: 50,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: primaryColor,
+                            color: _appTeal,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: primaryColor.withOpacity(0.3),
+                                color: _appTeal.withOpacity(0.3),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -249,9 +267,9 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                           child: Center(
                             child: Text(
                               'Yes, add to list',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.manrope(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
@@ -263,26 +281,24 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                         children: [
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => Navigator.of(
-                                dialogContext,
-                              ).pop('cancel'), // Annulla
+                              onTap: () => Navigator.of(dialogContext).pop('cancel'),
                               child: Container(
                                 height: 50,
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: darkTextColor.withOpacity(0.1),
+                                    color: _inkColor.withOpacity(0.1),
                                     width: 1.5,
                                   ),
                                 ),
                                 child: Center(
                                   child: Text(
                                     'Cancel',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.manrope(
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: darkTextColor.withOpacity(0.7),
+                                      fontWeight: FontWeight.w700,
+                                      color: _inkColor.withOpacity(0.7),
                                     ),
                                   ),
                                 ),
@@ -292,22 +308,20 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => Navigator.of(
-                                dialogContext,
-                              ).pop('delete'), // Solo Elimina
+                              onTap: () => Navigator.of(dialogContext).pop('delete'),
                               child: Container(
                                 height: 50,
                                 decoration: BoxDecoration(
-                                  color: expiredColor.withOpacity(0.1),
+                                  color: _appCoral.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Center(
                                   child: Text(
                                     'Just Delete',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.manrope(
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: expiredColor,
+                                      fontWeight: FontWeight.w800,
+                                      color: _appCoral,
                                     ),
                                   ),
                                 ),
@@ -343,21 +357,16 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             householdId,
             item.name,
             quantity: 1,
-          ); // Lo aggiunge alla spesa
+          );
         }
       }
-
-      // Indipendentemente da 'cart' o 'delete', va rimosso dal frigo
       await pantryService.deleteItem(item.id);
-
       _showSuccessSnackBar(
         action == 'cart' ? 'Added to shopping list & removed' : 'Item deleted',
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -367,7 +376,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       context: context,
       builder: (dialogContext) {
         return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Dialog(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -379,7 +388,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                 border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryColor.withOpacity(0.15),
+                    color: _appTeal.withOpacity(0.15),
                     blurRadius: 30,
                     offset: const Offset(0, 10),
                   ),
@@ -392,32 +401,32 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: _appTeal.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.shopping_cart_checkout_rounded,
-                      color: primaryColor,
+                      color: _appTeal,
                       size: 30,
                     ),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     'Out of stock?',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      color: darkTextColor,
+                      color: _inkColor,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Do you want to add these $count items to your shopping list before removing them?',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: darkTextColor.withOpacity(0.6),
+                      fontWeight: FontWeight.w600,
+                      color: _inkColor.withOpacity(0.6),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -429,11 +438,11 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                           height: 50,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: primaryColor,
+                            color: _appTeal,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: primaryColor.withOpacity(0.3),
+                                color: _appTeal.withOpacity(0.3),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -442,9 +451,9 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                           child: Center(
                             child: Text(
                               'Yes, add all to list',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.manrope(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
@@ -456,25 +465,24 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                         children: [
                           Expanded(
                             child: GestureDetector(
-                              onTap: () =>
-                                  Navigator.of(dialogContext).pop('cancel'),
+                              onTap: () => Navigator.of(dialogContext).pop('cancel'),
                               child: Container(
                                 height: 50,
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: darkTextColor.withOpacity(0.1),
+                                    color: _inkColor.withOpacity(0.1),
                                     width: 1.5,
                                   ),
                                 ),
                                 child: Center(
                                   child: Text(
                                     'Cancel',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.manrope(
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: darkTextColor.withOpacity(0.7),
+                                      fontWeight: FontWeight.w700,
+                                      color: _inkColor.withOpacity(0.7),
                                     ),
                                   ),
                                 ),
@@ -484,21 +492,20 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () =>
-                                  Navigator.of(dialogContext).pop('delete'),
+                              onTap: () => Navigator.of(dialogContext).pop('delete'),
                               child: Container(
                                 height: 50,
                                 decoration: BoxDecoration(
-                                  color: expiredColor.withOpacity(0.1),
+                                  color: _appCoral.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Center(
                                   child: Text(
                                     'Just Delete',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.manrope(
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: expiredColor,
+                                      fontWeight: FontWeight.w800,
+                                      color: _appCoral,
                                     ),
                                   ),
                                 ),
@@ -518,7 +525,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
   }
 
-  // --- LOGICA DI ELIMINAZIONE MULTIPLA ---
   Future<void> _handleBatchRemoval(List<FridgeItem> allCurrentItems) async {
     if (_selectedIdsForDeletion.isEmpty) return;
 
@@ -534,7 +540,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         final shoppingService = ref.read(shoppingServiceProvider);
         final householdId = ref.read(currentHouseholdIdProvider);
         if (householdId != null) {
-          // Recupero i nomi degli elementi selezionati per aggiungerli alla spesa
           final selectedItems = allCurrentItems
               .where((i) => _selectedIdsForDeletion.contains(i.id))
               .toList();
@@ -544,7 +549,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         }
       }
 
-      // Elimina dal frigo
       for (final id in _selectedIdsForDeletion) {
         await pantryService.deleteItem(id);
       }
@@ -559,9 +563,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -580,13 +582,13 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     final householdId = ref.watch(currentHouseholdIdProvider);
     if (householdId == null || householdId.isEmpty) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: _bgColor,
         body: Center(
           child: Text(
             'Household context not ready',
-            style: GoogleFonts.poppins(
-              color: darkTextColor,
-              fontWeight: FontWeight.w500,
+            style: GoogleFonts.manrope(
+              color: _inkColor,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -594,7 +596,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     }
 
     final itemsAsync = ref.watch(pantryItemsStreamProvider(householdId));
-    final themeColor = getStatusColor('safe');
 
     final currentItems = itemsAsync.valueOrNull ?? [];
     final filteredItems = currentItems.where((item) {
@@ -606,7 +607,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _bgColor,
       body: SafeArea(
         child: Stack(
           children: [
@@ -619,34 +620,34 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(context),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 32),
                   _buildSearchBar(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          _buildViewToggle(),
-                          const SizedBox(width: 12),
-                          _buildDeleteModeToggle(),
-                        ],
-                      ),
+                      _buildViewToggle(),
                       _buildCategorySelector(context),
                     ],
                   ),
                   const SizedBox(height: 20),
+                  // Tasto Select spostato a sinistra sotto la riga sopra
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [_buildDeleteModeToggle()],
+                  ),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: itemsAsync.when(
-                      loading: () => Center(
+                      loading: () => const Center(
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                          valueColor: AlwaysStoppedAnimation<Color>(_appTeal),
                         ),
                       ),
                       error: (error, _) => Center(
                         child: Text(
                           error.toString(),
-                          style: GoogleFonts.poppins(color: expiredColor),
+                          style: GoogleFonts.manrope(color: _appCoral),
                         ),
                       ),
                       data: (_) {
@@ -674,107 +675,110 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   }
 
   // ==========================================
-  // UI PRINCIPALE
+  // UI PRINCIPALE - VETRO SMOKED/SATINATO
   // ==========================================
 
   Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Indietro (PULITO)
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: primaryColor.withOpacity(0.1),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: primaryColor.withOpacity(0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Icon(
+            width: 44,
+            height: 44,
+            color: Colors.transparent,
+            alignment: Alignment.centerLeft,
+            child: const Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: primaryColor,
-              size: 20,
+              color: _inkColor,
+              size: 24,
             ),
           ),
         ),
+        // Titolo
         Text(
           'Fridge Keeping',
-          style: GoogleFonts.poppins(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: primaryColor,
+          style: GoogleFonts.manrope(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: _inkColor,
+            letterSpacing: -0.5,
           ),
         ),
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: primaryColor.withOpacity(0.1), width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: primaryColor.withOpacity(0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Icon(
-            Icons.qr_code_scanner_rounded,
-            color: primaryColor,
-            size: 22,
+        // QR Code (PULITO)
+        GestureDetector(
+          onTap: () {
+            // Aggiungi logica scanner se serve
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            color: Colors.transparent,
+            alignment: Alignment.centerRight,
+            child: const Icon(
+              Icons.qr_code_scanner_rounded,
+              color: _inkColor,
+              size: 26,
+            ),
           ),
         ),
       ],
     );
   }
 
+  // --- SEARCH BAR: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO ---
   Widget _buildSearchBar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-        child: Container(
-          height: 55,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
-            color: primaryColor.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: primaryColor.withOpacity(0.2),
-              width: 1.2,
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: _inkColor.withOpacity(0.08), // Ombra morbida
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: 'Search items...',
-                    hintStyle: GoogleFonts.poppins(
-                      color: primaryColor.withOpacity(0.5),
-                      fontSize: 15,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                  style: GoogleFonts.poppins(color: darkTextColor),
-                ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03), // Leggera patina scura
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.7), // Bordo bianco satinato
+                width: 1.5,
               ),
-              Icon(Icons.search_rounded, color: primaryColor, size: 24),
-            ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                    decoration: InputDecoration(
+                      hintText: 'Search items...',
+                      hintStyle: GoogleFonts.manrope(
+                        color: _inkColor.withOpacity(0.4),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      border: InputBorder.none,
+                    ),
+                    style: GoogleFonts.manrope(
+                      color: _inkColor, 
+                      fontWeight: FontWeight.w600
+                    ),
+                  ),
+                ),
+                Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 24),
+              ],
+            ),
           ),
         ),
       ),
@@ -784,9 +788,9 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   Widget _buildViewToggle() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
+        color: Colors.white.withOpacity(0.7),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: primaryColor.withOpacity(0.1), width: 1.2),
+        border: Border.all(color: Colors.white, width: 2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -798,26 +802,26 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               _selectedIdsForDeletion.clear();
             }),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: _isListView ? Colors.white : Colors.transparent,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: _isListView
                     ? [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
+                          color: _inkColor.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ]
                     : [],
               ),
               child: Icon(
                 Icons.view_list_rounded,
-                size: 22,
+                size: 20,
                 color: _isListView
-                    ? primaryColor
-                    : primaryColor.withOpacity(0.4),
+                    ? _inkColor
+                    : _inkColor.withOpacity(0.3),
               ),
             ),
           ),
@@ -828,26 +832,26 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               _selectedIdsForDeletion.clear();
             }),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: !_isListView ? Colors.white : Colors.transparent,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: !_isListView
                     ? [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
+                          color: _inkColor.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ]
                     : [],
               ),
               child: Icon(
                 Icons.grid_view_rounded,
-                size: 22,
+                size: 20,
                 color: !_isListView
-                    ? primaryColor
-                    : primaryColor.withOpacity(0.4),
+                    ? _inkColor
+                    : _inkColor.withOpacity(0.3),
               ),
             ),
           ),
@@ -856,27 +860,34 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
   }
 
+  // --- TASTO SELECT MINIMAL ---
   Widget _buildDeleteModeToggle() {
     return GestureDetector(
       onTap: () => setState(() {
         _isDeleteMode = !_isDeleteMode;
         if (!_isDeleteMode) _selectedIdsForDeletion.clear();
       }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: _isDeleteMode ? expiredColor : Colors.white.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: _isDeleteMode ? expiredColor : primaryColor.withOpacity(0.1),
-            width: 1.2,
-          ),
-        ),
-        child: Icon(
-          Icons.checklist_rounded,
-          size: 22,
-          color: _isDeleteMode ? Colors.white : primaryColor.withOpacity(0.4),
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _isDeleteMode ? Icons.close_rounded : Icons.checklist_rounded,
+              size: 20,
+              color: _inkColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _isDeleteMode ? 'Cancel' : 'Select',
+              style: GoogleFonts.manrope(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: _inkColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -890,118 +901,114 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            height: 70,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: hasSelection
-                  ? expiredColor.withOpacity(0.95)
-                  : Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: hasSelection
-                    ? expiredColor
-                    : darkTextColor.withOpacity(0.1),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: hasSelection
-                      ? expiredColor.withOpacity(0.3)
-                      : Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => setState(() {
-                    if (allSelected)
-                      _selectedIdsForDeletion.clear();
-                    else
-                      _selectedIdsForDeletion.addAll(
-                        currentFilteredItems.map((e) => e.id),
-                      );
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: allSelected
-                          ? Colors.white.withOpacity(0.2)
-                          : (hasSelection
-                                ? Colors.white.withOpacity(0.1)
-                                : primaryColor.withOpacity(0.1)),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      allSelected
-                          ? Icons.remove_done_rounded
-                          : Icons.done_all_rounded,
-                      color: hasSelection ? Colors.white : primaryColor,
-                      size: 22,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      if (allSelected)
+                        _selectedIdsForDeletion.clear();
+                      else
+                        _selectedIdsForDeletion.addAll(
+                          currentFilteredItems.map((e) => e.id),
+                        );
+                    }),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: allSelected
+                            ? _inkColor.withOpacity(0.15)
+                            : (hasSelection
+                                  ? _inkColor.withOpacity(0.05)
+                                  : _inkColor.withOpacity(0.05)),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        allSelected
+                            ? Icons.remove_done_rounded
+                            : Icons.done_all_rounded,
+                        color: hasSelection ? _inkColor : _inkColor.withOpacity(0.4),
+                        size: 20,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    count == 0
-                        ? 'Select items...'
-                        : (allSelected
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      count == 0
+                          ? 'Select items...'
+                          : (allSelected
                               ? 'All selected ($count)'
                               : '$count selected'),
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: hasSelection
-                          ? Colors.white
-                          : darkTextColor.withOpacity(0.6),
+                      style: GoogleFonts.manrope(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: hasSelection
+                            ? _inkColor
+                            : _inkColor.withOpacity(0.6),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                if (hasSelection)
-                  GestureDetector(
-                    onTap: () => _handleBatchRemoval(currentFilteredItems),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_outline_rounded,
-                            color: expiredColor,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Remove',
-                            style: GoogleFonts.poppins(
-                              color: expiredColor,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
+                  if (hasSelection)
+                    GestureDetector(
+                      onTap: () => _handleBatchRemoval(currentFilteredItems),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _appCoral.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.delete_outline_rounded,
+                              color: _appCoral,
+                              size: 18,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Text(
+                              'Remove',
+                              style: GoogleFonts.manrope(
+                                color: _appCoral,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1013,14 +1020,18 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     return GestureDetector(
       onTap: () => _showCategoryModal(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: darkTextColor,
+          gradient: const LinearGradient(
+            colors: [_appOrange, Color(0xFFE76F51)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: darkTextColor.withOpacity(0.2),
-              blurRadius: 10,
+              color: _appOrange.withOpacity(0.3),
+              blurRadius: 15,
               offset: const Offset(0, 5),
             ),
           ],
@@ -1030,9 +1041,9 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           children: [
             Text(
               _selectedCategory.label,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.manrope(
                 color: Colors.white,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
                 fontSize: 14,
               ),
             ),
@@ -1061,39 +1072,33 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
             child: Container(
-              padding: const EdgeInsets.all(30),
+              padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withOpacity(0.9),
-                    Colors.white.withOpacity(0.7),
-                  ],
-                ),
-                border: Border.all(color: Colors.white, width: 1.5),
+                color: Colors.white.withOpacity(0.95),
+                border: Border.all(color: Colors.white, width: 2),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 50,
+                    width: 48,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.2),
+                      color: _inkColor.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  const SizedBox(height: 30),
-                  // Nuove opzioni aggiunte!
+                  const SizedBox(height: 32),
                   _buildModalOption(AreaType.pantry),
-                  const Divider(color: Colors.black12, height: 20),
+                  Divider(color: _inkColor.withOpacity(0.05), height: 24),
                   _buildModalOption(AreaType.fridge),
-                  const Divider(color: Colors.black12, height: 20),
+                  Divider(color: _inkColor.withOpacity(0.05), height: 24),
                   _buildModalOption(AreaType.freezer),
-                  const Divider(color: Colors.black12, height: 20),
+                  Divider(color: _inkColor.withOpacity(0.05), height: 24),
                   _buildModalOption(AreaType.spirits),
-                  const Divider(color: Colors.black12, height: 20),
+                  Divider(color: _inkColor.withOpacity(0.05), height: 24),
                   _buildModalOption(AreaType.household),
-                  const Divider(color: Colors.black12, height: 20),
+                  Divider(color: _inkColor.withOpacity(0.05), height: 24),
                   _buildModalOption(AreaType.personalCare),
                   const SizedBox(height: 10),
                 ],
@@ -1112,26 +1117,29 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         setState(() => _selectedCategory = areaType);
         Navigator.pop(context);
       },
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            areaType.label,
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color: isSelected ? const Color(0xFFF4A261) : darkTextColor,
+      child: Container(
+        color: Colors.transparent,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              areaType.label,
+              style: GoogleFonts.manrope(
+                fontSize: 18,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? _appOrange : _inkColor,
+              ),
             ),
-          ),
-          if (isSelected)
-            const Icon(Icons.check_circle_rounded, color: Color(0xFFF4A261)),
-        ],
+            if (isSelected)
+              const Icon(Icons.check_circle_rounded, color: _appOrange),
+          ],
+        ),
       ),
     );
   }
 
   // ==========================================
-  // LISTE ED ELEMENTI
+  // LISTE ED ELEMENTI (VETRO SATINATO CHIARO)
   // ==========================================
 
   Widget _buildGlassList(List<FridgeItem> items, PantryService pantryService) {
@@ -1141,7 +1149,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.only(bottom: _isDeleteMode ? 100 : 40),
       itemCount: items.length + 1,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         if (index == items.length)
           return _isDeleteMode ? const SizedBox() : _buildInlineAddButton();
@@ -1153,7 +1161,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               : DismissDirection.endToStart,
           background: Container(
             decoration: BoxDecoration(
-              color: expiredColor,
+              color: _appCoral,
               borderRadius: BorderRadius.circular(24),
             ),
             alignment: Alignment.centerRight,
@@ -1165,7 +1173,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             ),
           ),
           confirmDismiss: (direction) async {
-            // Avviamo la logica intelligente
             await _handleItemRemoval(item);
             return false;
           },
@@ -1179,110 +1186,113 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     final isSelected = _selectedIdsForDeletion.contains(item.id);
     Color baseIconColor = _getItemColor(item);
     Color currentBorderColor = _isDeleteMode && isSelected
-        ? expiredColor
-        : baseIconColor.withOpacity(0.3);
-    Color currentBgColor = _isDeleteMode && isSelected
-        ? expiredColor.withOpacity(0.1)
-        : Colors.white.withOpacity(0.6);
+        ? _appCoral
+        : Colors.white.withOpacity(0.7); // Patina bianca
+
+    final iconData = _getIconForArea(item.area);
 
     return GestureDetector(
       onTap: _isDeleteMode
           ? () => _toggleSelection(item.id)
-          : () => _showItemDetailModal(item, pantryService, baseIconColor),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 85,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: currentBgColor,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: currentBorderColor,
-                width: isSelected ? 2.0 : 1.5,
-              ),
+          : () => _showItemDetailModal(item, pantryService, baseIconColor, iconData),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08), // Ombra profonda
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: baseIconColor.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: item.recommendedItem?.picture != null && item.recommendedItem!.picture.isNotEmpty
-                  ? ClipOval(
-                      child: Image.network(
-                        item.recommendedItem!.picture,
-                        width: 28,
-                        height: 28,
-                        fit: BoxFit.cover,
-                        // Error handling in case the URL is broken
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                          Icons.kitchen_outlined,
-                          color: baseIconColor,
-                          size: 28,
-                        ),
-                        // Optional: Show a tiny loader while the image loads
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: SizedBox(
-                              width: 15,
-                              height: 15,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(baseIconColor.withOpacity(0.3)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 76, // Altezza leggermente aumentata per respiro
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: _isDeleteMode && isSelected
+                    ? _appCoral.withOpacity(0.1)
+                    : _inkColor.withOpacity(0.03), // Leggermente scuro
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: currentBorderColor,
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Icona Check (selezionato) o Immagine
+                  if (_isDeleteMode) ...[
+                    Icon(
+                      isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                      color: isSelected ? _appCoral : _inkColor.withOpacity(0.3),
+                      size: 26,
+                    ),
+                    const SizedBox(width: 16),
+                  ] else ...[
+                    item.recommendedItem?.picture != null && item.recommendedItem!.picture.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          item.recommendedItem!.picture,
+                          width: 32, 
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Icon(iconData, color: baseIconColor, size: 28),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return SizedBox(
+                              width: 32, height: 32,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(baseIconColor.withOpacity(0.3)),
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
+                      )
+                    : Icon(iconData, color: baseIconColor, size: 28),
+                    const SizedBox(width: 16),
+                  ],
+
+                  Expanded(
+                    child: Text(
+                      item.name,
+                      style: GoogleFonts.manrope(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: _inkColor,
                       ),
-                    )
-                  : Icon(
-                      Icons.kitchen_outlined,
-                      color: baseIconColor,
-                      size: 28,
-                    ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Text(
-                    item.name,
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: darkTextColor,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-                if (_isDeleteMode)
-                  Icon(
-                    isSelected
-                        ? Icons.check_circle_rounded
-                        : Icons.circle_outlined,
-                    color: isSelected
-                        ? expiredColor
-                        : Colors.grey.withOpacity(0.4),
-                    size: 28,
-                  )
-                else
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: baseIconColor.withOpacity(0.5),
-                    size: 28,
-                  ),
-              ],
+
+                  // CONTROLLO DI NULLITÀ AGGIUNTO QUI PER EVITARE L'ERRORE!
+                  if (item.quantity != null && item.quantity! > 1 && !_isDeleteMode)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Qty: ${item.quantity}',
+                        style: GoogleFonts.manrope(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: _appTeal,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1290,10 +1300,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
   }
 
-  Widget _buildSmallGlassGrid(
-    List<FridgeItem> items,
-    PantryService pantryService,
-  ) {
+  // --- GRID VIEW: VETRO SATINATO CHIARO ---
+  Widget _buildSmallGlassGrid(List<FridgeItem> items, PantryService pantryService) {
     if (items.isEmpty) return _buildEmptyState();
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -1303,13 +1311,12 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.1,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.9, 
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, index) =>
-                  _buildSmallGridCard(items[index], pantryService),
+              (context, index) => _buildSmallGridCard(items[index], pantryService),
               childCount: items.length,
             ),
           ),
@@ -1329,11 +1336,10 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     final isSelected = _selectedIdsForDeletion.contains(item.id);
     Color baseIconColor = _getItemColor(item);
     Color currentBorderColor = _isDeleteMode && isSelected
-        ? expiredColor
-        : baseIconColor.withOpacity(0.3);
-    Color currentBgColor = _isDeleteMode && isSelected
-        ? expiredColor.withOpacity(0.1)
-        : Colors.white.withOpacity(0.6);
+        ? _appCoral
+        : Colors.white.withOpacity(0.7);
+
+    final iconData = _getIconForArea(item.area);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -1341,59 +1347,55 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         GestureDetector(
           onTap: _isDeleteMode
               ? () => _toggleSelection(item.id)
-              : () => _showItemDetailModal(item, pantryService, baseIconColor),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: currentBgColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: currentBorderColor,
-                    width: isSelected ? 2.0 : 1.5,
+              : () => _showItemDetailModal(item, pantryService, baseIconColor, iconData),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: _inkColor.withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, 6),
+                )
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _isDeleteMode && isSelected
+                        ? _appCoral.withOpacity(0.1)
+                        : _inkColor.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: currentBorderColor,
+                      width: 1.5,
+                    ),
                   ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: baseIconColor.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(iconData, color: baseIconColor, size: 28),
+                      const SizedBox(height: 10),
+                      Text(
+                        item.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.manrope(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _inkColor,
+                          height: 1.2,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.kitchen_outlined,
-                        color: baseIconColor,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: darkTextColor,
-                        height: 1.1,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1401,11 +1403,11 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         ),
         if (_isDeleteMode)
           Positioned(
-            top: 5,
-            right: 5,
+            top: 8,
+            right: 8,
             child: Icon(
               isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
-              color: isSelected ? expiredColor : Colors.grey.withOpacity(0.5),
+              color: isSelected ? _appCoral : _inkColor.withOpacity(0.2),
               size: 24,
             ),
           ),
@@ -1413,6 +1415,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
   }
 
+  // --- BOTTONCINO "+" TONDO SCURO ---
   Widget _buildInlineAddButton() {
     return Center(
       child: GestureDetector(
@@ -1422,17 +1425,17 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: primaryColor,
+            color: _inkColor,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: primaryColor.withOpacity(0.4),
+                color: _inkColor.withOpacity(0.2),
                 blurRadius: 15,
-                offset: const Offset(0, 6),
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
         ),
       ),
     );
@@ -1446,40 +1449,35 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withOpacity(0.4),
               shape: BoxShape.circle,
-              border: Border.all(
-                color: primaryColor.withOpacity(0.2),
-                width: 2,
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
             ),
             child: Icon(
-              Icons.shopping_basket_outlined,
+              Icons.shopping_basket_rounded,
               size: 64,
-              color: primaryColor.withOpacity(0.5),
+              color: _appTeal.withOpacity(0.5),
             ),
           ),
           const SizedBox(height: 24),
           Text(
             'Nothing here yet',
-            style: GoogleFonts.poppins(
-              fontSize: 22,
+            style: GoogleFonts.manrope(
+              fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: darkTextColor,
+              color: _inkColor,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Tap the + button below to add\ngroceries to this area.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: darkTextColor.withOpacity(0.6),
+            style: GoogleFonts.manrope(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: _inkColor.withOpacity(0.5),
             ),
           ),
-          const SizedBox(height: 32),
-          _buildInlineAddButton(),
         ],
       ),
     );
@@ -1489,6 +1487,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     FridgeItem item,
     PantryService pantryService,
     Color itemColor,
+    IconData itemIcon,
   ) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
@@ -1498,6 +1497,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         item: item,
         pantryService: pantryService,
         itemColor: itemColor,
+        itemIcon: itemIcon, 
       ),
     );
     if (result == true && mounted) _showSuccessSnackBar('Item updated');
@@ -1507,129 +1507,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   // MODAL ADD ELEMENT
   // ==========================================
 
-  Widget _buildPremiumAutocompleteField(
-    String label,
-    bool isRequired,
-    bool isNumber,
-    TextEditingController? controller,
-    List<RecommendedItem> recommendations,
-    ){
-    final accentColor = getStatusColor('safe');
-    final displayLabel = isRequired ? '$label *' : label;
-
-    return Autocomplete<RecommendedItem>(
-      // Tells Flutter which string to show in the text box when an item is picked
-      displayStringForOption: (RecommendedItem option) => option.name,
-
-      optionsBuilder: (TextEditingValue textEditingValue) {
-        if (textEditingValue.text.isEmpty) {
-          return const Iterable<RecommendedItem>.empty();
-        }
-        return recommendations.where((RecommendedItem option) {
-          return option.name.toLowerCase().contains(
-            textEditingValue.text.toLowerCase(),
-          );
-        });
-      },
-
-      onSelected: (RecommendedItem selection) {
-        controller?.text = selection.name;
-      },
-
-      fieldViewBuilder: (context, autoController, focusNode, onFieldSubmitted) {
-        // Syncing controllers
-        if (autoController.text != controller?.text) {
-          autoController.text = controller?.text ?? '';
-        }
-
-        autoController.addListener(() {
-          controller?.text = autoController.text;
-        });
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: accentColor.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
-          ),
-          child: TextField(
-            controller: autoController,
-            focusNode: focusNode,
-            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF3D342C),
-            ),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              labelText: displayLabel,
-              labelStyle: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isRequired
-                    ? const Color(0xFFF28482)
-                    : const Color(0xFF3D342C).withValues(alpha: 0.6),
-              ),
-              floatingLabelBehavior: FloatingLabelBehavior.always,
-              hintText: 'Tap to type...',
-              hintStyle: GoogleFonts.poppins(
-                color: const Color(0xFF3D342C).withValues(alpha: 0.3),
-                fontSize: 16,
-              ),
-            ),
-          ),
-        );
-      },
-
-      optionsViewBuilder: (context, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.white,
-            child: Container(
-              width: MediaQuery.of(context).size.width - 40,
-              constraints: const BoxConstraints(maxHeight: 250),
-              // Clip to ensure the images don't bleed over the border radius
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (context, index) {
-                    final RecommendedItem option = options.elementAt(index);
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: accentColor.withValues(alpha: 0.1),
-                        backgroundImage: NetworkImage(option.picture),
-                      ),
-                      title: Text(
-                        option.name,
-                        style: GoogleFonts.poppins(
-                          color: const Color(0xFF3D342C),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      onTap: () => onSelected(option),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-
   Future<void> _showAddElementModal(BuildContext context) async {
     nameController.clear();
     quantityController.clear();
@@ -1637,17 +1514,15 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     dateTextController.clear();
     selectedDate = null;
 
-    final themeColor = getStatusColor('safe');
-
     final changed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (BuildContext context) {
         return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
+            filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
             child: Container(
               height: MediaQuery.of(context).size.height * 0.85,
               padding: EdgeInsets.only(
@@ -1658,28 +1533,28 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               ),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.95),
-                border: Border.all(color: Colors.white, width: 1.5),
+                border: Border.all(color: Colors.white, width: 2),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
                     child: Container(
-                      width: 40,
+                      width: 48,
                       height: 5,
                       margin: const EdgeInsets.only(bottom: 30),
                       decoration: BoxDecoration(
-                        color: themeColor.withOpacity(0.3),
+                        color: _inkColor.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                   ),
                   Text(
                     'Add an element',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      color: darkTextColor,
+                      color: _inkColor,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -1689,19 +1564,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                       physics: const BouncingScrollPhysics(),
                       child: Column(
                         children: [
-                          // _buildModalTextField(
-                          //   'Name',
-                          //   true,
-                          //   false,
-                          //   controller: nameController,
-                          // ),
                           _buildPremiumAutocompleteField(
-                            'Name',
-                            true,
-                            false,
-                            nameController,
-                            recommendedItems
-                          ),
+                              'Name', true, false, nameController, recommendedItems),
                           const SizedBox(height: 16),
                           _buildModalTextField(
                             'Weight (g) [optional]',
@@ -1727,28 +1591,38 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                           const SizedBox(height: 40),
                           SizedBox(
                             width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                final added = await _addItem();
-                                if (!context.mounted) return;
-                                if (added) Navigator.pop(context, true);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                backgroundColor: themeColor,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                            child: Container(
+                              height: 56,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _appTeal.withOpacity(0.3),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
                               ),
-                              child: Text(
-                                'Add Item',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 18,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  final added = await _addItem();
+                                  if (!context.mounted) return;
+                                  if (added) Navigator.pop(context, true);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _appTeal,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Add Item',
+                                  style: GoogleFonts.manrope(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1768,6 +1642,148 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     if (changed == true && mounted) _showSuccessSnackBar('Item added');
   }
 
+  // --- CAMPI MODAL EFFETTO VETRO ---
+  Widget _buildPremiumAutocompleteField(
+    String label,
+    bool isRequired,
+    bool isNumber,
+    TextEditingController? controller,
+    List<RecommendedItem> recommendations,
+  ) {
+    final displayLabel = isRequired ? '$label *' : label;
+
+    return Autocomplete<RecommendedItem>(
+      displayStringForOption: (RecommendedItem option) => option.name,
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return const Iterable<RecommendedItem>.empty();
+        }
+        return recommendations.where((RecommendedItem option) {
+          return option.name.toLowerCase().contains(textEditingValue.text.toLowerCase());
+        });
+      },
+      onSelected: (RecommendedItem selection) {
+        controller?.text = selection.name;
+      },
+      fieldViewBuilder: (context, autoController, focusNode, onFieldSubmitted) {
+        if (autoController.text != controller?.text) {
+          autoController.text = controller?.text ?? '';
+        }
+        autoController.addListener(() {
+          controller?.text = autoController.text;
+        });
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: _inkColor.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _inkColor.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+                ),
+                child: TextField(
+                  controller: autoController,
+                  focusNode: focusNode,
+                  keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+                  style: GoogleFonts.manrope(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: _inkColor,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    labelText: displayLabel,
+                    labelStyle: GoogleFonts.manrope(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isRequired ? _appCoral : _inkColor.withOpacity(0.6),
+                    ),
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                    hintText: 'Tap to type...',
+                    hintStyle: GoogleFonts.manrope(
+                      color: _inkColor.withOpacity(0.3),
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(24),
+            color: Colors.transparent,
+            child: Container(
+              width: MediaQuery.of(context).size.width - 48,
+              constraints: const BoxConstraints(maxHeight: 250),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(color: _inkColor.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 8)),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9), 
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.5),
+                    ),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (context, index) {
+                        final RecommendedItem option = options.elementAt(index);
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: _appTeal.withOpacity(0.1),
+                            backgroundImage: NetworkImage(option.picture),
+                          ),
+                          title: Text(
+                            option.name,
+                            style: GoogleFonts.manrope(
+                              color: _inkColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                          onTap: () => onSelected(option),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildModalTextField(
     String label,
     bool isRequired,
@@ -1775,76 +1791,89 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     bool isDate = false,
     TextEditingController? controller,
   }) {
-    final accentColor = getStatusColor('safe');
     final displayLabel = isRequired ? '$label *' : label;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: accentColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentColor.withOpacity(0.2), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: _inkColor.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              readOnly: isDate,
-              onTap: isDate
-                  ? () async {
-                      final pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate ?? DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                        builder: (context, child) => Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: ColorScheme.light(
-                              primary: accentColor,
-                              onPrimary: Colors.white,
-                              onSurface: darkTextColor,
-                            ),
-                          ),
-                          child: child!,
-                        ),
-                      );
-                      if (pickedDate != null)
-                        setState(() {
-                          selectedDate = pickedDate;
-                          dateTextController.text = formatDate(pickedDate);
-                        });
-                    }
-                  : null,
-              keyboardType: isNumber
-                  ? TextInputType.number
-                  : TextInputType.text,
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: darkTextColor,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                labelText: displayLabel,
-                labelStyle: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: isRequired
-                      ? const Color(0xFFF28482)
-                      : darkTextColor.withOpacity(0.6),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    readOnly: isDate,
+                    onTap: isDate
+                        ? () async {
+                            final pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                              builder: (context, child) => Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: ColorScheme.light(
+                                    primary: _appTeal,
+                                    onPrimary: Colors.white,
+                                    onSurface: _inkColor,
+                                  ),
+                                ),
+                                child: child!,
+                              ),
+                            );
+                            if (pickedDate != null)
+                              setState(() {
+                                selectedDate = pickedDate;
+                                dateTextController.text = formatDate(pickedDate);
+                              });
+                          }
+                        : null,
+                    keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+                    style: GoogleFonts.manrope(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: _inkColor,
+                    ),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      labelText: displayLabel,
+                      labelStyle: GoogleFonts.manrope(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isRequired ? _appCoral : _inkColor.withOpacity(0.6),
+                      ),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      hintText: isDate ? 'Select date...' : 'Tap to type...',
+                      hintStyle: GoogleFonts.manrope(
+                        color: _inkColor.withOpacity(0.3),
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
                 ),
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-                hintText: isDate ? 'Select date...' : 'Tap to type...',
-                hintStyle: GoogleFonts.poppins(
-                  color: darkTextColor.withOpacity(0.3),
-                  fontSize: 16,
-                ),
-              ),
+                if (isDate)
+                  const Icon(Icons.calendar_month_rounded, color: _appTeal, size: 24),
+              ],
             ),
           ),
-          if (isDate)
-            Icon(Icons.calendar_month_rounded, color: accentColor, size: 24),
-        ],
+        ),
       ),
     );
   }
@@ -1859,10 +1888,12 @@ class FridgeItemDetailSheet extends StatefulWidget {
     required this.item,
     required this.pantryService,
     required this.itemColor,
+    required this.itemIcon, 
   });
   final FridgeItem item;
   final PantryService pantryService;
   final Color itemColor;
+  final IconData itemIcon; 
 
   @override
   State<FridgeItemDetailSheet> createState() => _FridgeItemDetailSheetState();
@@ -1968,13 +1999,13 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     final itemColor = widget.itemColor;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.95),
-            border: Border.all(color: Colors.white, width: 1.5),
+            border: Border.all(color: Colors.white, width: 2),
           ),
           padding: EdgeInsets.only(
             left: 24,
@@ -1992,11 +2023,11 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                   children: [
                     Center(
                       child: Container(
-                        width: 40,
+                        width: 48,
                         height: 5,
                         margin: const EdgeInsets.only(bottom: 30),
                         decoration: BoxDecoration(
-                          color: itemColor.withOpacity(0.3),
+                          color: _inkColor.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -2015,7 +2046,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                             ),
                           ),
                           child: Icon(
-                            Icons.kitchen_rounded,
+                            widget.itemIcon, 
                             color: itemColor,
                             size: 30,
                           ),
@@ -2025,10 +2056,10 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                           child: _isEditing
                               ? TextField(
                                   controller: _nameController,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.manrope(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w800,
-                                    color: darkTextColor,
+                                    color: _inkColor,
                                     letterSpacing: -0.5,
                                   ),
                                   decoration: const InputDecoration(
@@ -2039,10 +2070,10 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                                 )
                               : Text(
                                   widget.item.name,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.manrope(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w800,
-                                    color: darkTextColor,
+                                    color: _inkColor,
                                     letterSpacing: -0.5,
                                   ),
                                   maxLines: 2,
@@ -2059,7 +2090,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: _inkColor.withOpacity(0.05),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -2191,7 +2222,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                                   vertical: 16,
                                 ),
                                 side: BorderSide(
-                                  color: itemColor.withOpacity(0.5),
+                                  color: _inkColor.withOpacity(0.2),
                                   width: 2,
                                 ),
                                 shape: RoundedRectangleBorder(
@@ -2200,8 +2231,8 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                               ),
                               child: Text(
                                 'Cancel',
-                                style: GoogleFonts.poppins(
-                                  color: const Color(0xFF5A8B9E),
+                                style: GoogleFonts.manrope(
+                                  color: _inkColor.withOpacity(0.7),
                                   fontWeight: FontWeight.w700,
                                   fontSize: 16,
                                 ),
@@ -2210,24 +2241,36 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: _handleSaveEdit,
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                backgroundColor: itemColor,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: itemColor.withOpacity(0.3),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
                               ),
-                              child: Text(
-                                'Save',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
+                              child: ElevatedButton(
+                                onPressed: _handleSaveEdit,
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  backgroundColor: itemColor,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Save',
+                                  style: GoogleFonts.manrope(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                             ),
@@ -2256,6 +2299,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     );
   }
 
+  // --- DASH CARD EFFETTO VETRO ---
   Widget _buildDashCard(
     String title,
     String value,
@@ -2263,58 +2307,70 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     Color accentColor,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accentColor.withOpacity(0.15), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: _inkColor.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: accentColor),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 16, color: accentColor),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: GoogleFonts.manrope(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: darkTextColor.withOpacity(0.5),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  value,
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: darkTextColor.withOpacity(0.5),
+                    fontSize: value == '-' ? 16 : 18,
+                    fontWeight: value == '-' ? FontWeight.w500 : FontWeight.w700,
+                    color: value == '-'
+                        ? darkTextColor.withOpacity(0.3)
+                        : darkTextColor,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: value == '-' ? 16 : 18,
-              fontWeight: value == '-' ? FontWeight.w500 : FontWeight.w700,
-              color: value == '-'
-                  ? darkTextColor.withOpacity(0.3)
-                  : darkTextColor,
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-        ],
+        ),
       ),
     );
   }
 
+  // --- EDIT FIELD EFFETTO VETRO ---
   Widget _buildCleanEditField(
     String label,
     TextEditingController controller,
@@ -2325,40 +2381,58 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     TextInputType? keyboardType,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: accentColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentColor.withOpacity(0.2), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: _inkColor.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              readOnly: readOnly,
-              onTap: onTap,
-              keyboardType: keyboardType,
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: darkTextColor,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                labelText: label,
-                labelStyle: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: darkTextColor.withOpacity(0.6),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    readOnly: readOnly,
+                    onTap: onTap,
+                    keyboardType: keyboardType,
+                    style: GoogleFonts.manrope(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: _inkColor,
+                    ),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      labelText: label,
+                      labelStyle: GoogleFonts.manrope(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: darkTextColor.withOpacity(0.6),
+                      ),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                    ),
+                  ),
                 ),
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-              ),
+                if (isDate)
+                  Icon(Icons.calendar_month_rounded, color: accentColor, size: 24),
+              ],
             ),
           ),
-          if (isDate)
-            Icon(Icons.calendar_month_rounded, color: accentColor, size: 24),
-        ],
+        ),
       ),
     );
   }

@@ -12,6 +12,13 @@ import 'package:everyday_app/shared/utils/status_color_utils.dart';
 import 'package:everyday_app/features/fridge/data/models/recommended_item.dart';
 import 'package:everyday_app/features/fridge/data/repositories/recommended_item_repository.dart';
 
+// --- COLORI DEL DESIGN SYSTEM ---
+const _bgColor = Color(0xFFF4F1ED);
+const _inkColor = Color(0xFF1F3A44);
+const _appTeal = Color(0xFF5A8B9E);
+const _appCoral = Color(0xFFF28482);
+const _appOrange = Color(0xFFF4A261);
+
 class ProvisionListScreen extends ConsumerStatefulWidget {
   final bool openAddOnLaunch;
 
@@ -28,12 +35,6 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
   bool _didOpenAddOnLaunch = false;
   final Set<String> _selectedIdsForDeletion = {};
 
-  final Color primaryColor = const Color(0xFF5A8B9E);
-  final Color archiveColor = const Color(
-    0xFFF4A261,
-  ); // Giallo/Arancio per l'archivio
-  final Color darkTextColor = const Color(0xFF3D342C);
-
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -41,10 +42,10 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: primaryColor,
+        backgroundColor: _appTeal,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 2),
       ),
@@ -56,7 +57,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Dialog(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -68,7 +69,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
               border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: archiveColor.withOpacity(0.2),
+                  color: _appOrange.withOpacity(0.15),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -81,32 +82,32 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: archiveColor.withOpacity(0.1),
+                    color: _appOrange.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.archive_outlined,
-                    color: archiveColor,
+                    color: _appOrange,
                     size: 30,
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
                   'Move to History?',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.manrope(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: darkTextColor,
+                    color: _inkColor,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'This will move "${item.name}" to your history. You can restore it later.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.manrope(
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: darkTextColor.withOpacity(0.6),
+                    fontWeight: FontWeight.w600,
+                    color: _inkColor.withOpacity(0.6),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -119,18 +120,19 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                           height: 50,
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: darkTextColor.withOpacity(0.1),
+                              color: _inkColor.withOpacity(0.1),
                               width: 1.5,
                             ),
                             borderRadius: BorderRadius.circular(16),
+                            color: Colors.white,
                           ),
                           child: Center(
                             child: Text(
                               'Cancel',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.manrope(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: darkTextColor.withOpacity(0.7),
+                                fontWeight: FontWeight.w700,
+                                color: _inkColor.withOpacity(0.7),
                               ),
                             ),
                           ),
@@ -144,15 +146,22 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: archiveColor,
+                            color: _appOrange,
                             borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _appOrange.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: Center(
                             child: Text(
                               'Move',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.manrope(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
@@ -175,7 +184,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Dialog(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -187,7 +196,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
               border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: archiveColor.withOpacity(0.2),
+                  color: _appOrange.withOpacity(0.15),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -200,32 +209,32 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: archiveColor.withOpacity(0.1),
+                    color: _appOrange.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.archive_outlined,
-                    color: archiveColor,
+                    color: _appOrange,
                     size: 30,
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
                   'Archive Items?',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.manrope(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: darkTextColor,
+                    color: _inkColor,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Are you sure you want to move $count items to your history?',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.manrope(
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: darkTextColor.withOpacity(0.6),
+                    fontWeight: FontWeight.w600,
+                    color: _inkColor.withOpacity(0.6),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -238,18 +247,19 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                           height: 50,
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: darkTextColor.withOpacity(0.1),
+                              color: _inkColor.withOpacity(0.1),
                               width: 1.5,
                             ),
                             borderRadius: BorderRadius.circular(16),
+                            color: Colors.white,
                           ),
                           child: Center(
                             child: Text(
                               'Cancel',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.manrope(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: darkTextColor.withOpacity(0.7),
+                                fontWeight: FontWeight.w700,
+                                color: _inkColor.withOpacity(0.7),
                               ),
                             ),
                           ),
@@ -263,15 +273,22 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: archiveColor,
+                            color: _appOrange,
                             borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _appOrange.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: Center(
                             child: Text(
                               'Move',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.manrope(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
@@ -289,29 +306,20 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
-  Future<void> _moveToHistoryItem(
-    String id,
-    ShoppingService shoppingService,
-  ) async {
+  Future<void> _moveToHistoryItem(String id, ShoppingService shoppingService) async {
     try {
       await shoppingService.moveToHistory(id);
       _showSuccessSnackBar('Moved to history');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
-  Future<void> _moveToHistorySelectedItems(
-    ShoppingService shoppingService,
-  ) async {
+  Future<void> _moveToHistorySelectedItems(ShoppingService shoppingService) async {
     if (_selectedIdsForDeletion.isEmpty) return;
 
-    final confirmed = await _confirmBatchArchive(
-      _selectedIdsForDeletion.length,
-    );
+    final confirmed = await _confirmBatchArchive(_selectedIdsForDeletion.length);
     if (confirmed != true) return;
 
     try {
@@ -326,18 +334,17 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
       _showSuccessSnackBar('Items moved to history');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
   void _toggleSelection(String itemId) {
     setState(() {
-      if (_selectedIdsForDeletion.contains(itemId))
+      if (_selectedIdsForDeletion.contains(itemId)) {
         _selectedIdsForDeletion.remove(itemId);
-      else
+      } else {
         _selectedIdsForDeletion.add(itemId);
+      }
     });
   }
 
@@ -356,16 +363,12 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     if (changed == true && mounted) _showSuccessSnackBar('Item added');
   }
 
-  Future<void> _openDetailModal(
-    ShoppingItem item,
-    ShoppingService shoppingService,
-  ) async {
+  Future<void> _openDetailModal(ShoppingItem item, ShoppingService shoppingService) async {
     final changed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) =>
-          _ProvisionDetailSheet(item: item, shoppingService: shoppingService),
+      builder: (_) => _ProvisionDetailSheet(item: item, shoppingService: shoppingService),
     );
     if (changed == true && mounted) _showSuccessSnackBar('Item updated');
   }
@@ -375,10 +378,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     final shoppingService = ref.watch(shoppingServiceProvider);
     final householdId = ref.watch(currentHouseholdIdProvider);
 
-    if (widget.openAddOnLaunch &&
-        !_didOpenAddOnLaunch &&
-        householdId != null &&
-        householdId.isNotEmpty) {
+    if (widget.openAddOnLaunch && !_didOpenAddOnLaunch && householdId != null && householdId.isNotEmpty) {
       _didOpenAddOnLaunch = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -388,74 +388,70 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
 
     if (householdId == null || householdId.isEmpty) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: _bgColor,
         body: Center(
           child: Text(
             'Household context not ready',
-            style: GoogleFonts.poppins(
-              color: darkTextColor,
-              fontWeight: FontWeight.w500,
+            style: GoogleFonts.manrope(
+              color: _inkColor,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
       );
     }
 
-    // ATTENZIONE: USIAMO IL NUOVO PROVIDER ATTIVO
     final itemsAsync = ref.watch(activeShoppingItemsProvider(householdId));
 
     final currentItems = itemsAsync.valueOrNull ?? [];
     final filteredItems = currentItems
-        .where(
-          (item) =>
-              _searchQuery.isEmpty ||
-              item.name.toLowerCase().contains(_searchQuery.toLowerCase()),
-        )
+        .where((item) => _searchQuery.isEmpty || item.name.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _bgColor,
       body: SafeArea(
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 20.0,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(context, shoppingService),
-                  const SizedBox(height: 30),
+                  _buildHeader(context),
+                  const SizedBox(height: 32),
                   _buildSearchBar(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
+                  // TASTO SELECT ALLINEATO A SINISTRA
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.start, 
                     children: [_buildDeleteModeToggle()],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: itemsAsync.when(
-                      loading: () => Center(
-                        child: CircularProgressIndicator(color: primaryColor),
+                      loading: () => const Center(child: CircularProgressIndicator(color: _appTeal)),
+                      error: (err, _) => Center(
+                        child: Text(
+                          err.toString(),
+                          style: GoogleFonts.manrope(color: _appCoral),
+                        )
                       ),
-                      error: (err, _) => Center(child: Text(err.toString())),
                       data: (_) {
                         if (filteredItems.isEmpty && _searchQuery.isNotEmpty) {
                           return Center(
                             child: Text(
                               'No items found',
-                              style: GoogleFonts.poppins(
-                                color: darkTextColor.withOpacity(0.5),
+                              style: GoogleFonts.manrope(
+                                color: _inkColor.withOpacity(0.5),
                                 fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           );
                         }
                         return filteredItems.isEmpty
-                            ? _buildEmptyState()
+                            ? _buildEmptyState(shoppingService)
                             : _buildGlassList(filteredItems, shoppingService);
                       },
                     ),
@@ -474,136 +470,148 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, ShoppingService shoppingService) {
-    final themeColor = getStatusColor('safe');
+  // ==========================================
+  // HEADER MINIMAL (SENZA SFONDO BIANCO)
+  // ==========================================
+  Widget _buildHeader(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: _buildHeaderIcon(
-            Icons.arrow_back_ios_new_rounded,
-            primaryColor,
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 44,
+                height: 44,
+                color: Colors.transparent, 
+                alignment: Alignment.centerLeft, 
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: _inkColor, size: 24),
+              ),
+            ),
           ),
         ),
         Text(
           'Provision List',
-          style: GoogleFonts.poppins(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: primaryColor,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.manrope(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: _inkColor,
+            letterSpacing: -0.5,
           ),
         ),
-        Row(
-          children: [
-            GestureDetector(
-              // NAVIGA ALLA NUOVA SCHERMATA HISTORY
-              onTap: () => Navigator.of(
-                context,
-              ).pushNamed(AppRouteNames.provisionHistory),
-              child: _buildHeaderIcon(Icons.history_rounded, archiveColor),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pushNamed(AppRouteNames.provisionHistory),
+              child: Container(
+                width: 44,
+                height: 44,
+                color: Colors.transparent, 
+                alignment: Alignment.centerRight, 
+                child: const Icon(Icons.history_rounded, color: _inkColor, size: 28),
+              ),
             ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _openAddModal(shoppingService),
-              child: _buildHeaderIcon(Icons.add_rounded, themeColor),
-            ),
-          ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildHeaderIcon(IconData icon, Color color) {
+  // --- SEARCH BAR: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO ---
+  Widget _buildSearchBar() {
     return Container(
-      width: 44,
-      height: 44,
       decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
+            color: _inkColor.withOpacity(0.08), // Ombra morbida per elevare
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Icon(icon, color: color, size: 22),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-        child: Container(
-          height: 55,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
-            color: primaryColor.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: primaryColor.withOpacity(0.2),
-              width: 1.2,
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: 'Search items...',
-                    hintStyle: GoogleFonts.poppins(
-                      color: primaryColor.withOpacity(0.5),
-                      fontSize: 15,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                  style: GoogleFonts.poppins(color: darkTextColor),
-                ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03), // Scurisce leggermente lo sfondo
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.7), // Patina bianca
+                width: 1.5,
               ),
-              Icon(Icons.search_rounded, color: primaryColor, size: 24),
-            ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: 'Search items...',
+                      hintStyle: GoogleFonts.manrope(
+                        color: _inkColor.withOpacity(0.4),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      border: InputBorder.none,
+                    ),
+                    style: GoogleFonts.manrope(
+                      color: _inkColor, // Testi scuri
+                      fontWeight: FontWeight.w600
+                    ),
+                  ),
+                ),
+                Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 24),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  // --- TASTO SELECT MINIMAL ---
   Widget _buildDeleteModeToggle() {
     return GestureDetector(
       onTap: () => setState(() {
         _isDeleteMode = !_isDeleteMode;
         if (!_isDeleteMode) _selectedIdsForDeletion.clear();
       }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: _isDeleteMode ? archiveColor : Colors.white.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: _isDeleteMode ? archiveColor : primaryColor.withOpacity(0.1),
-            width: 1.2,
-          ),
-        ),
-        child: Icon(
-          Icons.checklist_rounded,
-          size: 22,
-          color: _isDeleteMode ? Colors.white : primaryColor.withOpacity(0.4),
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _isDeleteMode ? Icons.close_rounded : Icons.checklist_rounded,
+              size: 20,
+              color: _inkColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _isDeleteMode ? 'Cancel' : 'Select',
+              style: GoogleFonts.manrope(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: _inkColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildBatchArchiveBar(
-    List<ShoppingItem> currentFilteredItems,
-    ShoppingService shoppingService,
-  ) {
+  // --- BARRA IN BASSO (SELEZIONE) ---
+  Widget _buildBatchArchiveBar(List<ShoppingItem> currentFilteredItems, ShoppingService shoppingService) {
     final count = _selectedIdsForDeletion.length;
     final total = currentFilteredItems.length;
     final hasSelection = count > 0;
@@ -611,116 +619,121 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            height: 70,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: hasSelection
-                  ? archiveColor.withOpacity(0.95)
-                  : Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: hasSelection
-                    ? archiveColor
-                    : darkTextColor.withOpacity(0.1),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: hasSelection
-                      ? archiveColor.withOpacity(0.3)
-                      : Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => setState(() {
-                    if (allSelected)
-                      _selectedIdsForDeletion.clear();
-                    else
-                      _selectedIdsForDeletion.addAll(
-                        currentFilteredItems.map((e) => e.id),
-                      );
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: allSelected
-                          ? Colors.white.withOpacity(0.2)
-                          : (hasSelection
-                                ? Colors.white.withOpacity(0.1)
-                                : primaryColor.withOpacity(0.1)),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      allSelected
-                          ? Icons.remove_done_rounded
-                          : Icons.done_all_rounded,
-                      color: hasSelection ? Colors.white : primaryColor,
-                      size: 22,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: hasSelection
+                    ? _appOrange.withOpacity(0.85)
+                    : _inkColor.withOpacity(0.03), // Scurisce leggermente
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: hasSelection
+                      ? _appOrange.withOpacity(0.9)
+                      : Colors.white.withOpacity(0.7),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      if (allSelected)
+                        _selectedIdsForDeletion.clear();
+                      else
+                        _selectedIdsForDeletion.addAll(
+                          currentFilteredItems.map((e) => e.id),
+                        );
+                    }),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: allSelected
+                            ? Colors.white.withOpacity(0.4)
+                            : (hasSelection
+                                ? Colors.white.withOpacity(0.2)
+                                : _inkColor.withOpacity(0.05)),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        allSelected
+                            ? Icons.remove_done_rounded
+                            : Icons.done_all_rounded,
+                        color: hasSelection ? Colors.white : _inkColor,
+                        size: 20,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    count == 0
-                        ? 'Select items...'
-                        : (allSelected
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      count == 0
+                          ? 'Select items...'
+                          : (allSelected
                               ? 'All selected ($count)'
                               : '$count selected'),
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: hasSelection
-                          ? Colors.white
-                          : darkTextColor.withOpacity(0.6),
+                      style: GoogleFonts.manrope(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: hasSelection
+                            ? Colors.white
+                            : _inkColor.withOpacity(0.6),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-                if (hasSelection)
-                  GestureDetector(
-                    onTap: () => _moveToHistorySelectedItems(shoppingService),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.archive_outlined,
-                            color: archiveColor,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Archive',
-                            style: GoogleFonts.poppins(
-                              color: archiveColor,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
+                  if (hasSelection)
+                    GestureDetector(
+                      onTap: () => _moveToHistorySelectedItems(shoppingService),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.archive_outlined,
+                              color: _appOrange,
+                              size: 18,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Text(
+                              'Archive',
+                              style: GoogleFonts.manrope(
+                                color: _appOrange,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -728,16 +741,20 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
-  Widget _buildGlassList(
-    List<ShoppingItem> items,
-    ShoppingService shoppingService,
-  ) {
+  // ==========================================
+  // LISTA CON IL TASTO ADD IN FONDO
+  // ==========================================
+  Widget _buildGlassList(List<ShoppingItem> items, ShoppingService shoppingService) {
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.only(bottom: _isDeleteMode ? 100 : 20),
-      itemCount: items.length,
+      padding: EdgeInsets.only(bottom: _isDeleteMode ? 100 : 40), 
+      itemCount: _isDeleteMode ? items.length : items.length + 1,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
+        if (!_isDeleteMode && index == items.length) {
+          return _buildInlineAddButton(shoppingService);
+        }
+
         final item = items[index];
         return Dismissible(
           key: ValueKey(item.id),
@@ -746,8 +763,8 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
               : DismissDirection.endToStart,
           background: Container(
             decoration: BoxDecoration(
-              color: archiveColor,
-              borderRadius: BorderRadius.circular(20),
+              color: _appOrange,
+              borderRadius: BorderRadius.circular(24),
             ),
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 24),
@@ -769,211 +786,93 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
-  // Widget _buildListItem(ShoppingItem item, ShoppingService shoppingService) {
-  //   final themeColor = getStatusColor('safe');
-  //   final isSelected = _selectedIdsForDeletion.contains(item.id);
-
-  //   Color currentBorderColor = _isDeleteMode && isSelected ? expiredColor : Colors.white.withValues(alpha: 0.8);
-  //   return GestureDetector(
-  //     onTap: _isDeleteMode
-  //         ? () => _toggleSelection(item.id)
-  //         : () => _openDetailModal(item, shoppingService),
-  //     child: ClipRRect(
-  //       borderRadius: BorderRadius.circular(20),
-  //       child: BackdropFilter(
-  //         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-  //         child: AnimatedContainer(
-  //           duration: const Duration(milliseconds: 200),
-  //           height: 70,
-  //           padding: const EdgeInsets.symmetric(horizontal: 20),
-  //           decoration: BoxDecoration(
-  //             gradient: LinearGradient(
-  //               colors: _isDeleteMode && isSelected
-  //                   ? [expiredColor.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.8)]
-  //                   : [themeColor.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.6)],
-  //             ),
-  //             borderRadius: BorderRadius.circular(20),
-  //             border: Border.all(
-  //               color: currentBorderColor,
-  //               width: isSelected ? 2.0 : 1.5,
-  //             ),
-  //           ),
-  //           child: Row(
-  //             children: [
-  //               // Checkbox Dinamica
-  //               if (_isDeleteMode)
-  //                 Icon(
-  //                   isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
-  //                   color: isSelected ? expiredColor : Colors.grey.withValues(alpha: 0.5),
-  //                   size: 28,
-  //                 )
-  //               else
-  //                 Container(
-  //                   width: 24,
-  //                   height: 24,
-  //                   decoration: BoxDecoration(
-  //                     color: Colors.white,
-  //                     shape: BoxShape.circle,
-  //                     border: Border.all(
-  //                       color: themeColor.withValues(alpha: 0.5),
-  //                       width: 2,
-  //                     ),
-  //                   ),
-  //                 ),
-  //               const SizedBox(width: 16),
-
-  //               // Nome
-  //               Expanded(
-  //                 child: Text(
-  //                   item.name,
-  //                   style: GoogleFonts.poppins(
-  //                     fontSize: 16,
-  //                     fontWeight: FontWeight.w600,
-  //                     color: darkTextColor,
-  //                   ),
-  //                   maxLines: 1,
-  //                   overflow: TextOverflow.ellipsis,
-  //                 ),
-  //               ),
-
-  //               // Badge Quantità (Nascosto in Delete Mode per pulizia)
-  //               if (item.quantity > 1 && !_isDeleteMode)
-  //                 Container(
-  //                   padding: const EdgeInsets.symmetric(
-  //                     horizontal: 10,
-  //                     vertical: 6,
-  //                   ),
-  //                   decoration: BoxDecoration(
-  //                     color: Colors.white.withValues(alpha: 0.8),
-  //                     borderRadius: BorderRadius.circular(12),
-  //                   ),
-  //                   child: Text(
-  //                     'Qty: ${item.quantity}',
-  //                     style: GoogleFonts.poppins(
-  //                       fontSize: 13,
-  //                       fontWeight: FontWeight.w700,
-  //                       color: themeColor,
-  //                     ),
-  //                   ),
-  //                 ),
-  //             ],
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
+  // --- ITEM STYLE: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO ---
   Widget _buildListItem(ShoppingItem item, ShoppingService shoppingService) {
-    final themeColor = getStatusColor('safe');
     final isSelected = _selectedIdsForDeletion.contains(item.id);
     Color currentBorderColor = _isDeleteMode && isSelected
-        ? archiveColor
-        : Colors.white.withOpacity(0.8);
+        ? _appOrange
+        : Colors.white.withOpacity(0.7); // Patina bianca
 
     return GestureDetector(
       onTap: _isDeleteMode
           ? () => _toggleSelection(item.id)
           : () => _openDetailModal(item, shoppingService),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 70,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: _isDeleteMode && isSelected
-                    ? [
-                        archiveColor.withOpacity(0.15),
-                        Colors.white.withOpacity(0.8),
-                      ]
-                    : [
-                        themeColor.withOpacity(0.15),
-                        Colors.white.withOpacity(0.6),
-                      ],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: currentBorderColor,
-                width: isSelected ? 2.0 : 1.5,
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08), // Ombra per elevare
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                if (_isDeleteMode)
-                  Icon(
-                    isSelected
-                        ? Icons.check_circle_rounded
-                        : Icons.circle_outlined,
-                    color: isSelected
-                        ? archiveColor
-                        : Colors.grey.withOpacity(0.5),
-                    size: 28,
-                  )
-                else
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: themeColor.withOpacity(0.5),
-                        width: 2,
-                      ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: _isDeleteMode && isSelected
+                    ? _appOrange.withOpacity(0.15) 
+                    : _inkColor.withOpacity(0.03), // Scurisce leggermente
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: currentBorderColor, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  // Icona di selezione SOLO se siamo in Delete Mode (Nessun pallino!)
+                  if (_isDeleteMode) ...[
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      color: isSelected
+                          ? _appOrange
+                          : _inkColor.withOpacity(0.3),
+                      size: 26,
                     ),
-                  ),
-                const SizedBox(width: 12),
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: themeColor.withValues(alpha: 0.1),
-                  backgroundImage: item.recommendedItem?.picture != null
-                      ? NetworkImage(item.recommendedItem!.picture)
-                      : null,
-                  child: item.recommendedItem?.picture == null
-                      ? Icon(
-                          Icons.restaurant_rounded,
-                          size: 18,
-                          color: themeColor,
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    item.name,
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: darkTextColor,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (item.quantity > 1 && !_isDeleteMode)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    const SizedBox(width: 16),
+                  ],
+                  
+                  Expanded(
                     child: Text(
-                      'Qty: ${item.quantity}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: themeColor,
+                      item.name,
+                      style: GoogleFonts.manrope(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: _inkColor, // Testo scuro come prima
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-              ],
+                  
+                  if (item.quantity > 1 && !_isDeleteMode)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.7), 
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Qty: ${item.quantity}',
+                        style: GoogleFonts.manrope(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: _appTeal,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -981,26 +880,64 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    final themeColor = getStatusColor('safe');
+  // --- BOTTONCINO "+" TONDO SCURO SOTTO LA LISTA ---
+  Widget _buildInlineAddButton(ShoppingService shoppingService) {
+    return Center(
+      child: GestureDetector(
+        onTap: () => _openAddModal(shoppingService),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 16),
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: _inkColor, 
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: _inkColor.withOpacity(0.2),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              )
+            ],
+          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ShoppingService shoppingService) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.shopping_bag_outlined,
-            size: 60,
-            color: themeColor.withOpacity(0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Your list is empty.',
-            style: GoogleFonts.poppins(
-              color: darkTextColor.withOpacity(0.5),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.3),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withOpacity(0.8),
+                width: 1.5,
+              ),
+            ),
+            child: Icon(
+              Icons.shopping_bag_rounded,
+              size: 64,
+              color: _appTeal.withOpacity(0.5),
             ),
           ),
+          const SizedBox(height: 24),
+          Text(
+            'Your list is empty.',
+            style: GoogleFonts.manrope(
+              color: _inkColor,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 32),
+          _buildInlineAddButton(shoppingService),
         ],
       ),
     );
@@ -1039,7 +976,6 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
 
   Future<void> _loadRecommendations() async {
     try {
-      // You might need to pass the area name based on your logic, e.g., 'pantry'
       final repo = RecommendedItemRepository();
       final items = await repo.getItems();
 
@@ -1090,15 +1026,12 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = getStatusColor('safe');
-    final textColor = const Color(0xFF3D342C);
-
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
+        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
         child: Container(
-          height: MediaQuery.of(context).size.height * 0.70,
+          height: MediaQuery.of(context).size.height * 0.80,
           padding: EdgeInsets.only(
             left: 24,
             right: 24,
@@ -1106,8 +1039,8 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
             bottom: MediaQuery.of(context).viewInsets.bottom + 30,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95), // Luminoso
-            border: Border.all(color: Colors.white, width: 1.5),
+            color: Colors.white.withOpacity(0.95), 
+            border: Border.all(color: Colors.white, width: 2),
           ),
           child: Stack(
             children: [
@@ -1116,21 +1049,21 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
                 children: [
                   Center(
                     child: Container(
-                      width: 40,
+                      width: 48,
                       height: 5,
                       margin: const EdgeInsets.only(bottom: 30),
                       decoration: BoxDecoration(
-                        color: themeColor.withOpacity(0.3),
+                        color: _inkColor.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                   ),
                   Text(
                     'Add a Provision',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      color: textColor,
+                      color: _inkColor,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -1145,7 +1078,7 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
                             true,
                             false,
                             _nameController,
-                            themeColor,
+                            _appTeal,
                             recommendedItems,
                           ),
                           const SizedBox(height: 16),
@@ -1154,30 +1087,40 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
                             false,
                             true,
                             _quantityController,
-                            themeColor,
+                            _appTeal,
                           ),
                           const SizedBox(height: 40),
 
                           SizedBox(
                             width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _save,
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                backgroundColor: themeColor,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                            child: Container(
+                              height: 56,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _appTeal.withOpacity(0.3),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
                               ),
-                              child: Text(
-                                'Add Item',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 18,
+                              child: ElevatedButton(
+                                onPressed: _save,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _appTeal,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Add Item',
+                                  style: GoogleFonts.manrope(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1192,9 +1135,9 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
                 Positioned.fill(
                   child: Container(
                     color: Colors.white.withOpacity(0.8),
-                    child: Center(
+                    child: const Center(
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                        valueColor: AlwaysStoppedAnimation<Color>(_appTeal),
                       ),
                     ),
                   ),
@@ -1206,6 +1149,7 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
     );
   }
 
+  // --- CAMPI MODAL CON VETRO ---
   Widget _buildPremiumTextField(
     String label,
     bool isRequired,
@@ -1216,35 +1160,51 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
     final displayLabel = isRequired ? '$label *' : label;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: accentColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentColor.withOpacity(0.2), width: 1.5),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        style: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF3D342C),
-        ),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          labelText: displayLabel,
-          labelStyle: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: isRequired
-                ? const Color(0xFFF28482)
-                : const Color(0xFF3D342C).withOpacity(0.6),
+        boxShadow: [
+          BoxShadow(
+            color: _inkColor.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          hintText: 'Tap to enter...',
-          hintStyle: GoogleFonts.poppins(
-            color: const Color(0xFF3D342C).withOpacity(0.3),
-            fontSize: 16,
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+            ),
+            child: TextField(
+              controller: controller,
+              keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+              style: GoogleFonts.manrope(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: _inkColor,
+              ),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                labelText: displayLabel,
+                labelStyle: GoogleFonts.manrope(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isRequired ? _appCoral : _inkColor.withOpacity(0.6),
+                ),
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+                hintText: 'Tap to enter...',
+                hintStyle: GoogleFonts.manrope(
+                  color: _inkColor.withOpacity(0.3),
+                  fontSize: 16,
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -1252,95 +1212,17 @@ class _AddProvisionSheetState extends State<_AddProvisionSheet> {
   }
 }
 
-// Widget _buildPremiumAutocompleteField(
-//   String label,
-//   bool isRequired,
-//   bool isNumber,
-//   TextEditingController controller,
-//   Color accentColor,
-//   List<RecommendedItem> recommendations, // Now takes the object list
-// ) {
-//   final displayLabel = isRequired ? '$label *' : label;
-
-//   return Autocomplete<RecommendedItem>(
-//     // Tells Flutter which string to show in the text box when an item is picked
-//     displayStringForOption: (RecommendedItem option) => option.name,
-
-//     optionsBuilder: (TextEditingValue textEditingValue) {
-//       if (textEditingValue.text.isEmpty) {
-//         return const Iterable<RecommendedItem>.empty();
-//       }
-//       return recommendations.where((RecommendedItem option) {
-//         return option.name.toLowerCase().contains(textEditingValue.text.toLowerCase());
-//       });
-//     },
-
-//     onSelected: (RecommendedItem selection) {
-//       controller.text = selection.name;
-//     },
-
-//     fieldViewBuilder: (context, autoController, focusNode, onFieldSubmitted) {
-//       // Syncing controllers
-//       if (autoController.text != controller.text) {
-//         autoController.text = controller.text;
-//       }
-
-//       autoController.addListener(() {
-//         controller.text = autoController.text;
-//       });
-
-//     return Container(
-//       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-//       decoration: BoxDecoration(
-//         color: accentColor.withOpacity(0.05),
-//         borderRadius: BorderRadius.circular(20),
-//         border: Border.all(
-//           color: accentColor.withOpacity(0.2),
-//           width: 1.5,
-//         ),
-//       ),
-//       child: TextField(
-//         controller: controller,
-//         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-//         style: GoogleFonts.poppins(
-//           fontSize: 18,
-//           fontWeight: FontWeight.w700,
-//           color: const Color(0xFF3D342C),
-//         ),
-//         decoration: InputDecoration(
-//           border: InputBorder.none,
-//           labelText: displayLabel,
-//           labelStyle: GoogleFonts.poppins(
-//             fontSize: 14,
-//             fontWeight: FontWeight.w500,
-//             color: isRequired
-//                 ? const Color(0xFFF28482)
-//                 : const Color(0xFF3D342C).withOpacity(0.6),
-//           ),
-//           floatingLabelBehavior: FloatingLabelBehavior.always,
-//           hintText: 'Tap to enter...',
-//           hintStyle: GoogleFonts.poppins(
-//             color: const Color(0xFF3D342C).withOpacity(0.3),
-//             fontSize: 16,
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 Widget _buildPremiumAutocompleteField(
   String label,
   bool isRequired,
   bool isNumber,
   TextEditingController controller,
   Color accentColor,
-  List<RecommendedItem> recommendations, // Now takes the object list
+  List<RecommendedItem> recommendations,
 ) {
   final displayLabel = isRequired ? '$label *' : label;
 
   return Autocomplete<RecommendedItem>(
-    // Tells Flutter which string to show in the text box when an item is picked
     displayStringForOption: (RecommendedItem option) => option.name,
 
     optionsBuilder: (TextEditingValue textEditingValue) {
@@ -1359,7 +1241,6 @@ Widget _buildPremiumAutocompleteField(
     },
 
     fieldViewBuilder: (context, autoController, focusNode, onFieldSubmitted) {
-      // Syncing controllers
       if (autoController.text != controller.text) {
         autoController.text = controller.text;
       }
@@ -1369,39 +1250,57 @@ Widget _buildPremiumAutocompleteField(
       });
 
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: accentColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: accentColor.withValues(alpha: 0.2),
-            width: 1.5,
-          ),
-        ),
-        child: TextField(
-          controller: autoController,
-          focusNode: focusNode,
-          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF3D342C),
-          ),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            labelText: displayLabel,
-            labelStyle: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: isRequired
-                  ? const Color(0xFFF28482)
-                  : const Color(0xFF3D342C).withValues(alpha: 0.6),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            floatingLabelBehavior: FloatingLabelBehavior.always,
-            hintText: 'Tap to type...',
-            hintStyle: GoogleFonts.poppins(
-              color: const Color(0xFF3D342C).withValues(alpha: 0.3),
-              fontSize: 16,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                color: _inkColor.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7),
+                  width: 1.5,
+                ),
+              ),
+              child: TextField(
+                controller: autoController,
+                focusNode: focusNode,
+                keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+                style: GoogleFonts.manrope(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: _inkColor,
+                ),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  labelText: displayLabel,
+                  labelStyle: GoogleFonts.manrope(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isRequired
+                        ? _appCoral
+                        : _inkColor.withOpacity(0.6),
+                  ),
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  hintText: 'Tap to type...',
+                  hintStyle: GoogleFonts.manrope(
+                    color: _inkColor.withOpacity(0.3),
+                    fontSize: 16,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -1413,35 +1312,51 @@ Widget _buildPremiumAutocompleteField(
         alignment: Alignment.topLeft,
         child: Material(
           elevation: 8,
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          color: Colors.transparent, // Lo facciamo trasparente per il blur
           child: Container(
-            width: MediaQuery.of(context).size.width - 40,
+            width: MediaQuery.of(context).size.width - 48,
             constraints: const BoxConstraints(maxHeight: 250),
-            // Clip to ensure the images don't bleed over the border radius
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: _inkColor.withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final RecommendedItem option = options.elementAt(index);
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: accentColor.withValues(alpha: 0.1),
-                      backgroundImage: NetworkImage(option.picture),
-                    ),
-                    title: Text(
-                      option.name,
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF3D342C),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    onTap: () => onSelected(option),
-                  );
-                },
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9), // Un po' più solido qui per leggerezza
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.2),
+                  ),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final RecommendedItem option = options.elementAt(index);
+                      return ListTile(
+                        title: Text(
+                          option.name,
+                          style: GoogleFonts.manrope(
+                            color: _inkColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                        onTap: () => onSelected(option),
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
           ),
@@ -1533,13 +1448,10 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = getStatusColor('safe');
-    final textColor = const Color(0xFF3D342C);
-
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
+        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
         child: Container(
           padding: EdgeInsets.only(
             left: 24,
@@ -1549,7 +1461,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
           ),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.95),
-            border: Border.all(color: Colors.white, width: 1.5),
+            border: Border.all(color: Colors.white, width: 2),
           ),
           child: Stack(
             children: [
@@ -1559,11 +1471,11 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                 children: [
                   Center(
                     child: Container(
-                      width: 40,
+                      width: 48,
                       height: 5,
                       margin: const EdgeInsets.only(bottom: 30),
                       decoration: BoxDecoration(
-                        color: themeColor.withOpacity(0.3),
+                        color: _inkColor.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -1571,32 +1483,14 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
 
                   Row(
                     children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: themeColor.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: themeColor.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.shopping_cart_outlined,
-                          color: themeColor,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
                       Expanded(
                         child: _isEditing
                             ? TextField(
                                 controller: _nameController,
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.manrope(
                                   fontSize: 26,
                                   fontWeight: FontWeight.w800,
-                                  color: textColor,
+                                  color: _inkColor,
                                   letterSpacing: -0.5,
                                 ),
                                 decoration: const InputDecoration(
@@ -1608,10 +1502,10 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                             : Text(
                                 widget.item.name,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.manrope(
                                   fontSize: 26,
                                   fontWeight: FontWeight.w800,
-                                  color: textColor,
+                                  color: _inkColor,
                                   letterSpacing: -0.5,
                                 ),
                               ),
@@ -1632,9 +1526,9 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                                 ),
                               ],
                             ),
-                            child: Icon(
+                            child: const Icon(
                               Icons.edit_rounded,
-                              color: themeColor,
+                              color: _appTeal,
                               size: 20,
                             ),
                           ),
@@ -1649,7 +1543,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                       'Quantity',
                       widget.item.quantity.toString(),
                       Icons.tag_rounded,
-                      themeColor,
+                      _appTeal,
                     ),
                     const SizedBox(height: 20),
                   ] else ...[
@@ -1657,7 +1551,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                     _buildPremiumTextField(
                       'Quantity',
                       _quantityController,
-                      themeColor,
+                      _appTeal,
                     ),
                     const SizedBox(height: 40),
 
@@ -1677,7 +1571,7 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               side: BorderSide(
-                                color: themeColor.withOpacity(0.5),
+                                color: _inkColor.withOpacity(0.2),
                                 width: 2,
                               ),
                               shape: RoundedRectangleBorder(
@@ -1686,8 +1580,8 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                             ),
                             child: Text(
                               'Cancel',
-                              style: GoogleFonts.poppins(
-                                color: const Color(0xFF5A8B9E),
+                              style: GoogleFonts.manrope(
+                                color: _inkColor.withOpacity(0.7),
                                 fontWeight: FontWeight.w700,
                                 fontSize: 16,
                               ),
@@ -1696,22 +1590,34 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed: _saveEdit,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: themeColor,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _appTeal.withOpacity(0.3),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            child: Text(
-                              'Save',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
+                            child: ElevatedButton(
+                              onPressed: _saveEdit,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                backgroundColor: _appTeal,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                              child: Text(
+                                'Save',
+                                style: GoogleFonts.manrope(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                           ),
@@ -1725,9 +1631,9 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
                 Positioned.fill(
                   child: Container(
                     color: Colors.white.withOpacity(0.8),
-                    child: Center(
+                    child: const Center(
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                        valueColor: AlwaysStoppedAnimation<Color>(_appTeal),
                       ),
                     ),
                   ),
@@ -1748,46 +1654,57 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     final textColor = const Color(0xFF3D342C);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accentColor.withOpacity(0.15), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: _inkColor.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: accentColor),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: textColor.withOpacity(0.5),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03), 
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 18, color: accentColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      title,
+                      style: GoogleFonts.manrope(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: textColor.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: textColor,
+                const SizedBox(height: 12),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1798,33 +1715,51 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
     Color accentColor,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: accentColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentColor.withOpacity(0.2), width: 1.5),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        style: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF3D342C),
-        ),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          labelText: label,
-          labelStyle: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: const Color(0xFF3D342C).withOpacity(0.6),
+        boxShadow: [
+          BoxShadow(
+            color: _inkColor.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          hintText: 'Tap to enter...',
-          hintStyle: GoogleFonts.poppins(
-            color: const Color(0xFF3D342C).withOpacity(0.3),
-            fontSize: 16,
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+            ),
+            child: TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              style: GoogleFonts.manrope(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: _inkColor,
+              ),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                labelText: label,
+                labelStyle: GoogleFonts.manrope(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _inkColor.withOpacity(0.6),
+                ),
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+                hintText: 'Tap to enter...',
+                hintStyle: GoogleFonts.manrope(
+                  color: _inkColor.withOpacity(0.3),
+                  fontSize: 16,
+                ),
+              ),
+            ),
           ),
         ),
       ),

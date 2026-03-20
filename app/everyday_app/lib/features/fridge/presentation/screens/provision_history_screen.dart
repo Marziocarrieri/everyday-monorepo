@@ -7,6 +7,13 @@ import 'package:everyday_app/features/fridge/data/models/shopping_item.dart';
 import 'package:everyday_app/features/fridge/domain/services/shopping_service.dart';
 import 'package:everyday_app/features/fridge/presentation/providers/fridge_providers.dart';
 
+// --- COLORI DEL DESIGN SYSTEM ---
+const _bgColor = Color(0xFFF4F1ED);
+const _inkColor = Color(0xFF1F3A44);
+const _appTeal = Color(0xFF5A8B9E); 
+const _appCoral = Color(0xFFF28482); 
+const _appOrange = Color(0xFFF4A261); 
+
 class ProvisionHistoryScreen extends ConsumerStatefulWidget {
   const ProvisionHistoryScreen({super.key});
 
@@ -29,7 +36,7 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        content: Text(message, style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white)),
         behavior: SnackBarBehavior.floating,
         backgroundColor: primaryColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -88,7 +95,7 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
     final filteredItems = currentItems.where((item) => _searchQuery.isEmpty || item.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _bgColor,
       body: SafeArea(
         child: Stack(
           children: [
@@ -100,16 +107,17 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
                   _buildHeader(context),
                   const SizedBox(height: 30),
                   _buildSearchBar(),
-                  const SizedBox(height: 20),
-                  Row(mainAxisAlignment: MainAxisAlignment.end, children: [_buildSelectionModeToggle()]),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
+                  // Tasto Select allineato a sinistra
+                  Row(mainAxisAlignment: MainAxisAlignment.start, children: [_buildSelectionModeToggle()]),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: itemsAsync.when(
-                      loading: () => Center(child: CircularProgressIndicator(color: archiveColor)),
-                      error: (err, _) => Center(child: Text(err.toString())),
+                      loading: () => const Center(child: CircularProgressIndicator(color: _appTeal)),
+                      error: (err, _) => Center(child: Text(err.toString(), style: GoogleFonts.manrope(color: _appCoral))),
                       data: (_) {
                         if (filteredItems.isEmpty && _searchQuery.isNotEmpty) {
-                          return Center(child: Text('No items found', style: GoogleFonts.poppins(color: darkTextColor.withOpacity(0.5))));
+                          return Center(child: Text('No items found', style: GoogleFonts.manrope(color: _inkColor.withOpacity(0.5), fontWeight: FontWeight.w600, fontSize: 16)));
                         }
                         return filteredItems.isEmpty ? _buildEmptyState() : _buildGlassList(filteredItems, shoppingService);
                       },
@@ -125,67 +133,127 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
     );
   }
 
+  // ==========================================
+  // HEADER MINIMAL
+  // ==========================================
   Widget _buildHeader(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: archiveColor.withOpacity(0.2), width: 1.5), boxShadow: [BoxShadow(color: archiveColor.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 6))]),
-            child: Icon(Icons.arrow_back_ios_new_rounded, color: archiveColor, size: 20),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 44, height: 44,
+                color: Colors.transparent,
+                alignment: Alignment.centerLeft,
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: _inkColor, size: 24),
+              ),
+            ),
           ),
         ),
-        Text('History', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: archiveColor)),
-        const SizedBox(width: 48), // Spazio vuoto per bilanciare
+        Text(
+          'History', 
+          textAlign: TextAlign.center,
+          style: GoogleFonts.manrope(fontSize: 26, fontWeight: FontWeight.w800, color: _inkColor, letterSpacing: -0.5)
+        ),
+        const Expanded(child: SizedBox()), // Spazio vuoto per bilanciare l'header
       ],
     );
   }
 
+  // --- SEARCH BAR: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO ---
   Widget _buildSearchBar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-        child: Container(
-          height: 55, padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(color: archiveColor.withOpacity(0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: archiveColor.withOpacity(0.2), width: 1.2)),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  decoration: InputDecoration(hintText: 'Search history...', hintStyle: GoogleFonts.poppins(color: archiveColor.withOpacity(0.5), fontSize: 15), border: InputBorder.none),
-                  style: GoogleFonts.poppins(color: darkTextColor),
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: _inkColor.withOpacity(0.08), // Ombra morbida per elevare
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: _inkColor.withOpacity(0.03), // Scurisce leggermente lo sfondo
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.7), // Patina bianca
+                width: 1.5,
               ),
-              Icon(Icons.search_rounded, color: archiveColor, size: 24),
-            ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: 'Search history...',
+                      hintStyle: GoogleFonts.manrope(
+                        color: _inkColor.withOpacity(0.4),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      border: InputBorder.none,
+                    ),
+                    style: GoogleFonts.manrope(
+                      color: _inkColor, // Testi scuri
+                      fontWeight: FontWeight.w600
+                    ),
+                  ),
+                ),
+                Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 24),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  // --- TASTO SELECT MINIMAL ---
   Widget _buildSelectionModeToggle() {
     return GestureDetector(
       onTap: () => setState(() {
         _isSelectionMode = !_isSelectionMode;
         if (!_isSelectionMode) _selectedIds.clear(); 
       }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200), padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: _isSelectionMode ? archiveColor : Colors.white.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _isSelectionMode ? archiveColor : archiveColor.withOpacity(0.1), width: 1.2),
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _isSelectionMode ? Icons.close_rounded : Icons.checklist_rounded,
+              size: 20,
+              color: _inkColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _isSelectionMode ? 'Cancel' : 'Select',
+              style: GoogleFonts.manrope(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: _inkColor,
+              ),
+            ),
+          ],
         ),
-        child: Icon(Icons.checklist_rounded, size: 22, color: _isSelectionMode ? Colors.white : archiveColor.withOpacity(0.5)),
       ),
     );
   }
 
+  // --- BARRA IN BASSO (SELEZIONE) ---
   Widget _buildBatchActionBar(List<ShoppingItem> currentFilteredItems, ShoppingService shoppingService) {
     final count = _selectedIds.length;
     final total = currentFilteredItems.length;
@@ -194,55 +262,81 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300), height: 70, padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(24), border: Border.all(color: archiveColor.withOpacity(0.5), width: 1.5),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))]
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => setState(() {
-                    if (allSelected) _selectedIds.clear();
-                    else _selectedIds.addAll(currentFilteredItems.map((e) => e.id));
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200), padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: allSelected ? archiveColor.withOpacity(0.2) : archiveColor.withOpacity(0.05), shape: BoxShape.circle),
-                    child: Icon(allSelected ? Icons.remove_done_rounded : Icons.done_all_rounded, color: archiveColor, size: 22),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(count == 0 ? 'Select...' : '$count selected', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: darkTextColor)),
-                ),
-                if (hasSelection) ...[
-                  // Bottone RESTORE
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300), height: 72, padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.85), // Per la barra in basso uso un bianco opaco per distinguerla
+                borderRadius: BorderRadius.circular(24), 
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: Row(
+                children: [
                   GestureDetector(
-                    onTap: () => _restoreSelected(shoppingService),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                      child: Icon(Icons.restore_rounded, color: primaryColor),
+                    onTap: () => setState(() {
+                      if (allSelected) _selectedIds.clear();
+                      else _selectedIds.addAll(currentFilteredItems.map((e) => e.id));
+                    }),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200), padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: allSelected ? _inkColor.withOpacity(0.15) : (hasSelection ? _inkColor.withOpacity(0.05) : _inkColor.withOpacity(0.05)), 
+                        shape: BoxShape.circle
+                      ),
+                      child: Icon(allSelected ? Icons.remove_done_rounded : Icons.done_all_rounded, color: hasSelection ? _inkColor : _inkColor.withOpacity(0.4), size: 20),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  // Bottone HARD DELETE
-                  GestureDetector(
-                    onTap: () => _deleteSelected(shoppingService),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(color: expiredColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                      child: Icon(Icons.delete_forever_rounded, color: expiredColor),
-                    ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(count == 0 ? 'Select...' : '$count selected', style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: hasSelection ? _inkColor : _inkColor.withOpacity(0.5))),
                   ),
-                ]
-              ],
+                  if (hasSelection) ...[
+                    // Bottone HARD DELETE (Rosso)
+                    GestureDetector(
+                      onTap: () => _deleteSelected(shoppingService),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: _appCoral.withOpacity(0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.delete_forever_rounded, color: _appCoral, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Bottone RESTORE (Teal)
+                    GestureDetector(
+                      onTap: () => _restoreSelected(shoppingService), 
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _appTeal, 
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: _appTeal.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))]
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.unarchive_rounded, color: Colors.white, size: 18),
+                            const SizedBox(width: 6),
+                            Text('Restore', style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ]
+                ],
+              ),
             ),
           ),
         ),
@@ -258,15 +352,14 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
         final item = items[index];
         return Dismissible(
           key: ValueKey(item.id),
-          // Se non è in selection mode, permetti lo swipe da entrambe le parti!
           direction: _isSelectionMode ? DismissDirection.none : DismissDirection.horizontal,
           background: Container(
-            decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: _appTeal, borderRadius: BorderRadius.circular(24)),
             alignment: Alignment.centerLeft, padding: const EdgeInsets.only(left: 24),
-            child: const Icon(Icons.restore_rounded, color: Colors.white, size: 28),
+            child: const Icon(Icons.unarchive_rounded, color: Colors.white, size: 28),
           ),
           secondaryBackground: Container(
-            decoration: BoxDecoration(color: expiredColor, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: _appCoral, borderRadius: BorderRadius.circular(24)),
             alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 24),
             child: const Icon(Icons.delete_forever_rounded, color: Colors.white, size: 28),
           ),
@@ -284,32 +377,76 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
     );
   }
 
+  // --- ITEM STYLE: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO ---
   Widget _buildListItem(ShoppingItem item) {
     final isSelected = _selectedIds.contains(item.id);
-    Color currentBorderColor = _isSelectionMode && isSelected ? archiveColor : Colors.white.withOpacity(0.8);
-    
+    Color currentBorderColor = _isSelectionMode && isSelected 
+        ? _inkColor.withOpacity(0.3) 
+        : Colors.white.withOpacity(0.7); // Patina bianca
+
     return GestureDetector(
       onTap: _isSelectionMode ? () => setState(() {
         if (_selectedIds.contains(item.id)) _selectedIds.remove(item.id);
         else _selectedIds.add(item.id);
-      }) : null, // Se non in selezione, non fa nulla (è read-only)
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200), height: 70, padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: _isSelectionMode && isSelected ? archiveColor.withOpacity(0.15) : Colors.white.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(20), border: Border.all(color: currentBorderColor, width: isSelected ? 2.0 : 1.5),
+      }) : null, 
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08), // Ombra per elevare
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                if (_isSelectionMode) Icon(isSelected ? Icons.check_circle_rounded : Icons.circle_outlined, color: isSelected ? archiveColor : Colors.grey.withOpacity(0.5), size: 28)
-                else Container(width: 24, height: 24, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Colors.grey.withOpacity(0.3), width: 2))),
-                const SizedBox(width: 16),
-                Expanded(child: Text(item.name, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: darkTextColor, decoration: TextDecoration.lineThrough, decorationColor: darkTextColor.withOpacity(0.3)), maxLines: 1, overflow: TextOverflow.ellipsis)),
-              ],
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200), height: 72, padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                // Scurisce leggermente il fondo per lo storico
+                color: _isSelectionMode && isSelected ? _inkColor.withOpacity(0.08) : _inkColor.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(24), 
+                border: Border.all(color: currentBorderColor, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  // Icona di selezione SOLO in Selection Mode (Nessun pallino!)
+                  if (_isSelectionMode) ...[
+                    Icon(
+                      isSelected ? Icons.check_circle_rounded : Icons.circle_outlined, 
+                      color: isSelected ? _inkColor : _inkColor.withOpacity(0.3), 
+                      size: 26
+                    ),
+                    const SizedBox(width: 16),
+                  ],
+                  
+                  Expanded(
+                    child: Text(
+                      item.name, 
+                      style: GoogleFonts.manrope(
+                        fontSize: 18, 
+                        fontWeight: FontWeight.w700, 
+                        // Nello storico il testo è leggermente sbiadito e barrato
+                        color: _inkColor.withOpacity(0.5), 
+                        decoration: TextDecoration.lineThrough, 
+                        decorationColor: _inkColor.withOpacity(0.3)
+                      ), 
+                      maxLines: 1, 
+                      overflow: TextOverflow.ellipsis
+                    )
+                  ),
+                  if (item.quantity > 1 && !_isSelectionMode)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.6), borderRadius: BorderRadius.circular(12)),
+                      child: Text('Qty: ${item.quantity}', style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: _inkColor.withOpacity(0.4))),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -322,9 +459,19 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history_rounded, size: 60, color: archiveColor.withOpacity(0.3)),
-          const SizedBox(height: 16),
-          Text('Your history is empty.', style: GoogleFonts.poppins(color: darkTextColor.withOpacity(0.5), fontSize: 16, fontWeight: FontWeight.w500)),
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.4), 
+              shape: BoxShape.circle, 
+              border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
+            ),
+            child: Icon(Icons.history_rounded, size: 64, color: _inkColor.withOpacity(0.15)),
+          ),
+          const SizedBox(height: 24),
+          Text('History is clear.', style: GoogleFonts.manrope(color: _inkColor, fontSize: 24, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text('Archived items will appear here.', textAlign: TextAlign.center, style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w600, color: _inkColor.withOpacity(0.5))),
         ],
       ),
     );
