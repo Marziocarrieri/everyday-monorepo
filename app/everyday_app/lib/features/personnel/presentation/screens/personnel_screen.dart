@@ -11,11 +11,13 @@ import 'package:everyday_app/shared/widgets/avatar_image.dart';
 
 const _personnelInk = Color(0xFF1F3A44);
 const _personnelAccent = Color(0xFF5A8B9E);
-const _personnelCardTintPalette = <Color>[
-  Color(0xFF9FC8E8),
-  Color(0xFF9FD8CF),
-  Color(0xFFD8C4AE),
-  Color(0xFFB7D5A5),
+const _personnelCardSurfacePalette = <List<Color>>[
+  [Color(0xFF6794AA), Color(0xFF2F4858)],
+  [Color(0xFFD8AD90), Color(0xFFB06F59)],
+  [Color(0xFF78A7A3), Color(0xFF56817D)],
+  [Color(0xFFD8AD90), Color(0xFFB06F59)],
+  [Color(0xFFC7A15A), Color(0xFF8F6A33)],
+  [Color(0xFF8D79A6), Color(0xFF5C4A78)],
 ];
 
 class PersonnelScreen extends ConsumerWidget {
@@ -105,9 +107,9 @@ class PersonnelScreen extends ConsumerWidget {
                                 name: displayName,
                                 role: member.role,
                                 initial: displayInitial,
-                                color:
-                                    _personnelCardTintPalette[index %
-                                        _personnelCardTintPalette.length],
+                                surfaceColors:
+                                    _personnelCardSurfacePalette[index %
+                                        _personnelCardSurfacePalette.length],
                                 avatarUrl: avatarUrl, // PASSATO ALLA CARD
                               ),
                             ),
@@ -170,7 +172,7 @@ class PersonnelScreen extends ConsumerWidget {
     required String name,
     required String role,
     required String initial,
-    required Color color,
+    required List<Color> surfaceColors,
     String? avatarUrl, // NUOVO PARAMETRO
   }) {
     return ClipRRect(
@@ -184,26 +186,22 @@ class PersonnelScreen extends ConsumerWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                color.withValues(alpha: 0.34),
-                Colors.white.withValues(alpha: 0.92),
-                color.withValues(alpha: 0.2),
-              ],
+              colors: surfaceColors,
             ),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.82),
-              width: 1,
+              color: Colors.white.withValues(alpha: 0.5),
+              width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
+                color: surfaceColors.first.withValues(alpha: 0.3),
+                blurRadius: 30,
+                offset: const Offset(0, 18),
               ),
               BoxShadow(
-                color: color.withValues(alpha: 0.14),
-                blurRadius: 12,
-                offset: const Offset(-1, -1),
+                color: Colors.white.withValues(alpha: 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, -2),
               ),
             ],
           ),
@@ -233,7 +231,7 @@ class PersonnelScreen extends ConsumerWidget {
                             Text(
                               name,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.manrope(
                                 color: _personnelInk,
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
@@ -261,17 +259,7 @@ class PersonnelScreen extends ConsumerWidget {
               Container(
                 width: 1,
                 margin: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.0),
-                      Colors.white.withValues(alpha: 0.72),
-                      Colors.white.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
+                color: const Color(0xFFF8F1E8).withValues(alpha: 0.22),
               ),
               Flexible(
                 flex: 2,

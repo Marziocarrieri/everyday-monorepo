@@ -4,6 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 // Richiama solo la righina dei task, nient'altro!
 import 'home_task_preview_tile.dart';
 
+const _containerTitleColor = Color(0xFFF8F1E8);
+const _containerTitleSize = 24.0;
+const _containerTitleWeight = FontWeight.w700;
+const _containerTitleLetterSpacing = 0.2;
+const _containerTitleShadows = <Shadow>[
+  Shadow(color: Color(0x33203038), offset: Offset(0, 1.5), blurRadius: 4),
+];
+
 class HomeDailyPreviewItem {
   final String title;
   final bool isCompleted;
@@ -27,8 +35,8 @@ class HomeDailyModule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brightColor = Color(0xFFC98D74);
-    const darkColor = Color(0xFFB06F59);
+    const brightColor = Color(0xFF78A7A3);
+    const darkColor = Color(0xFF56817D);
 
     final previewTasks = previewItems.take(3).toList(growable: false);
     final normalizedCompletion = completion.clamp(0.0, 1.0);
@@ -62,10 +70,12 @@ class HomeDailyModule extends StatelessWidget {
               children: [
                 Text(
                   'Daily Tasks',
-                  style: GoogleFonts.poppins(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                  style: GoogleFonts.manrope(
+                    fontSize: _containerTitleSize,
+                    fontWeight: _containerTitleWeight,
+                    letterSpacing: _containerTitleLetterSpacing,
+                    shadows: _containerTitleShadows,
+                    color: _containerTitleColor,
                   ),
                 ),
                 // --- BADGE DELLA PERCENTUALE DA SOLO ---
@@ -80,7 +90,7 @@ class HomeDailyModule extends StatelessWidget {
                   ),
                   child: Text(
                     '${(normalizedCompletion * 100).round()}%',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,

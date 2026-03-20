@@ -46,8 +46,8 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
     final clampedIndex = rawIndex < 0
         ? 0
         : rawIndex >= widget.tabs.length
-            ? widget.tabs.length - 1
-            : rawIndex;
+        ? widget.tabs.length - 1
+        : rawIndex;
 
     if (_canAccess(widget.tabs[clampedIndex].routeName)) {
       return clampedIndex;
@@ -63,18 +63,13 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
   @override
   Widget build(BuildContext context) {
     if (widget.tabs.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('No tabs configured')),
-      );
+      return const Scaffold(body: Center(child: Text('No tabs configured')));
     }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: _buildPremiumBottomNav(context),
     );
   }
@@ -86,7 +81,7 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
   }
 
   Widget _buildPremiumBottomNav(BuildContext context) {
-    const selectedColor = Color(0xFF243C4A);
+    const selectedColor = Color(0xFF1F3A44);
     final unselectedColor = selectedColor.withValues(alpha: 0.42);
 
     return SafeArea(
@@ -120,7 +115,9 @@ class _RoleShellScaffoldState extends State<RoleShellScaffold> {
                   final tab = widget.tabs[index];
                   final isSelected = _selectedIndex == index;
                   final isProfileTab = index == widget.tabs.length - 1;
-                  final iconColor = isSelected ? selectedColor : unselectedColor;
+                  final iconColor = isSelected
+                      ? selectedColor
+                      : unselectedColor;
                   final displayIcon = _refinedIcon(tab.icon);
 
                   return Expanded(

@@ -56,10 +56,10 @@ class UtilitiesScreen extends StatelessWidget {
       child: Center(
         child: Text(
           'Utilities',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.manrope(
             fontSize: 26,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF2F4858),
+            color: const Color(0xFF1F3A44),
             letterSpacing: 0.5,
           ),
         ),

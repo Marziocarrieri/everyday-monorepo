@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_task_preview_tile.dart';
 
+const _containerTitleColor = Color(0xFFF8F1E8);
+const _containerTitleSize = 24.0;
+const _containerTitleWeight = FontWeight.w700;
+const _containerTitleLetterSpacing = 0.2;
+const _containerTitleShadows = <Shadow>[
+  Shadow(color: Color(0x33203038), offset: Offset(0, 1.5), blurRadius: 4),
+];
+
 enum WeeklyDayState { empty, pending, done }
 
 class WeeklyTimelineItem {
@@ -42,8 +50,8 @@ class HomeWeeklyModule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brightColor = Color(0xFF45B9A7);
-    const darkColor = Color(0xFF1F7568);
+    const brightColor = Color(0xFFD8AD90);
+    const darkColor = Color(0xFFB06F59);
 
     return GestureDetector(
       onTap: onTap,
@@ -71,10 +79,12 @@ class HomeWeeklyModule extends StatelessWidget {
             // HEADER (Senza icona calendario)
             Text(
               'Weekly Tasks',
-              style: GoogleFonts.poppins(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+              style: GoogleFonts.manrope(
+                fontSize: _containerTitleSize,
+                fontWeight: _containerTitleWeight,
+                letterSpacing: _containerTitleLetterSpacing,
+                shadows: _containerTitleShadows,
+                color: _containerTitleColor,
               ),
             ),
             const SizedBox(height: 16),

@@ -17,6 +17,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _homeInk = Color(0xFF1F3A44);
+const _containerTitleColor = Color(0xFFF8F1E8);
+const _containerTitleSize = 24.0;
+const _containerTitleWeight = FontWeight.w700;
+const _containerTitleLetterSpacing = 0.2;
+const _containerTitleShadows = <Shadow>[
+  Shadow(color: Color(0x33203038), offset: Offset(0, 1.5), blurRadius: 4),
+];
+
 const _maxActiveQuickActions = 6;
 const _quickActionsPrefsKey = 'home.quick_actions.active.v1';
 
@@ -260,7 +268,7 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
 
   Widget _buildAgentReportCard(BuildContext context) {
     return _GlassSectionCard(
-      gradientColors: const [Color(0xFF6B8EA5), Color(0xFF3D5D72)],
+      gradientColors: const [Color(0xFF6794AA), Color(0xFF2F4858)],
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 210),
         child: Column(
@@ -273,9 +281,11 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
                 Text(
                   'Agent Report',
                   style: GoogleFonts.manrope(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    fontSize: _containerTitleSize,
+                    fontWeight: _containerTitleWeight,
+                    letterSpacing: _containerTitleLetterSpacing,
+                    shadows: _containerTitleShadows,
+                    color: _containerTitleColor,
                   ),
                 ),
                 Material(
@@ -499,7 +509,7 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
     }
 
     return _GlassSectionCard(
-      gradientColors: const [Color(0xFFDABBA4), Color(0xFF8FAFA8)],
+      gradientColors: const [Color(0xFFD8AD90), Color(0xFFB06F59)],
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 260),
         child: Column(
@@ -512,9 +522,11 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
                 Text(
                   'Quick Actions',
                   style: GoogleFonts.manrope(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF2E3E46),
+                    fontSize: _containerTitleSize,
+                    fontWeight: _containerTitleWeight,
+                    letterSpacing: _containerTitleLetterSpacing,
+                    shadows: _containerTitleShadows,
+                    color: _containerTitleColor,
                   ),
                 ),
                 GestureDetector(
@@ -537,7 +549,7 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
                         const Icon(
                           Icons.tune_rounded,
                           size: 14,
-                          color: Color(0xFF2E3E46),
+                          color: _homeInk,
                         ),
                         const SizedBox(width: 5),
                         Text(
@@ -545,7 +557,7 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
                           style: GoogleFonts.manrope(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF2E3E46),
+                            color: _homeInk,
                           ),
                         ),
                       ],
@@ -563,7 +575,7 @@ class _HomePlaceholderScreenState extends ConsumerState<HomePlaceholderScreen> {
                   style: GoogleFonts.manrope(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF2E3E46).withValues(alpha: 0.7),
+                    color: _homeInk.withValues(alpha: 0.7),
                   ),
                 ),
               )
@@ -644,19 +656,19 @@ class _GlassSectionCard extends StatelessWidget {
               colors: gradientColors,
             ),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Colors.white.withValues(alpha: 0.5),
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: gradientColors.first.withValues(alpha: 0.35),
+                color: gradientColors.first.withValues(alpha: 0.3),
                 blurRadius: 30,
                 offset: const Offset(0, 18),
               ),
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(-4, -4),
+                color: Colors.white.withValues(alpha: 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, -2),
               ),
             ],
           ),
@@ -1012,11 +1024,7 @@ class _QuickActionTile extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.62),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    action.icon,
-                    size: 17,
-                    color: const Color(0xFF2E3E46),
-                  ),
+                  child: Icon(action.icon, size: 17, color: _homeInk),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1027,7 +1035,7 @@ class _QuickActionTile extends StatelessWidget {
                     style: GoogleFonts.manrope(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF2E3E46),
+                      color: _homeInk,
                       height: 1.2,
                     ),
                   ),

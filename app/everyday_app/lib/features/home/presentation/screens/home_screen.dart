@@ -427,19 +427,19 @@ void _showCalendarPopup(BuildContext context) {
                           Icons.chevron_right_rounded,
                           colorAzzurro,
                         ),
-                        titleTextStyle: GoogleFonts.poppins(
+                        titleTextStyle: GoogleFonts.manrope(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: const Color(0xFF3D342C),
                         ),
                       ),
                       daysOfWeekStyle: DaysOfWeekStyle(
-                        weekdayStyle: GoogleFonts.poppins(
+                        weekdayStyle: GoogleFonts.manrope(
                           color: colorOrange,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
-                        weekendStyle: GoogleFonts.poppins(
+                        weekendStyle: GoogleFonts.manrope(
                           color: colorOrange,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -447,11 +447,11 @@ void _showCalendarPopup(BuildContext context) {
                       ),
                       calendarStyle: CalendarStyle(
                         outsideDaysVisible: false,
-                        defaultTextStyle: GoogleFonts.poppins(
+                        defaultTextStyle: GoogleFonts.manrope(
                           color: const Color(0xFF3D342C),
                           fontWeight: FontWeight.w600,
                         ),
-                        weekendTextStyle: GoogleFonts.poppins(
+                        weekendTextStyle: GoogleFonts.manrope(
                           color: const Color(0xFF3D342C),
                           fontWeight: FontWeight.w600,
                         ),
@@ -462,7 +462,7 @@ void _showCalendarPopup(BuildContext context) {
                           ),
                           shape: BoxShape.circle,
                         ),
-                        todayTextStyle: GoogleFonts.poppins(
+                        todayTextStyle: GoogleFonts.manrope(
                           color: colorAzzurro,
                           fontWeight: FontWeight.w800,
                         ),
