@@ -420,14 +420,22 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                 children: [
                   _buildHeader(context),
                   const SizedBox(height: 32),
+                  
+                  // SEARCH BAR PIU' STRETTA
                   _buildSearchBar(),
-                  const SizedBox(height: 24),
-                  // TASTO SELECT ALLINEATO A SINISTRA
+                  
+                  // SPAZIO EQUIDISTANTE SUPERIORE
+                  const SizedBox(height: 26), 
+                  
+                  // TASTO SELECT A DESTRA
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.start, 
+                    mainAxisAlignment: MainAxisAlignment.end, 
                     children: [_buildDeleteModeToggle()],
                   ),
-                  const SizedBox(height: 16),
+                  
+                  // SPAZIO INFERIORE AZZERATO (compensato dal padding della lista)
+                  const SizedBox(height: 0),
+                  
                   Expanded(
                     child: itemsAsync.when(
                       loading: () => const Center(child: CircularProgressIndicator(color: _appTeal)),
@@ -520,56 +528,61 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
     );
   }
 
-  // --- SEARCH BAR: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO ---
+  // --- SEARCH BAR: STRETTA E COMPATTA ---
   Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _inkColor.withOpacity(0.08), // Ombra morbida per elevare
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-          child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: _inkColor.withOpacity(0.03), // Scurisce leggermente lo sfondo
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.7), // Patina bianca
-                width: 1.5,
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0), 
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08), 
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                    decoration: InputDecoration(
-                      hintText: 'Search items...',
-                      hintStyle: GoogleFonts.manrope(
-                        color: _inkColor.withOpacity(0.4),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Container(
+              height: 50, // Altezza ridotta
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: _inkColor.withOpacity(0.03), 
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7), 
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                      decoration: InputDecoration(
+                        hintText: 'Search items...',
+                        hintStyle: GoogleFonts.manrope(
+                          color: _inkColor.withOpacity(0.4),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
                       ),
-                      border: InputBorder.none,
-                    ),
-                    style: GoogleFonts.manrope(
-                      color: _inkColor, // Testi scuri
-                      fontWeight: FontWeight.w600
+                      style: GoogleFonts.manrope(
+                        color: _inkColor, 
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
-                ),
-                Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 24),
-              ],
+                  Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 22),
+                ],
+              ),
             ),
           ),
         ),
@@ -793,8 +806,6 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
         ? _appOrange
         : Colors.white.withOpacity(0.7); // Patina bianca
 
-    Color baseIconColor =_appTeal;
-
     return GestureDetector(
       onTap: _isDeleteMode
           ? () => _toggleSelection(item.id)
@@ -827,7 +838,7 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
               ),
               child: Row(
                 children: [
-                  // Icona di selezione SOLO se siamo in Delete Mode (Nessun pallino!)
+                  // Icona di selezione SOLO se siamo in Delete Mode
                   if (_isDeleteMode) ...[
                     Icon(
                       isSelected
@@ -838,31 +849,6 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                           : _inkColor.withOpacity(0.3),
                       size: 26,
                     ),
-                    const SizedBox(width: 16),
-                  ] else ...[
-                    item.recommendedItem?.picture != null && item.recommendedItem!.picture.isNotEmpty
-                    ? ClipOval(
-                        child: Image.network(
-                          item.recommendedItem!.picture,
-                          width: 32, 
-                          height: 32,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Icon(Icons.shopping_cart, color: baseIconColor, size: 28),
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return SizedBox(
-                              width: 32, height: 32,
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(baseIconColor.withOpacity(0.3)),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                    : Icon(Icons.shopping_cart, color: baseIconColor, size: 28),
                     const SizedBox(width: 16),
                   ],
                   
@@ -1362,7 +1348,7 @@ Widget _buildPremiumAutocompleteField(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.9), // Un po' più solido qui per leggerezza
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.2),
+                    border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.5),
                   ),
                   child: ListView.builder(
                     padding: EdgeInsets.zero,
@@ -1372,17 +1358,17 @@ Widget _buildPremiumAutocompleteField(
                       final RecommendedItem option = options.elementAt(index);
                       return ListTile(
                         leading: CircleAvatar(
-                            backgroundColor: _appTeal.withOpacity(0.1),
-                            backgroundImage: NetworkImage(option.picture),
+                          backgroundColor: _appTeal.withOpacity(0.1),
+                          backgroundImage: NetworkImage(option.picture),
+                        ),
+                        title: Text(
+                          option.name,
+                          style: GoogleFonts.manrope(
+                            color: _inkColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
                           ),
-                          title: Text(
-                            option.name,
-                            style: GoogleFonts.manrope(
-                              color: _inkColor,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
+                        ),
                         onTap: () => onSelected(option),
                       );
                     },
@@ -1514,36 +1500,6 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
 
                   Row(
                     children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        margin: const EdgeInsets.only(right: 16), // Provides spacing from the name
-                        decoration: BoxDecoration(
-                          color: _appTeal.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _appTeal.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: widget.item.recommendedItem?.picture != null
-                            ? ClipOval(
-                                child: Image.network(
-                                  widget.item.recommendedItem!.picture,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => const Icon(
-                                    Icons.restaurant_rounded, // Fallback icon
-                                    color: _appTeal,
-                                    size: 30,
-                                  ),
-                                ),
-                              )
-                            : const Icon(
-                                Icons.shopping_cart, // Fallback icon
-                                color: _appTeal,
-                                size: 30,
-                              ),
-                      ),
                       Expanded(
                         child: _isEditing
                             ? TextField(

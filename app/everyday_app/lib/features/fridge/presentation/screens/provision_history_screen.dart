@@ -105,12 +105,21 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(context),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 32),
+                  
+                  // SEARCH BAR PIÙ STRETTA
                   _buildSearchBar(),
-                  const SizedBox(height: 24),
-                  // Tasto Select allineato a sinistra
-                  Row(mainAxisAlignment: MainAxisAlignment.start, children: [_buildSelectionModeToggle()]),
-                  const SizedBox(height: 16),
+                  
+                  const SizedBox(height: 20), // Spazio Equidistante SOPRA
+                  
+                  // TASTO SELECT ALLINEATO A DESTRA
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end, 
+                    children: [_buildSelectionModeToggle()]
+                  ),
+                  
+                  const SizedBox(height: 20), // Spazio Equidistante SOTTO
+                  
                   Expanded(
                     child: itemsAsync.when(
                       loading: () => const Center(child: CircularProgressIndicator(color: _appTeal)),
@@ -163,56 +172,61 @@ class _ProvisionHistoryScreenState extends ConsumerState<ProvisionHistoryScreen>
     );
   }
 
-  // --- SEARCH BAR: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO ---
+  // --- SEARCH BAR: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO E STRETTA ---
   Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _inkColor.withOpacity(0.08), // Ombra morbida per elevare
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-          child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: _inkColor.withOpacity(0.03), // Scurisce leggermente lo sfondo
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.7), // Patina bianca
-                width: 1.5,
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0), // Padding laterale per restringerla
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08), // Ombra morbida per elevare
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                    decoration: InputDecoration(
-                      hintText: 'Search history...',
-                      hintStyle: GoogleFonts.manrope(
-                        color: _inkColor.withOpacity(0.4),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Container(
+              height: 50, // Altezza ridotta
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: _inkColor.withOpacity(0.03), // Scurisce leggermente lo sfondo
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7), // Patina bianca
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                      decoration: InputDecoration(
+                        hintText: 'Search history...',
+                        hintStyle: GoogleFonts.manrope(
+                          color: _inkColor.withOpacity(0.4),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true, // Compatta l'input
                       ),
-                      border: InputBorder.none,
-                    ),
-                    style: GoogleFonts.manrope(
-                      color: _inkColor, // Testi scuri
-                      fontWeight: FontWeight.w600
+                      style: GoogleFonts.manrope(
+                        color: _inkColor, // Testi scuri
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
-                ),
-                Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 24),
-              ],
+                  Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 22),
+                ],
+              ),
             ),
           ),
         ),

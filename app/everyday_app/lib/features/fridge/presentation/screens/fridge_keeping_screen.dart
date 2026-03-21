@@ -621,8 +621,8 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                 children: [
                   _buildHeader(context),
                   const SizedBox(height: 32),
-                  _buildSearchBar(),
-                  const SizedBox(height: 24),
+                  
+                  // 1. INVERTITO: PRIMA I BOTTONCINI GRIGLIA E CATEGORIA
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -630,13 +630,24 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                       _buildCategorySelector(context),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  // Tasto Select spostato a sinistra sotto la riga sopra
+                  const SizedBox(height: 24),
+                  
+                  // 2. INVERTITO: DOPO LA SEARCH BAR (Stretta e Compatta)
+                  _buildSearchBar(),
+                  
+                  // SPAZIO EQUIDISTANTE SUPERIORE
+                  const SizedBox(height: 26), 
+                  
+                  // 3. TASTO SELECT: EQUIDISTANTE ED ALLINEATO A DESTRA
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [_buildDeleteModeToggle()],
                   ),
-                  const SizedBox(height: 16),
+                  
+                  // SPAZIO INFERIORE AZZERATO (compensato dal padding della lista)
+                  const SizedBox(height: 0), 
+                  
+                  // 4. LISTA
                   Expanded(
                     child: itemsAsync.when(
                       loading: () => const Center(
@@ -728,56 +739,61 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     );
   }
 
-  // --- SEARCH BAR: VETRO CON PATINA BIANCA E LEGGERMENTE SCURO ---
+  // --- SEARCH BAR: STRETTA E COMPATTA ---
   Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _inkColor.withOpacity(0.08), // Ombra morbida
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-          child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: _inkColor.withOpacity(0.03), // Leggera patina scura
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.7), // Bordo bianco satinato
-                width: 1.5,
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0), // Più stretta
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08), // Ombra morbida
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: (value) => setState(() => _searchQuery = value),
-                    decoration: InputDecoration(
-                      hintText: 'Search items...',
-                      hintStyle: GoogleFonts.manrope(
-                        color: _inkColor.withOpacity(0.4),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Container(
+              height: 50, // Altezza ridotta
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: _inkColor.withOpacity(0.03), // Leggera patina scura
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7), // Bordo bianco satinato
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onChanged: (value) => setState(() => _searchQuery = value),
+                      decoration: InputDecoration(
+                        hintText: 'Search items...',
+                        hintStyle: GoogleFonts.manrope(
+                          color: _inkColor.withOpacity(0.4),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
                       ),
-                      border: InputBorder.none,
-                    ),
-                    style: GoogleFonts.manrope(
-                      color: _inkColor, 
-                      fontWeight: FontWeight.w600
+                      style: GoogleFonts.manrope(
+                        color: _inkColor, 
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
-                ),
-                Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 24),
-              ],
+                  Icon(Icons.search_rounded, color: _inkColor.withOpacity(0.4), size: 22),
+                ],
+              ),
             ),
           ),
         ),
@@ -1187,7 +1203,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
     Color baseIconColor = _getItemColor(item);
     Color currentBorderColor = _isDeleteMode && isSelected
         ? _appCoral
-        : Colors.white.withOpacity(0.7); // Patina bianca
+        : Colors.white.withOpacity(0.7); 
 
     final iconData = _getIconForArea(item.area);
 
@@ -1212,7 +1228,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
             filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              height: 76, // Altezza leggermente aumentata per respiro
+              height: 76, 
               padding: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
                 color: _isDeleteMode && isSelected
@@ -1226,7 +1242,6 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               ),
               child: Row(
                 children: [
-                  // Icona Check (selezionato) o Immagine
                   if (_isDeleteMode) ...[
                     Icon(
                       isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
@@ -1274,7 +1289,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                     ),
                   ),
 
-                  // CONTROLLO DI NULLITÀ AGGIUNTO QUI PER EVITARE L'ERRORE!
+                  // CONTROLLO DI NULLITÀ
                   if (item.quantity != null && item.quantity! > 1 && !_isDeleteMode)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1380,27 +1395,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Circular Image vs Icon logic
-                      item.recommendedItem?.picture != null
-                          ? SizedBox(
-                              height: 28, // Matches icon size
-                              width: 28,  // Matches icon size
-                              child: CircleAvatar(
-                                backgroundColor: Colors.transparent, // Background transparent
-                                backgroundImage: NetworkImage(item.recommendedItem!.picture),
-                                foregroundImage: NetworkImage(item.recommendedItem!.picture), 
-                                // Clips image into a perfect circle
-                                child: ClipOval(
-                                  child: Image.network(
-                                    item.recommendedItem!.picture,
-                                    fit: BoxFit.cover, // Ensures image covers the circle area
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        Icon(iconData, color: baseIconColor, size: 20), // Fallback if image fails
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Icon(iconData, color: baseIconColor, size: 28),
+                      Icon(iconData, color: baseIconColor, size: 28),
                       const SizedBox(height: 10),
                       Text(
                         item.name,
@@ -1524,7 +1519,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
   }
 
   // ==========================================
-  // MODAL ADD ELEMENT
+  // MODAL ADD ELEMENT (CHIARO)
   // ==========================================
 
   Future<void> _showAddElementModal(BuildContext context) async {
@@ -1900,7 +1895,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
 }
 
 // ==========================================
-// COMPONENTE: POPUP DETTAGLIO/MODIFICA
+// COMPONENTE: POPUP DETTAGLIO/MODIFICA (CHIARO)
 // ==========================================
 class FridgeItemDetailSheet extends StatefulWidget {
   const FridgeItemDetailSheet({
@@ -2065,23 +2060,11 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                               width: 2,
                             ),
                           ),
-                          child: widget.item.recommendedItem?.picture != null
-                          ? ClipOval(
-                              child: Image.network(
-                                widget.item.recommendedItem!.picture,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Icon(
-                                  widget.itemIcon,
-                                  color: itemColor,
-                                  size: 30,
-                                ),
-                              ),
-                            )
-                          : Icon(
-                              widget.itemIcon,
-                              color: itemColor,
-                              size: 30,
-                            ),
+                          child: Icon(
+                            widget.itemIcon, 
+                            color: itemColor,
+                            size: 30,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -2185,21 +2168,21 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                       ),
                       const SizedBox(height: 30),
                     ] else ...[
-                      _buildCleanEditField(
+                      _buildPremiumTextField(
                         'Weight (g)',
                         _weightController,
                         itemColor,
                         keyboardType: TextInputType.number,
                       ),
                       const SizedBox(height: 16),
-                      _buildCleanEditField(
+                      _buildPremiumTextField(
                         'Quantity',
                         _quantityController,
                         itemColor,
                         keyboardType: TextInputType.number,
                       ),
                       const SizedBox(height: 16),
-                      _buildCleanEditField(
+                      _buildPremiumTextField(
                         'Expire Date',
                         _expirationDateController,
                         itemColor,
@@ -2331,13 +2314,13 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     );
   }
 
-  // --- DASH CARD EFFETTO VETRO ---
   Widget _buildDashCard(
     String title,
     String value,
     IconData icon,
     Color accentColor,
   ) {
+    final textColor = const Color(0xFF3D342C);
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
@@ -2373,7 +2356,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                         style: GoogleFonts.manrope(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: darkTextColor.withOpacity(0.5),
+                          color: textColor.withOpacity(0.5),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -2402,8 +2385,7 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
     );
   }
 
-  // --- EDIT FIELD EFFETTO VETRO ---
-  Widget _buildCleanEditField(
+  Widget _buildPremiumTextField(
     String label,
     TextEditingController controller,
     Color accentColor, {

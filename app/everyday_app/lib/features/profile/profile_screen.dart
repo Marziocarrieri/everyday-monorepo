@@ -934,10 +934,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profile = AppContext.instance.profile;
     final householdId = AppContext.instance.householdId;
     if (householdId == null || profile == null) {
-      return Scaffold(backgroundColor: Colors.white, body: Center(child: Text('Session context not ready', style: GoogleFonts.manrope(color: _inkColor))));
+      return Scaffold(backgroundColor: _bgColor, body: Center(child: Text('Session context not ready', style: GoogleFonts.manrope(color: _inkColor))));
     }
     if (_isLoadingMember) {
-      return const Scaffold(backgroundColor: Colors.white, body: Center(child: CircularProgressIndicator(color: _appTeal)));
+      return const Scaffold(backgroundColor: _bgColor, body: Center(child: CircularProgressIndicator(color: _appTeal)));
     }
 
     final nickname = _activeMembership?.nickname;
@@ -1039,7 +1039,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           const SizedBox(height: 20),
                           
-                          // --- FIX ALLINEAMENTO NICKNAME ---
+                          // --- NICKNAME ---
                           Stack(
                             alignment: Alignment.center,
                             children: [
@@ -1114,7 +1114,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              role.toUpperCase(), // Rimossa la stringa col nome globale
+                              role.toUpperCase(),
                               textAlign: TextAlign.center,
                               style: GoogleFonts.manrope(
                                 fontSize: 12,
@@ -1146,45 +1146,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _inkColor.withOpacity(0.04),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                    // --- VOCI DEL MENU (Stile Smoked Glass come in provision_list) ---
+                    if (!isPersonnel) ...[
+                      _buildSettingsRow(
+                        icon: Icons.fastfood_outlined,
+                        iconColor: _appTeal, 
+                        text: 'Your Diet',
+                        onTap: () => Navigator.of(context).pushNamed(AppRouteNames.diet),
                       ),
-                      child: Column(
-                        children: [
-                          if (!isPersonnel) ...[
-                            _buildSettingsRow(
-                              icon: Icons.fastfood_outlined,
-                              iconColor: _appTeal, 
-                              text: 'Your Diet',
-                              onTap: () => Navigator.of(context).pushNamed(AppRouteNames.diet),
-                            ),
-                            Divider(height: 1, indent: 64, color: _inkColor.withOpacity(0.05)),
-                          ],
-                          _buildSettingsRow(
-                            icon: Icons.other_houses_outlined,
-                            iconColor: _appTeal,
-                            text: 'Your Home',
-                            onTap: () => AppRouter.navigate(context, AppRouteNames.yourHome),
-                          ),
-                        ],
-                      ),
+                      const SizedBox(height: 12), // Spazio tra le card di vetro
+                    ],
+                    _buildSettingsRow(
+                      icon: Icons.other_houses_outlined,
+                      iconColor: _appTeal,
+                      text: 'Your Home',
+                      onTap: () => AppRouter.navigate(context, AppRouteNames.yourHome),
                     ),
+                    
                     const SizedBox(height: 30), 
                   ],
                 ),
               ),
             ),
 
-            // --- BOTTONI AZIONE ---
+            // --- BOTTONI AZIONE FONDO ---
             Container(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
               color: _bgColor, 
@@ -1195,7 +1180,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: _buildActionPill(
                         icon: Icons.person_add_alt_1_rounded,
                         text: 'Invite',
-                        color: _appTeal, // CAMBIATO IN AZZURRO TEAL
+                        color: _appTeal, 
                         onTap: _handleInviteMember,
                       ),
                     ),
@@ -1232,36 +1217,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildSettingsRow({required IconData icon, required Color iconColor, required String text, required VoidCallback onTap}) {
-    return InkWell(
+  // --- NUOVO STILE CARD DI VETRO PER IL MENU ---
+  Widget _buildSettingsRow({
+    required IconData icon, 
+    required Color iconColor, 
+    required String text, 
+    required VoidCallback onTap
+  }) {
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _inkColor.withOpacity(0.08), // Ombra per l'effetto elevato
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                text,
-                style: GoogleFonts.manrope(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: _inkColor,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Container(
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: _inkColor.withOpacity(0.03), // Leggero sfondo scuro
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7), // Patina bianca sui bordi
+                  width: 1.5,
                 ),
               ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 22),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: GoogleFonts.manrope(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: _inkColor,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded, 
+                    color: _inkColor.withOpacity(0.3), 
+                    size: 24
+                  ),
+                ],
+              ),
             ),
-            Icon(Icons.chevron_right_rounded, color: _inkColor.withOpacity(0.3), size: 24),
-          ],
+          ),
         ),
       ),
     );
