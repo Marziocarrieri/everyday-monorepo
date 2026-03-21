@@ -793,6 +793,8 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
         ? _appOrange
         : Colors.white.withOpacity(0.7); // Patina bianca
 
+    Color baseIconColor =_appTeal;
+
     return GestureDetector(
       onTap: _isDeleteMode
           ? () => _toggleSelection(item.id)
@@ -836,6 +838,31 @@ class _ProvisionListScreenState extends ConsumerState<ProvisionListScreen> {
                           : _inkColor.withOpacity(0.3),
                       size: 26,
                     ),
+                    const SizedBox(width: 16),
+                  ] else ...[
+                    item.recommendedItem?.picture != null && item.recommendedItem!.picture.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          item.recommendedItem!.picture,
+                          width: 32, 
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Icon(Icons.shopping_cart, color: baseIconColor, size: 28),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return SizedBox(
+                              width: 32, height: 32,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(baseIconColor.withOpacity(0.3)),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : Icon(Icons.shopping_cart, color: baseIconColor, size: 28),
                     const SizedBox(width: 16),
                   ],
                   
@@ -1344,14 +1371,18 @@ Widget _buildPremiumAutocompleteField(
                     itemBuilder: (context, index) {
                       final RecommendedItem option = options.elementAt(index);
                       return ListTile(
-                        title: Text(
-                          option.name,
-                          style: GoogleFonts.manrope(
-                            color: _inkColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
+                        leading: CircleAvatar(
+                            backgroundColor: _appTeal.withOpacity(0.1),
+                            backgroundImage: NetworkImage(option.picture),
                           ),
-                        ),
+                          title: Text(
+                            option.name,
+                            style: GoogleFonts.manrope(
+                              color: _inkColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
                         onTap: () => onSelected(option),
                       );
                     },
@@ -1483,6 +1514,36 @@ class _ProvisionDetailSheetState extends State<_ProvisionDetailSheet> {
 
                   Row(
                     children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        margin: const EdgeInsets.only(right: 16), // Provides spacing from the name
+                        decoration: BoxDecoration(
+                          color: _appTeal.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _appTeal.withOpacity(0.3),
+                            width: 2,
+                          ),
+                        ),
+                        child: widget.item.recommendedItem?.picture != null
+                            ? ClipOval(
+                                child: Image.network(
+                                  widget.item.recommendedItem!.picture,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(
+                                    Icons.restaurant_rounded, // Fallback icon
+                                    color: _appTeal,
+                                    size: 30,
+                                  ),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.shopping_cart, // Fallback icon
+                                color: _appTeal,
+                                size: 30,
+                              ),
+                      ),
                       Expanded(
                         child: _isEditing
                             ? TextField(

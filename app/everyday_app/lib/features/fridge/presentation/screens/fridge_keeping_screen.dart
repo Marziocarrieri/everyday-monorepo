@@ -1380,7 +1380,27 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(iconData, color: baseIconColor, size: 28),
+                      // Circular Image vs Icon logic
+                      item.recommendedItem?.picture != null
+                          ? SizedBox(
+                              height: 28, // Matches icon size
+                              width: 28,  // Matches icon size
+                              child: CircleAvatar(
+                                backgroundColor: Colors.transparent, // Background transparent
+                                backgroundImage: NetworkImage(item.recommendedItem!.picture),
+                                foregroundImage: NetworkImage(item.recommendedItem!.picture), 
+                                // Clips image into a perfect circle
+                                child: ClipOval(
+                                  child: Image.network(
+                                    item.recommendedItem!.picture,
+                                    fit: BoxFit.cover, // Ensures image covers the circle area
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        Icon(iconData, color: baseIconColor, size: 20), // Fallback if image fails
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Icon(iconData, color: baseIconColor, size: 28),
                       const SizedBox(height: 10),
                       Text(
                         item.name,
@@ -2045,11 +2065,23 @@ class _FridgeItemDetailSheetState extends State<FridgeItemDetailSheet> {
                               width: 2,
                             ),
                           ),
-                          child: Icon(
-                            widget.itemIcon, 
-                            color: itemColor,
-                            size: 30,
-                          ),
+                          child: widget.item.recommendedItem?.picture != null
+                          ? ClipOval(
+                              child: Image.network(
+                                widget.item.recommendedItem!.picture,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Icon(
+                                  widget.itemIcon,
+                                  color: itemColor,
+                                  size: 30,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              widget.itemIcon,
+                              color: itemColor,
+                              size: 30,
+                            ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
