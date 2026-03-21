@@ -14,9 +14,12 @@ import 'package:everyday_app/core/app_context.dart';
 // --- COLORI DEL DESIGN SYSTEM ---
 const _bgColor = Color(0xFFF4F1ED);
 const _inkColor = Color(0xFF1F3A44);
-const _appOrange = Color(0xFFF4A261);
 const _appCoral = Color(0xFFF28482);
 const _appTeal = Color(0xFF5A8B9E);
+
+// Nuovi colori dal Weekly Module per il bottone del selettore
+const _selectorBright = Color(0xFFD8AD90);
+const _selectorDark = Color(0xFFB06F59);
 
 class YourHomeScreen extends ConsumerStatefulWidget {
   const YourHomeScreen({super.key});
@@ -342,9 +345,10 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [_appOrange, Color(0xFFE76F51)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          // GRADIENTE MODIFICATO 
+          gradient: const LinearGradient(colors: [_selectorBright, _selectorDark], begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: _appOrange.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5))],
+          boxShadow: [BoxShadow(color: _selectorBright.withOpacity(0.35), blurRadius: 15, offset: const Offset(0, 5))],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -554,8 +558,9 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(floor.name, style: GoogleFonts.manrope(fontSize: 18, fontWeight: isActive ? FontWeight.w800 : FontWeight.w600, color: isActive ? _appOrange : _inkColor)),
-            if (isActive) const Icon(Icons.check_circle, color: _appOrange, size: 24),
+            // COLORE MODIFICATO QUANDO SELEZIONATO
+            Text(floor.name, style: GoogleFonts.manrope(fontSize: 18, fontWeight: isActive ? FontWeight.w800 : FontWeight.w600, color: isActive ? _selectorBright : _inkColor)),
+            if (isActive) const Icon(Icons.check_circle, color: _selectorBright, size: 24),
           ],
         ),
       ),
@@ -579,7 +584,7 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                   Text('Select Room Type', style: GoogleFonts.manrope(fontSize: 20, fontWeight: FontWeight.w800, color: _inkColor)),
                   const SizedBox(height: 16), Divider(color: _inkColor.withOpacity(0.1)),
                   ListTile(
-                    title: Text('None', textAlign: TextAlign.center, style: GoogleFonts.manrope(color: currentSelection == null ? _appOrange : _inkColor.withOpacity(0.5), fontWeight: currentSelection == null ? FontWeight.w800 : FontWeight.w600, fontSize: 18)),
+                    title: Text('None', textAlign: TextAlign.center, style: GoogleFonts.manrope(color: currentSelection == null ? _selectorBright : _inkColor.withOpacity(0.5), fontWeight: currentSelection == null ? FontWeight.w800 : FontWeight.w600, fontSize: 18)),
                     onTap: () { onSelected(null); Navigator.pop(context); },
                   ),
                   Divider(color: _inkColor.withOpacity(0.1)),
@@ -593,7 +598,8 @@ class _YourHomeScreenState extends ConsumerState<YourHomeScreen> {
                           return Column(
                             children: [
                               ListTile(
-                                title: Text(_formatRoomTypeLabel(type), textAlign: TextAlign.center, style: GoogleFonts.manrope(color: isSelected ? _appOrange : _inkColor, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600, fontSize: 18)),
+                                // COLORE MODIFICATO QUANDO SELEZIONATO
+                                title: Text(_formatRoomTypeLabel(type), textAlign: TextAlign.center, style: GoogleFonts.manrope(color: isSelected ? _selectorBright : _inkColor, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600, fontSize: 18)),
                                 onTap: () { onSelected(type); Navigator.pop(context); },
                               ),
                               Divider(color: _inkColor.withOpacity(0.1)),

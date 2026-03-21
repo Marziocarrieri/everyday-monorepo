@@ -19,8 +19,10 @@ const _bgColor = Color(0xFFF4F1ED);
 const _inkColor = Color(0xFF1F3A44);
 const _appTeal = Color(0xFF5A8B9E);   // Teal originale
 const _appCoral = Color(0xFFF28482);  // Rosso/Coral originale
-const _orangeCardBright = Color(0xFFF4A261); // Arancione card
-const _orangeCardDeep = Color(0xFFE76F51);   // Arancione card
+
+// Nuovi colori per la card del profilo presi da HomeDailyModule
+const _profileCardBright = Color(0xFF78A7A3); 
+const _profileCardDark = Color(0xFF56817D);
 
 void showProfileHouseholdBottomSheet(BuildContext context) {
   showModalBottomSheet(
@@ -975,7 +977,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Column(
                   children: [
-                    // --- 1. PROFILE CARD ---
+                    // --- 1. PROFILE CARD (ORA TEAL/VERDE ACQUA) ---
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
@@ -984,11 +986,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [_orangeCardBright, _orangeCardDeep],
+                          colors: [_profileCardBright, _profileCardDark], 
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: _orangeCardBright.withOpacity(0.3),
+                            color: _profileCardBright.withOpacity(0.35), 
                             blurRadius: 30,
                             offset: const Offset(0, 15),
                           ),
@@ -1030,8 +1032,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       shape: BoxShape.circle,
                                     ),
                                     child: _isUploadingAvatar
-                                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _orangeCardDeep))
-                                        : const Icon(Icons.edit_rounded, color: _orangeCardDeep, size: 14),
+                                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _profileCardDark))
+                                        : const Icon(Icons.edit_rounded, color: _profileCardDark, size: 14),
                                   ),
                                 ),
                               ],
@@ -1097,8 +1099,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     ),
                                     child: _editingNickname
                                         ? (_isSavingNickname
-                                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _orangeCardBright))
-                                            : const Icon(Icons.check_rounded, color: _orangeCardBright, size: 14))
+                                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _profileCardBright))
+                                            : const Icon(Icons.check_rounded, color: _profileCardBright, size: 14))
                                         : const Icon(Icons.edit_outlined, color: Colors.white, size: 14),
                                   ),
                                 ),
@@ -1146,21 +1148,56 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     
-                    // --- VOCI DEL MENU (Stile Smoked Glass come in provision_list) ---
-                    if (!isPersonnel) ...[
-                      _buildSettingsRow(
-                        icon: Icons.fastfood_outlined,
-                        iconColor: _appTeal, 
-                        text: 'Your Diet',
-                        onTap: () => Navigator.of(context).pushNamed(AppRouteNames.diet),
+                    // --- VOCI DEL MENU (ATTACCATE NEL VETRO) ---
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _inkColor.withOpacity(0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12), // Spazio tra le card di vetro
-                    ],
-                    _buildSettingsRow(
-                      icon: Icons.other_houses_outlined,
-                      iconColor: _appTeal,
-                      text: 'Your Home',
-                      onTap: () => AppRouter.navigate(context, AppRouteNames.yourHome),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _inkColor.withOpacity(0.03), 
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.7), 
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent, // Necessario per far funzionare InkWell senza nascondere il vetro
+                              child: Column(
+                                children: [
+                                  if (!isPersonnel) ...[
+                                    _buildSettingsRow(
+                                      icon: Icons.fastfood_outlined,
+                                      iconColor: _appTeal, 
+                                      text: 'Your Diet',
+                                      onTap: () => Navigator.of(context).pushNamed(AppRouteNames.diet),
+                                    ),
+                                    Divider(height: 1, indent: 56, endIndent: 20, color: _inkColor.withOpacity(0.08)), // Riga divisoria sottile
+                                  ],
+                                  _buildSettingsRow(
+                                    icon: Icons.other_houses_outlined,
+                                    iconColor: _appTeal,
+                                    text: 'Your Home',
+                                    onTap: () => AppRouter.navigate(context, AppRouteNames.yourHome),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                     
                     const SizedBox(height: 30), 
@@ -1217,72 +1254,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // --- NUOVO STILE CARD DI VETRO PER IL MENU ---
+  // --- SETTINGS ROW SEMPLIFICATA (DENTRO IL CONTENITORE UNICO) ---
   Widget _buildSettingsRow({
     required IconData icon, 
     required Color iconColor, 
     required String text, 
     required VoidCallback onTap
   }) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
       child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: _inkColor.withOpacity(0.08), // Ombra per l'effetto elevato
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-            child: Container(
-              height: 72,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: _inkColor.withOpacity(0.03), // Leggero sfondo scuro
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.7), // Patina bianca sui bordi
-                  width: 1.5,
+        height: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: [
+            // Icona pulita e più piccola (senza pallino/ombra sotto)
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                text,
+                style: GoogleFonts.manrope(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: _inkColor,
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: iconColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: iconColor, size: 22),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      text,
-                      style: GoogleFonts.manrope(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: _inkColor,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.chevron_right_rounded, 
-                    color: _inkColor.withOpacity(0.3), 
-                    size: 24
-                  ),
-                ],
-              ),
             ),
-          ),
+            Icon(
+              Icons.chevron_right_rounded, 
+              color: _inkColor.withOpacity(0.3), 
+              size: 24
+            ),
+          ],
         ),
       ),
     );

@@ -21,6 +21,10 @@ const _appTeal = Color(0xFF5A8B9E);
 const _appCoral = Color(0xFFF28482);
 const _appOrange = Color(0xFFF4A261);
 
+// Nuovi colori dal Weekly Module per il bottone del selettore
+const _selectorBright = Color(0xFFD8AD90);
+const _selectorDark = Color(0xFFB06F59);
+
 class FridgeKeepingScreen extends ConsumerStatefulWidget {
   final Object? initialArea; // Argomento in ingresso dal router
   final bool openAddOnLaunch;
@@ -622,7 +626,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   _buildHeader(context),
                   const SizedBox(height: 32),
                   
-                  // 1. INVERTITO: PRIMA I BOTTONCINI GRIGLIA E CATEGORIA
+                  // 1. PRIMA RIGA: BOTTONCINI GRIGLIA E CATEGORIA
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -632,7 +636,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   ),
                   const SizedBox(height: 24),
                   
-                  // 2. INVERTITO: DOPO LA SEARCH BAR (Stretta e Compatta)
+                  // 2. SECONDA RIGA: SEARCH BAR (Stretta e Compatta)
                   _buildSearchBar(),
                   
                   // SPAZIO EQUIDISTANTE SUPERIORE
@@ -647,7 +651,7 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
                   // SPAZIO INFERIORE AZZERATO (compensato dal padding della lista)
                   const SizedBox(height: 0), 
                   
-                  // 4. LISTA
+                  // 4. LISTA / GRIGLIA
                   Expanded(
                     child: itemsAsync.when(
                       loading: () => const Center(
@@ -1039,14 +1043,14 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [_appOrange, Color(0xFFE76F51)],
+            colors: [_selectorBright, _selectorDark], // <-- NUOVI COLORI QUI
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: _appOrange.withOpacity(0.3),
+              color: _selectorBright.withOpacity(0.35),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -1143,11 +1147,11 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               style: GoogleFonts.manrope(
                 fontSize: 18,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected ? _appOrange : _inkColor,
+                color: isSelected ? _selectorBright : _inkColor, // Modificato anche qui
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle_rounded, color: _appOrange),
+              const Icon(Icons.check_circle_rounded, color: _selectorBright), // Modificato anche qui
           ],
         ),
       ),
