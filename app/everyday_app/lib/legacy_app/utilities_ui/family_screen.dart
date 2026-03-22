@@ -352,7 +352,7 @@ class FamilyScreen extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.manrope(
-                                color: _familyInk,
+                                color: Colors.white, // <-- MODIFICATO IN BIANCO
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.2,
@@ -364,7 +364,7 @@ class FamilyScreen extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.manrope(
-                                color: _familyInk.withValues(alpha: 0.58),
+                                color: Colors.white.withValues(alpha: 0.75), // <-- MODIFICATO IN BIANCO OPACO
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.7,
@@ -395,16 +395,16 @@ class FamilyScreen extends ConsumerWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.chevron_right_rounded,
-                            color: _familyInk,
+                            color: Colors.white, // <-- MODIFICATO IN BIANCO
                             size: 18,
                           ),
                           Text(
                             'View\nActivity',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.manrope(
-                              color: _familyInk,
+                              color: Colors.white, // <-- MODIFICATO IN BIANCO
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                               height: 1.2,

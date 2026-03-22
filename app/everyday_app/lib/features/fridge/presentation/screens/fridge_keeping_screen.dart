@@ -1497,6 +1497,9 @@ class _FridgeKeepingScreenState extends ConsumerState<FridgeKeepingScreen> {
               color: _inkColor.withOpacity(0.5),
             ),
           ),
+          const SizedBox(height: 32),
+          // ECCO IL BOTTONE AGGIUNTO!
+          _buildInlineAddButton(),
         ],
       ),
     );

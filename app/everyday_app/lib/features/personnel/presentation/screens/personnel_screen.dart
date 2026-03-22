@@ -232,7 +232,7 @@ class PersonnelScreen extends ConsumerWidget {
                               name,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.manrope(
-                                color: _personnelInk,
+                                color: Colors.white, // Modificato in bianco
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.2,
@@ -243,7 +243,7 @@ class PersonnelScreen extends ConsumerWidget {
                               role.toUpperCase(),
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.manrope(
-                                color: _personnelInk.withValues(alpha: 0.58),
+                                color: Colors.white.withValues(alpha: 0.75), // Modificato in bianco con opacità
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.7,
@@ -273,16 +273,16 @@ class PersonnelScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.chevron_right_rounded,
-                          color: _personnelInk,
+                          color: Colors.white, // Modificato in bianco
                           size: 18,
                         ),
                         Text(
                           'View\nActivity',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.manrope(
-                            color: _personnelInk,
+                            color: Colors.white, // Modificato in bianco
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
                             height: 1.2,
