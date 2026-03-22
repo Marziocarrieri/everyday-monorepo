@@ -20,6 +20,8 @@ enum TaskInteractionMode {
   supervisionHostReadOnlyChecklist,
 }
 
+enum TaskCardVisualStyle { legacy, warmDailyGlass }
+
 class TaskCard extends StatefulWidget {
   final TaskWithDetails taskWithDetails;
   final Future<void> Function({required String subtaskId, required bool isDone})
@@ -41,6 +43,7 @@ class TaskCard extends StatefulWidget {
   final bool readOnlyChecklist;
   final bool enableCreatorDeleteSwipe;
   final TaskInteractionMode interactionMode;
+  final TaskCardVisualStyle visualStyle;
 
   const TaskCard({
     super.key,
@@ -54,6 +57,7 @@ class TaskCard extends StatefulWidget {
     this.readOnlyChecklist = false,
     this.enableCreatorDeleteSwipe = true,
     this.interactionMode = TaskInteractionMode.standard,
+    this.visualStyle = TaskCardVisualStyle.legacy,
     this.roomName,
   });
 
@@ -64,9 +68,19 @@ class TaskCard extends StatefulWidget {
 class _TaskCardState extends State<TaskCard> {
   bool _isExpanded = false;
   bool _isEditingNote = false;
+  bool _isCardPressed = false;
+  String? _pressedActionKey;
   String _savedNote = '';
   late final TextEditingController _noteController;
   bool _didRestoreExpandedState = false;
+
+  static const Color _warmInk = Color(0xFF1F3A44);
+  static const Color _warmGrey = Color(0xFF3D342C);
+  static const Color _dailyAccent = Color(0xFF78A7A3);
+  static const double _addTileRadius = 22.0;
+
+  bool get _isWarmDailyGlass =>
+      widget.visualStyle == TaskCardVisualStyle.warmDailyGlass;
 
   String _subtaskSignature(TaskWithDetails taskWithDetails) {
     return taskWithDetails.subtasks
@@ -139,8 +153,8 @@ class _TaskCardState extends State<TaskCard> {
   /// - host can edit only tasks they created
   /// - cohost can edit only tasks they created and are self-assigned to
   bool get _canEditByPermission {
-    final roleRaw =
-        (AppContext.instance.activeMembership?.role ?? '').toLowerCase();
+    final roleRaw = (AppContext.instance.activeMembership?.role ?? '')
+        .toLowerCase();
     final role = roleRaw.replaceAll('_', '');
     if (role == 'personnel') return false;
 
@@ -268,10 +282,24 @@ class _TaskCardState extends State<TaskCard> {
         ? ownAssignment.first.status.toUpperCase()
         : 'TODO';
     final isTaskAssignmentDone = ownAssignmentStatus == 'DONE';
+    final isCompleted = taskHasSubtasks ? isAllDone : isTaskAssignmentDone;
 
-    final statusColor = (taskHasSubtasks ? isAllDone : isTaskAssignmentDone)
+    final statusColor = isCompleted
         ? const Color(0xFF7A898D)
         : getStatusColor('safe');
+    final cardAccent = _isWarmDailyGlass ? _dailyAccent : statusColor;
+    final titleColor = _isWarmDailyGlass ? _warmInk : const Color(0xFF3D342C);
+    final metadataColor = _isWarmDailyGlass
+        ? _warmGrey.withValues(alpha: 0.62)
+        : const Color(0xFF3D342C).withValues(alpha: 0.6);
+    final iconTone = _isWarmDailyGlass
+        ? _warmInk.withValues(alpha: 0.82)
+        : cardAccent;
+    final iconToneMuted = _isWarmDailyGlass
+        ? _warmInk.withValues(alpha: 0.62)
+        : cardAccent.withValues(alpha: 0.72);
+    final headerRadius = _isWarmDailyGlass ? _addTileRadius : 30.0;
+    final expandedRadius = _isWarmDailyGlass ? _addTileRadius : 28.0;
 
     final assignmentNames = widget.taskWithDetails.assignments
         .map((assignment) => assignment.member?.profile?.name)
@@ -285,7 +313,9 @@ class _TaskCardState extends State<TaskCard> {
     final roomId = widget.taskWithDetails.task.roomId;
     final roomLabel = widget.roomName;
     final normalizedTitle = widget.taskWithDetails.task.title.trim();
-    final taskTitle = normalizedTitle.isEmpty ? 'Untitled task' : normalizedTitle;
+    final taskTitle = normalizedTitle.isEmpty
+        ? 'Untitled task'
+        : normalizedTitle;
     final isCreator = isTaskCreatedByCurrentUser(
       taskCreatedBy: widget.taskWithDetails.task.createdBy,
       currentUserId: AppContext.instance.userId,
@@ -298,10 +328,11 @@ class _TaskCardState extends State<TaskCard> {
     final dismissibleKey = ValueKey(widget.taskWithDetails.task.id);
 
     final ancestorListView = context.findAncestorWidgetOfExactType<ListView>();
-    final ancestorScrollable = context.findAncestorWidgetOfExactType<Scrollable>();
+    final ancestorScrollable = context
+        .findAncestorWidgetOfExactType<Scrollable>();
     final ancestorPageView = context.findAncestorWidgetOfExactType<PageView>();
-    final ancestorGestureDetector =
-        context.findAncestorWidgetOfExactType<GestureDetector>();
+    final ancestorGestureDetector = context
+        .findAncestorWidgetOfExactType<GestureDetector>();
 
     if (kDebugMode) {
       debugPrint(
@@ -336,17 +367,23 @@ class _TaskCardState extends State<TaskCard> {
             }
           : null,
       background: Container(
-        margin: const EdgeInsets.only(bottom: 24.0),
+        margin: const EdgeInsets.only(bottom: 8.0),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
-          color: Colors.redAccent,
-          borderRadius: BorderRadius.circular(30),
+          color: _isWarmDailyGlass
+              ? const Color(0xFFE08A86).withValues(alpha: 0.9)
+              : Colors.redAccent,
+          borderRadius: BorderRadius.circular(_isWarmDailyGlass ? 22 : 30),
           boxShadow: [
             BoxShadow(
-              color: Colors.redAccent.withValues(alpha: 0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color:
+                  (_isWarmDailyGlass
+                          ? const Color(0xFFE08A86)
+                          : Colors.redAccent)
+                      .withValues(alpha: _isWarmDailyGlass ? 0.18 : 0.25),
+              blurRadius: _isWarmDailyGlass ? 10 : 12,
+              offset: Offset(0, _isWarmDailyGlass ? 3 : 4),
             ),
           ],
         ),
@@ -357,29 +394,48 @@ class _TaskCardState extends State<TaskCard> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 24.0),
+        padding: const EdgeInsets.only(bottom: 8.0),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             // --- BOX INFERIORE ESPANSO (NOTE E SUBTASKS) ---
             if (_isExpanded)
               Container(
-                margin: const EdgeInsets.only(top: 35),
-                padding: const EdgeInsets.only(
-                  top: 60,
-                  bottom: 20,
-                  left: 20,
-                  right: 20,
+                margin: EdgeInsets.only(top: _isWarmDailyGlass ? 28 : 35),
+                padding: EdgeInsets.only(
+                  top: _isWarmDailyGlass ? 52 : 60,
+                  bottom: _isWarmDailyGlass ? 18 : 20,
+                  left: _isWarmDailyGlass ? 18 : 20,
+                  right: _isWarmDailyGlass ? 18 : 20,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.white, width: 2),
+                  gradient: _isWarmDailyGlass
+                      ? LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.24),
+                            cardAccent.withValues(alpha: 0.11),
+                          ],
+                        )
+                      : null,
+                  color: _isWarmDailyGlass
+                      ? null
+                      : Colors.white.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(expandedRadius),
+                  border: Border.all(
+                    color: _isWarmDailyGlass
+                        ? Colors.white.withValues(alpha: 0.36)
+                        : Colors.white,
+                    width: _isWarmDailyGlass ? 1.2 : 2,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: statusColor.withValues(alpha: 0.1),
-                      blurRadius: 25,
-                      offset: const Offset(0, 12),
+                      color: _isWarmDailyGlass
+                          ? cardAccent.withValues(alpha: 0.09)
+                          : cardAccent.withValues(alpha: 0.1),
+                      blurRadius: _isWarmDailyGlass ? 18 : 25,
+                      offset: Offset(0, _isWarmDailyGlass ? 7 : 12),
                     ),
                   ],
                 ),
@@ -389,40 +445,63 @@ class _TaskCardState extends State<TaskCard> {
                   children: [
                     if (assignmentNames.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: EdgeInsets.only(
+                          bottom: _isWarmDailyGlass ? 14 : 16,
+                        ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.people_alt_rounded,
                               size: 14,
-                              color: const Color(
-                                0xFF3D342C,
-                              ).withValues(alpha: 0.5),
+                              color: _isWarmDailyGlass
+                                  ? iconToneMuted
+                                  : const Color(
+                                      0xFF3D342C,
+                                    ).withValues(alpha: 0.5),
                             ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 'Assigned to: ${assignmentNames.join(', ')}',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(
-                                    0xFF3D342C,
-                                  ).withValues(alpha: 0.6),
-                                ),
+                                style:
+                                    (_isWarmDailyGlass
+                                    ? GoogleFonts.manrope
+                                    : GoogleFonts.poppins)(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: _isWarmDailyGlass
+                                          ? metadataColor
+                                          : const Color(
+                                              0xFF3D342C,
+                                            ).withValues(alpha: 0.6),
+                                    ),
                               ),
                             ),
                           ],
                         ),
                       ),
 
-                    if (subtasks.isNotEmpty)
+                    if (subtasks.isNotEmpty) ...[
+                      if (_isWarmDailyGlass)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text(
+                            'Checklist',
+                            style: GoogleFonts.manrope(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
+                              color: _warmGrey.withValues(alpha: 0.58),
+                            ),
+                          ),
+                        ),
                       TaskSubtaskList(
                         key: ValueKey(
                           'task_subtasks_${widget.taskWithDetails.task.id}_${_subtaskSignature(widget.taskWithDetails)}',
                         ),
                         subtasks: subtasks,
-                        statusColor: statusColor,
+                        statusColor: cardAccent,
+                        warmStyle: _isWarmDailyGlass,
                         readOnly: _isChecklistReadOnly,
                         onToggle: (subtask) {
                           if (_isChecklistReadOnly) {
@@ -435,20 +514,30 @@ class _TaskCardState extends State<TaskCard> {
                           );
                         },
                       ),
+                    ],
+
+                    if (subtasks.isNotEmpty && ownAssignment.isNotEmpty)
+                      SizedBox(height: _isWarmDailyGlass ? 2 : 8),
 
                     if (!taskHasSubtasks)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: EdgeInsets.only(
+                          bottom: _isWarmDailyGlass ? 14 : 16,
+                        ),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.05),
+                            color: cardAccent.withValues(
+                              alpha: _isWarmDailyGlass ? 0.08 : 0.05,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: statusColor.withValues(alpha: 0.1),
+                              color: cardAccent.withValues(
+                                alpha: _isWarmDailyGlass ? 0.18 : 0.1,
+                              ),
                             ),
                           ),
                           child: Row(
@@ -456,17 +545,24 @@ class _TaskCardState extends State<TaskCard> {
                               Icon(
                                 Icons.info_outline_rounded,
                                 size: 16,
-                                color: statusColor,
+                                color: _isWarmDailyGlass
+                                    ? iconToneMuted
+                                    : cardAccent,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Use the circle on the main row to mark as done.',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: statusColor.withValues(alpha: 0.8),
-                                  ),
+                                  style:
+                                      (_isWarmDailyGlass
+                                      ? GoogleFonts.manrope
+                                      : GoogleFonts.poppins)(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: cardAccent.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                      ),
                                 ),
                               ),
                             ],
@@ -476,44 +572,83 @@ class _TaskCardState extends State<TaskCard> {
 
                     // --- SEZIONE NOTE PREMIUM ---
                     if (ownAssignment.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      SizedBox(height: _isWarmDailyGlass ? 14 : 8),
+                      if (_isWarmDailyGlass)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text(
+                            'Notes',
+                            style: GoogleFonts.manrope(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
+                              color: _warmGrey.withValues(alpha: 0.58),
+                            ),
+                          ),
+                        ),
 
                       // Modalità Modifica Nota
                       if (_isEditingNote) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 8,
+                            vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            gradient: _isWarmDailyGlass
+                                ? LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.24),
+                                      cardAccent.withValues(alpha: 0.09),
+                                    ],
+                                  )
+                                : null,
+                            color: _isWarmDailyGlass ? null : Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: statusColor.withValues(alpha: 0.3),
-                              width: 1.5,
+                              color: _isWarmDailyGlass
+                                  ? Colors.white.withValues(alpha: 0.34)
+                                  : cardAccent.withValues(alpha: 0.3),
+                              width: _isWarmDailyGlass ? 1.1 : 1.5,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: statusColor.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            boxShadow: _isWarmDailyGlass
+                                ? const []
+                                : [
+                                    BoxShadow(
+                                      color: statusColor.withValues(
+                                        alpha: 0.05,
+                                      ),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                           ),
                           child: TextField(
                             controller: _noteController,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF3D342C),
-                            ),
+                            style:
+                                (_isWarmDailyGlass
+                                ? GoogleFonts.manrope
+                                : GoogleFonts.poppins)(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: _isWarmDailyGlass
+                                      ? _warmInk
+                                      : const Color(0xFF3D342C),
+                                ),
                             decoration: InputDecoration(
                               hintText: 'Type your note here...',
-                              hintStyle: GoogleFonts.poppins(
-                                color: const Color(
-                                  0xFF3D342C,
-                                ).withValues(alpha: 0.4),
-                              ),
+                              hintStyle:
+                                  (_isWarmDailyGlass
+                                  ? GoogleFonts.manrope
+                                  : GoogleFonts.poppins)(
+                                    color: _isWarmDailyGlass
+                                        ? metadataColor.withValues(alpha: 0.7)
+                                        : const Color(
+                                            0xFF3D342C,
+                                          ).withValues(alpha: 0.4),
+                                  ),
                               border: InputBorder.none,
                               isDense: true,
                             ),
@@ -547,13 +682,18 @@ class _TaskCardState extends State<TaskCard> {
                                 ),
                                 child: Text(
                                   'Cancel',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(
-                                      0xFF3D342C,
-                                    ).withValues(alpha: 0.6),
-                                  ),
+                                  style:
+                                      (_isWarmDailyGlass
+                                      ? GoogleFonts.manrope
+                                      : GoogleFonts.poppins)(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: _isWarmDailyGlass
+                                            ? metadataColor
+                                            : const Color(
+                                                0xFF3D342C,
+                                              ).withValues(alpha: 0.6),
+                                      ),
                                 ),
                               ),
                             ),
@@ -579,23 +719,41 @@ class _TaskCardState extends State<TaskCard> {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: statusColor,
+                                  gradient: _isWarmDailyGlass
+                                      ? LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            cardAccent.withValues(alpha: 0.98),
+                                            cardAccent.withValues(alpha: 0.86),
+                                          ],
+                                        )
+                                      : null,
+                                  color: _isWarmDailyGlass ? null : cardAccent,
                                   borderRadius: BorderRadius.circular(14),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: statusColor.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
+                                      color: cardAccent.withValues(
+                                        alpha: _isWarmDailyGlass ? 0.16 : 0.3,
+                                      ),
+                                      blurRadius: _isWarmDailyGlass ? 6 : 8,
+                                      offset: Offset(
+                                        0,
+                                        _isWarmDailyGlass ? 2 : 4,
+                                      ),
                                     ),
                                   ],
                                 ),
                                 child: Text(
                                   'Save',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
+                                  style:
+                                      (_isWarmDailyGlass
+                                      ? GoogleFonts.manrope
+                                      : GoogleFonts.poppins)(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
                                 ),
                               ),
                             ),
@@ -607,44 +765,92 @@ class _TaskCardState extends State<TaskCard> {
                         Align(
                           alignment: Alignment.center,
                           child: GestureDetector(
+                            onTapDown: (_) {
+                              if (_isWarmDailyGlass && _canEditNote) {
+                                setState(() => _pressedActionKey = 'note');
+                              }
+                            },
+                            onTapUp: (_) {
+                              if (_pressedActionKey == 'note') {
+                                setState(() => _pressedActionKey = null);
+                              }
+                            },
+                            onTapCancel: () {
+                              if (_pressedActionKey == 'note') {
+                                setState(() => _pressedActionKey = null);
+                              }
+                            },
                             onTap: !_canEditNote
                                 ? null
                                 : () {
                                     setState(() {
+                                      _pressedActionKey = null;
                                       _isEditingNote = true;
                                     });
                                   },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: statusColor.withValues(alpha: 0.2),
-                                  width: 1.5,
+                            child: AnimatedScale(
+                              duration: const Duration(milliseconds: 110),
+                              scale: _pressedActionKey == 'note' ? 0.97 : 1,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.edit_note_rounded,
-                                    color: statusColor,
-                                    size: 20,
+                                decoration: BoxDecoration(
+                                  gradient: _isWarmDailyGlass
+                                      ? LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.white.withValues(
+                                              alpha: _pressedActionKey == 'note'
+                                                  ? 0.34
+                                                  : 0.28,
+                                            ),
+                                            cardAccent.withValues(
+                                              alpha: _pressedActionKey == 'note'
+                                                  ? 0.18
+                                                  : 0.12,
+                                            ),
+                                          ],
+                                        )
+                                      : null,
+                                  color: _isWarmDailyGlass
+                                      ? null
+                                      : cardAccent.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _isWarmDailyGlass
+                                        ? Colors.white.withValues(alpha: 0.34)
+                                        : cardAccent.withValues(alpha: 0.2),
+                                    width: _isWarmDailyGlass ? 1.1 : 1.5,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Add a note',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: statusColor,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.edit_note_rounded,
+                                      color: _isWarmDailyGlass
+                                          ? iconTone
+                                          : cardAccent,
+                                      size: 18,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Add a note',
+                                      style:
+                                          (_isWarmDailyGlass
+                                          ? GoogleFonts.manrope
+                                          : GoogleFonts.poppins)(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: cardAccent,
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -667,13 +873,27 @@ class _TaskCardState extends State<TaskCard> {
                               vertical: 14,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFB),
+                              gradient: _isWarmDailyGlass
+                                  ? LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.22),
+                                        cardAccent.withValues(alpha: 0.08),
+                                      ],
+                                    )
+                                  : null,
+                              color: _isWarmDailyGlass
+                                  ? null
+                                  : const Color(0xFFF8FAFB),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(
-                                  0xFF3D342C,
-                                ).withValues(alpha: 0.05),
-                                width: 1.5,
+                                color: _isWarmDailyGlass
+                                    ? Colors.white.withValues(alpha: 0.34)
+                                    : const Color(
+                                        0xFF3D342C,
+                                      ).withValues(alpha: 0.05),
+                                width: _isWarmDailyGlass ? 1.1 : 1.5,
                               ),
                             ),
                             child: Row(
@@ -682,20 +902,27 @@ class _TaskCardState extends State<TaskCard> {
                                 Icon(
                                   Icons.sticky_note_2_rounded,
                                   size: 18,
-                                  color: statusColor.withValues(alpha: 0.7),
+                                  color: _isWarmDailyGlass
+                                      ? iconToneMuted
+                                      : cardAccent.withValues(alpha: 0.72),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     _savedNote,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(
-                                        0xFF3D342C,
-                                      ).withValues(alpha: 0.8),
-                                      height: 1.4,
-                                    ),
+                                    style:
+                                        (_isWarmDailyGlass
+                                        ? GoogleFonts.manrope
+                                        : GoogleFonts.poppins)(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: _isWarmDailyGlass
+                                              ? _warmInk.withValues(alpha: 0.86)
+                                              : const Color(
+                                                  0xFF3D342C,
+                                                ).withValues(alpha: 0.8),
+                                          height: 1.4,
+                                        ),
                                   ),
                                 ),
                               ],
@@ -709,207 +936,345 @@ class _TaskCardState extends State<TaskCard> {
 
             // --- HEADER DELLA CARD PRINCIPALE (Pillola In Alto) ---
             GestureDetector(
+              onTapDown: (_) {
+                if (_isWarmDailyGlass) {
+                  setState(() => _isCardPressed = true);
+                }
+              },
+              onTapUp: (_) {
+                if (_isWarmDailyGlass && _isCardPressed) {
+                  setState(() => _isCardPressed = false);
+                }
+              },
+              onTapCancel: () {
+                if (_isWarmDailyGlass && _isCardPressed) {
+                  setState(() => _isCardPressed = false);
+                }
+              },
               onTap: () {
                 setState(() {
+                  _isCardPressed = false;
                   _isExpanded = !_isExpanded;
                 });
                 _persistExpandedState();
               },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          statusColor.withValues(alpha: 0.15),
-                          Colors.white.withValues(alpha: 0.7),
-                        ],
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 120),
+                scale: _isWarmDailyGlass && _isCardPressed ? 0.97 : 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(headerRadius),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 260),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
                       ),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        width: 1.5,
-                      ),
-                      boxShadow: _isExpanded
-                          ? []
-                          : [
-                              BoxShadow(
-                                color: statusColor.withValues(alpha: 0.1),
-                                blurRadius: 15,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Icona di Stato Sinistra
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: statusColor.withValues(alpha: 0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.check_circle_outline_rounded,
-                            color: statusColor,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-
-                        // Titolo, Tempo e Stanza
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                taskTitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF3D342C),
-                                  decoration:
-                                      (taskHasSubtasks
-                                          ? isAllDone
-                                          : isTaskAssignmentDone)
-                                      ? TextDecoration.lineThrough
-                                      : TextDecoration.none,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              TaskTimeRow(timeRange: '$timeFrom - $timeTo'),
-                              if (roomId != null || roomLabel != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    '📍 ${roomLabel ?? 'Room assigned'}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(
-                                        0xFF3D342C,
-                                      ).withValues(alpha: 0.6),
-                                    ),
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: _isWarmDailyGlass
+                              ? [
+                                  Colors.white.withValues(alpha: 0.24),
+                                  cardAccent.withValues(
+                                    alpha: _isCardPressed ? 0.16 : 0.12,
                                   ),
-                                ),
-                            ],
-                          ),
+                                ]
+                              : [
+                                  statusColor.withValues(alpha: 0.15),
+                                  Colors.white.withValues(alpha: 0.7),
+                                ],
                         ),
-
-                        // --- CHECKBOX TONDA (Se non ci sono subtasks) ---
-                        if (!taskHasSubtasks && ownAssignment.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6, left: 4),
-                            child: GestureDetector(
-                              onTap: _isChecklistReadOnly
-                                  ? null
-                                  : () {
-                                      widget.onAssignmentToggle(
-                                        assignmentId: ownAssignment.first.id,
-                                        isDone: !isTaskAssignmentDone,
-                                      );
-                                    },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: isTaskAssignmentDone
-                                      ? statusColor
-                                      : Colors.white.withValues(alpha: 0.5),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isTaskAssignmentDone
-                                        ? statusColor
-                                        : statusColor.withValues(alpha: 0.4),
-                                    width: 2,
-                                  ),
-                                  boxShadow: isTaskAssignmentDone
-                                      ? [
-                                          BoxShadow(
-                                            color: statusColor.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 3),
+                        borderRadius: BorderRadius.circular(headerRadius),
+                        border: Border.all(
+                          color: _isWarmDailyGlass
+                              ? Colors.white.withValues(alpha: 0.36)
+                              : Colors.white.withValues(alpha: 0.9),
+                          width: _isWarmDailyGlass ? 1.2 : 1.5,
+                        ),
+                        boxShadow: _isExpanded
+                            ? []
+                            : [
+                                BoxShadow(
+                                  color:
+                                      (_isWarmDailyGlass
+                                              ? cardAccent
+                                              : statusColor)
+                                          .withValues(
+                                            alpha: _isWarmDailyGlass
+                                                ? 0.1
+                                                : 0.1,
                                           ),
-                                        ]
-                                      : [],
+                                  blurRadius: _isWarmDailyGlass ? 18 : 15,
+                                  offset: Offset(0, _isWarmDailyGlass ? 6 : 8),
                                 ),
-                                child: isTaskAssignmentDone
-                                    ? const Icon(
-                                        Icons.check_rounded,
-                                        color: Colors.white,
-                                        size: 18,
-                                      )
-                                    : null,
-                              ),
+                              ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: _isWarmDailyGlass
+                            ? CrossAxisAlignment.start
+                            : CrossAxisAlignment.center,
+                        children: [
+                          _isWarmDailyGlass
+                              ? _buildWarmLeadingState(
+                                  taskHasSubtasks: taskHasSubtasks,
+                                  ownAssignment: ownAssignment,
+                                  isTaskAssignmentDone: isTaskAssignmentDone,
+                                  isCompleted: isCompleted,
+                                  cardAccent: cardAccent,
+                                )
+                              : Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: cardAccent.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.check_circle_outline_rounded,
+                                    color: cardAccent,
+                                    size: 24,
+                                  ),
+                                ),
+                          SizedBox(width: _isWarmDailyGlass ? 12 : 16),
+
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  taskTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style:
+                                      (_isWarmDailyGlass
+                                      ? GoogleFonts.manrope
+                                      : GoogleFonts.poppins)(
+                                        fontSize: _isWarmDailyGlass ? 17 : 17,
+                                        fontWeight: FontWeight.w700,
+                                        color: titleColor,
+                                        decoration: isCompleted
+                                            ? TextDecoration.lineThrough
+                                            : TextDecoration.none,
+                                      ),
+                                ),
+                                SizedBox(height: _isWarmDailyGlass ? 5 : 4),
+                                if (_isWarmDailyGlass)
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.schedule_rounded,
+                                        size: 12,
+                                        color: _isWarmDailyGlass
+                                            ? iconToneMuted
+                                            : cardAccent.withValues(
+                                                alpha: 0.62,
+                                              ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: TaskTimeRow(
+                                          timeRange: '$timeFrom - $timeTo',
+                                          warmStyle: true,
+                                          textColor: metadataColor,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  TaskTimeRow(timeRange: '$timeFrom - $timeTo'),
+                                if (roomId != null || roomLabel != null)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: _isWarmDailyGlass ? 5 : 2,
+                                    ),
+                                    child: _isWarmDailyGlass
+                                        ? Row(
+                                            children: [
+                                              Icon(
+                                                Icons.place_rounded,
+                                                size: 12,
+                                                color: _isWarmDailyGlass
+                                                    ? iconToneMuted
+                                                    : cardAccent.withValues(
+                                                        alpha: 0.6,
+                                                      ),
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Expanded(
+                                                child: Text(
+                                                  roomLabel ?? 'Room assigned',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: GoogleFonts.manrope(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: metadataColor,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : Text(
+                                            '📍 ${roomLabel ?? 'Room assigned'}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(
+                                                0xFF3D342C,
+                                              ).withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                  ),
+                              ],
                             ),
                           ),
 
-                        // --- BOTTONE EDIT (MATITA) ---
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: GestureDetector(
-                            onTap: !_canEditTaskMetadata
-                                ? null
-                                : () =>
-                                      widget.onEditTask(widget.taskWithDetails),
-                            child: Container(
+                          if (!_isWarmDailyGlass &&
+                              !taskHasSubtasks &&
+                              ownAssignment.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6, left: 4),
+                              child: GestureDetector(
+                                onTapDown: (_) {
+                                  if (_isWarmDailyGlass &&
+                                      !_isChecklistReadOnly) {
+                                    setState(() => _pressedActionKey = 'check');
+                                  }
+                                },
+                                onTapUp: (_) {
+                                  if (_pressedActionKey == 'check') {
+                                    setState(() => _pressedActionKey = null);
+                                  }
+                                },
+                                onTapCancel: () {
+                                  if (_pressedActionKey == 'check') {
+                                    setState(() => _pressedActionKey = null);
+                                  }
+                                },
+                                onTap: _isChecklistReadOnly
+                                    ? null
+                                    : () {
+                                        widget.onAssignmentToggle(
+                                          assignmentId: ownAssignment.first.id,
+                                          isDone: !isTaskAssignmentDone,
+                                        );
+                                      },
+                                child: AnimatedScale(
+                                  duration: const Duration(milliseconds: 110),
+                                  scale: _pressedActionKey == 'check'
+                                      ? 0.97
+                                      : 1,
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: _isWarmDailyGlass ? 24 : 28,
+                                    height: _isWarmDailyGlass ? 24 : 28,
+                                    decoration: BoxDecoration(
+                                      color: isTaskAssignmentDone
+                                          ? cardAccent
+                                          : (_isWarmDailyGlass
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.34,
+                                                  )
+                                                : Colors.white.withValues(
+                                                    alpha: 0.5,
+                                                  )),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isTaskAssignmentDone
+                                            ? cardAccent
+                                            : cardAccent.withValues(alpha: 0.3),
+                                        width: _isWarmDailyGlass ? 1.6 : 2,
+                                      ),
+                                      boxShadow: isTaskAssignmentDone
+                                          ? [
+                                              BoxShadow(
+                                                color: cardAccent.withValues(
+                                                  alpha: _isWarmDailyGlass
+                                                      ? 0.14
+                                                      : 0.3,
+                                                ),
+                                                blurRadius: _isWarmDailyGlass
+                                                    ? 5
+                                                    : 8,
+                                                offset: Offset(
+                                                  0,
+                                                  _isWarmDailyGlass ? 1 : 3,
+                                                ),
+                                              ),
+                                            ]
+                                          : [],
+                                    ),
+                                    child: isTaskAssignmentDone
+                                        ? const Icon(
+                                            Icons.check_rounded,
+                                            color: Colors.white,
+                                            size: 15,
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          if (_isWarmDailyGlass)
+                            _buildWarmActionCluster(cardAccent: cardAccent)
+                          else ...[
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: GestureDetector(
+                                onTap: !_canEditTaskMetadata
+                                    ? null
+                                    : () => widget.onEditTask(
+                                        widget.taskWithDetails,
+                                      ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.edit_rounded,
+                                    color: cardAccent,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.5),
+                                color: Colors.white.withValues(alpha: 0.7),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                Icons.edit_rounded,
-                                color: statusColor,
-                                size: 18,
+                                _isExpanded
+                                    ? Icons.keyboard_arrow_up_rounded
+                                    : Icons.keyboard_arrow_down_rounded,
+                                color: cardAccent,
+                                size: 20,
                               ),
                             ),
-                          ),
-                        ),
-
-                        // --- FRECCIA ESPANDI/RIDUCI ---
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            _isExpanded
-                                ? Icons.keyboard_arrow_up_rounded
-                                : Icons.keyboard_arrow_down_rounded,
-                            color: statusColor,
-                            size: 20,
-                          ),
-                        ),
-                      ],
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -917,6 +1282,145 @@ class _TaskCardState extends State<TaskCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildWarmLeadingState({
+    required bool taskHasSubtasks,
+    required List<TaskAssignment> ownAssignment,
+    required bool isTaskAssignmentDone,
+    required bool isCompleted,
+    required Color cardAccent,
+  }) {
+    final canToggle =
+        !taskHasSubtasks && ownAssignment.isNotEmpty && !_isChecklistReadOnly;
+    final isDone = taskHasSubtasks ? isCompleted : isTaskAssignmentDone;
+
+    final indicator = AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: isDone
+            ? cardAccent.withValues(alpha: 0.9)
+            : Colors.white.withValues(alpha: 0.34),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDone
+              ? cardAccent.withValues(alpha: 0.9)
+              : cardAccent.withValues(alpha: 0.3),
+          width: 1.4,
+        ),
+      ),
+      child: isDone
+          ? const Icon(Icons.check_rounded, color: Colors.white, size: 13)
+          : null,
+    );
+
+    if (!canToggle) {
+      return indicator;
+    }
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressedActionKey = 'check'),
+      onTapUp: (_) {
+        if (_pressedActionKey == 'check') {
+          setState(() => _pressedActionKey = null);
+        }
+      },
+      onTapCancel: () {
+        if (_pressedActionKey == 'check') {
+          setState(() => _pressedActionKey = null);
+        }
+      },
+      onTap: () {
+        widget.onAssignmentToggle(
+          assignmentId: ownAssignment.first.id,
+          isDone: !isTaskAssignmentDone,
+        );
+      },
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 110),
+        scale: _pressedActionKey == 'check' ? 0.97 : 1,
+        child: indicator,
+      ),
+    );
+  }
+
+  Widget _buildWarmActionCluster({required Color cardAccent}) {
+    final actionIconColor = _warmInk.withValues(alpha: 0.82);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.26),
+            cardAccent.withValues(alpha: 0.11),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.34),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTapDown: (_) {
+              if (_canEditTaskMetadata) {
+                setState(() => _pressedActionKey = 'edit');
+              }
+            },
+            onTapUp: (_) {
+              if (_pressedActionKey == 'edit') {
+                setState(() => _pressedActionKey = null);
+              }
+            },
+            onTapCancel: () {
+              if (_pressedActionKey == 'edit') {
+                setState(() => _pressedActionKey = null);
+              }
+            },
+            onTap: !_canEditTaskMetadata
+                ? null
+                : () => widget.onEditTask(widget.taskWithDetails),
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 110),
+              scale: _pressedActionKey == 'edit' ? 0.97 : 1,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                child: Icon(
+                  Icons.edit_rounded,
+                  color: _canEditTaskMetadata
+                      ? actionIconColor
+                      : _warmInk.withValues(alpha: 0.34),
+                  size: 16,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            width: 1,
+            height: 14,
+            color: Colors.white.withValues(alpha: 0.34),
+          ),
+          const SizedBox(width: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            child: Icon(
+              _isExpanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              color: actionIconColor,
+              size: 18,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -8,15 +8,18 @@ import 'package:everyday_app/features/tasks/presentation/screens/add_task_screen
 import 'package:everyday_app/features/tasks/presentation/widgets/task_card.dart';
 import 'package:everyday_app/features/tasks/presentation/widgets/task_delete_confirmation_dialog.dart';
 import 'package:everyday_app/features/tasks/utils/task_creator_identity.dart';
+import 'package:everyday_app/shared/widgets/main_tab_screen_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-enum WeekTasksViewMode {
-  self,
-  delegated,
-}
+const _weeklyInk = Color(0xFF1F3A44);
+const _weeklyWarmGrey = Color(0xFF3D342C);
+const _weeklyAccent = Color(0xFF78A7A3);
+const _weeklyAccentDeep = Color(0xFF56817D);
+
+enum WeekTasksViewMode { self, delegated }
 
 class WeekTasksCapabilities {
   final bool canCreate;
@@ -53,6 +56,7 @@ class WeekTasksScreen extends ConsumerStatefulWidget {
 class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
   DateTime _selectedWeek = DateTime.now();
   bool _isCopying = false;
+  String? _pressedHeaderActionKey;
 
   bool get _isDelegatedMode => widget.viewMode == WeekTasksViewMode.delegated;
 
@@ -215,10 +219,9 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     }
 
     try {
-      await ref.read(taskServiceProvider).removeTaskAssignment(
-        taskId: task.task.id,
-        memberId: deleteMemberId,
-      );
+      await ref
+          .read(taskServiceProvider)
+          .removeTaskAssignment(taskId: task.task.id, memberId: deleteMemberId);
       return true;
     } catch (error) {
       return false;
@@ -236,8 +239,7 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     }
 
     if (_isDelegatedMode &&
-        (effectiveTargetMemberId == null ||
-            effectiveTargetMemberId.isEmpty)) {
+        (effectiveTargetMemberId == null || effectiveTargetMemberId.isEmpty)) {
       _showSnackBar('Unable to resolve delegated member', isError: true);
       return;
     }
@@ -260,10 +262,9 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
             preselectedAssigneeUserId: effectiveTargetUserId,
           );
 
-    final changed = await Navigator.of(context).pushNamed(
-      AppRouteNames.addTask,
-      arguments: args,
-    );
+    final changed = await Navigator.of(
+      context,
+    ).pushNamed(AppRouteNames.addTask, arguments: args);
 
     if (changed == true && mounted) {
       _showSnackBar('Task saved successfully');
@@ -275,10 +276,13 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isError ? const Color(0xFFF28482) : const Color(0xFF5A8B9E),
+        backgroundColor: isError ? const Color(0xFFF28482) : _weeklyAccentDeep,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
@@ -288,12 +292,12 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     final daysSinceMonday = date.weekday - 1;
     final start = date.subtract(Duration(days: daysSinceMonday));
     final end = start.add(const Duration(days: 6));
-    
+
     final startStr = DateFormat('dd').format(start);
     final endStr = DateFormat('dd MMM yyyy').format(end);
-    
+
     if (start.month != end.month) {
-        return '${DateFormat('dd MMM').format(start)} - $endStr';
+      return '${DateFormat('dd MMM').format(start)} - $endStr';
     }
     return '$startStr - $endStr';
   }
@@ -307,11 +311,11 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF5A8B9E)),
+            colorScheme: const ColorScheme.light(primary: _weeklyAccentDeep),
           ),
           child: child!,
         );
-      }
+      },
     );
     if (picked != null) {
       setState(() => _selectedWeek = picked);
@@ -328,26 +332,25 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     }
 
     if (_isDelegatedMode &&
-        (effectiveTargetMemberId == null ||
-            effectiveTargetMemberId.isEmpty)) {
+        (effectiveTargetMemberId == null || effectiveTargetMemberId.isEmpty)) {
       _showSnackBar('Unable to resolve delegated member', isError: true);
       return;
     }
 
     final sourceDate = await showDatePicker(
       context: context,
-      initialDate: _selectedWeek.subtract(const Duration(days: 7)), 
+      initialDate: _selectedWeek.subtract(const Duration(days: 7)),
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
       helpText: 'SELECT SOURCE WEEK TO CLONE',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF5A8B9E)),
+            colorScheme: const ColorScheme.light(primary: _weeklyAccentDeep),
           ),
           child: child!,
         );
-      }
+      },
     );
 
     if (sourceDate == null) return;
@@ -359,25 +362,47 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: Dialog(
-          backgroundColor: Colors.white.withOpacity(0.95),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32), side: const BorderSide(color: Colors.white, width: 2)),
+          backgroundColor: Colors.white.withValues(alpha: 0.95),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(32),
+            side: const BorderSide(color: Colors.white, width: 2),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 60, height: 60,
-                  decoration: BoxDecoration(color: const Color(0xFFF28482).withOpacity(0.1), shape: BoxShape.circle),
-                  child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFF28482), size: 28),
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF28482).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFF28482),
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                Text('Overwrite Week?', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF3D342C))),
+                Text(
+                  'Overwrite Week?',
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF3D342C),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'All existing tasks in the current week will be DELETED and replaced with the tasks from the week of ${DateFormat('MMM dd').format(sourceDate)}.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF3D342C).withOpacity(0.6)),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF3D342C).withValues(alpha: 0.6),
+                  ),
                 ),
                 const SizedBox(height: 30),
                 Row(
@@ -388,10 +413,25 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFF3D342C).withOpacity(0.1)),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF3D342C,
+                              ).withValues(alpha: 0.1),
+                            ),
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Center(child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3D342C).withOpacity(0.7)))),
+                          child: Center(
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(
+                                  0xFF3D342C,
+                                ).withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -401,8 +441,20 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                         onTap: () => Navigator.pop(context, true),
                         child: Container(
                           height: 50,
-                          decoration: BoxDecoration(color: const Color(0xFFF28482), borderRadius: BorderRadius.circular(16)),
-                          child: Center(child: Text('Overwrite', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white))),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF28482),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Overwrite',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -412,18 +464,20 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
             ),
           ),
         ),
-      )
+      ),
     );
 
     if (confirmed != true) return;
 
     setState(() => _isCopying = true);
     try {
-      await ref.read(taskServiceProvider).copyWeekTasks(
-        sourceWeekDate: sourceDate,
-        targetWeekDate: _selectedWeek,
-        targetMemberId: _isDelegatedMode ? effectiveTargetMemberId : null,
-      );
+      await ref
+          .read(taskServiceProvider)
+          .copyWeekTasks(
+            sourceWeekDate: sourceDate,
+            targetWeekDate: _selectedWeek,
+            targetMemberId: _isDelegatedMode ? effectiveTargetMemberId : null,
+          );
       _showSnackBar('Week overwritten successfully! ✨');
     } catch (e) {
       _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
@@ -449,21 +503,14 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
             ),
           );
     final roomsAsync = ref.watch(taskRoomsProvider);
-    
+
     final roomNamesById = roomsAsync.maybeWhen(
       data: (rooms) => {for (final room in rooms) room.id: room.name},
       orElse: () => const <String, String>{},
     );
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF6F9FA), Color(0xFFE3EDF2)],
-          ),
-        ),
+      body: MainTabScreenBackground(
         child: SafeArea(
           child: Stack(
             children: [
@@ -471,7 +518,12 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                    padding: const EdgeInsets.only(
+                      left: 24.0,
+                      right: 24.0,
+                      top: 20.0,
+                      bottom: 10.0,
+                    ),
                     child: _buildHeader(
                       context,
                       capabilities: capabilities,
@@ -489,10 +541,16 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                   ),
                   Expanded(
                     child: tasksAsync.when(
-                      loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF5A8B9E))),
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(
+                          color: _weeklyAccentDeep,
+                        ),
+                      ),
                       error: (error, _) => _buildErrorState(error.toString()),
                       data: (tasks) {
-                        final groupedHistory = _buildGroupedHistory(tasks: tasks);
+                        final groupedHistory = _buildGroupedHistory(
+                          tasks: tasks,
+                        );
 
                         if (groupedHistory.isEmpty) {
                           return _buildEmptyState();
@@ -500,7 +558,11 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
 
                         return ListView.builder(
                           physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 40),
+                          padding: const EdgeInsets.only(
+                            left: 24,
+                            right: 24,
+                            bottom: 40,
+                          ),
                           itemCount: groupedHistory.length,
                           itemBuilder: (context, index) {
                             final group = groupedHistory[index];
@@ -509,28 +571,57 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildDayHeader(group.day),
-                                const SizedBox(height: 14),
+                                const SizedBox(height: 6),
                                 ...group.tasks.map((task) {
                                   return TaskCard(
                                     key: ValueKey('weekly_${task.task.id}'),
                                     taskWithDetails: task,
                                     // --- FIX PERFETTO PARAMETRI NOMINATI ---
-                                    onSubtaskToggle: ({required String subtaskId, required bool isDone}) async {
-                                      if (!capabilities.canUseChecklist) {
-                                        return;
-                                      }
-                                      await ref.read(taskServiceProvider).setSubtaskDone(subtaskId: subtaskId, isDone: isDone);
-                                    },
-                                    onAssignmentToggle: ({required String assignmentId, required bool isDone}) async {
-                                      if (!capabilities.canUseChecklist) {
-                                        return;
-                                      }
-                                      final status = isDone ? 'DONE' : 'TODO';
-                                      await ref.read(taskServiceProvider).setAssignmentStatus(assignmentId: assignmentId, status: status);
-                                    },
-                                    onSaveNote: ({required String assignmentId, required String note}) async {
-                                      await ref.read(taskServiceProvider).addPersonnelNote(assignmentId: assignmentId, note: note);
-                                    },
+                                    onSubtaskToggle:
+                                        ({
+                                          required String subtaskId,
+                                          required bool isDone,
+                                        }) async {
+                                          if (!capabilities.canUseChecklist) {
+                                            return;
+                                          }
+                                          await ref
+                                              .read(taskServiceProvider)
+                                              .setSubtaskDone(
+                                                subtaskId: subtaskId,
+                                                isDone: isDone,
+                                              );
+                                        },
+                                    onAssignmentToggle:
+                                        ({
+                                          required String assignmentId,
+                                          required bool isDone,
+                                        }) async {
+                                          if (!capabilities.canUseChecklist) {
+                                            return;
+                                          }
+                                          final status = isDone
+                                              ? 'DONE'
+                                              : 'TODO';
+                                          await ref
+                                              .read(taskServiceProvider)
+                                              .setAssignmentStatus(
+                                                assignmentId: assignmentId,
+                                                status: status,
+                                              );
+                                        },
+                                    onSaveNote:
+                                        ({
+                                          required String assignmentId,
+                                          required String note,
+                                        }) async {
+                                          await ref
+                                              .read(taskServiceProvider)
+                                              .addPersonnelNote(
+                                                assignmentId: assignmentId,
+                                                note: note,
+                                              );
+                                        },
                                     // ---------------------------------------
                                     onEditTask: (task) => _openEditTask(
                                       context,
@@ -558,12 +649,16 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                                         !capabilities.canUseChecklist,
                                     enableCreatorDeleteSwipe:
                                         capabilities.canManage,
+                                    visualStyle:
+                                        TaskCardVisualStyle.warmDailyGlass,
                                     roomName: task.task.roomId == null
                                         ? null
-                                        : (roomNamesById[task.task.roomId!] ?? task.task.roomId!),
+                                        : (roomNamesById[task.task.roomId!] ??
+                                              task.task.roomId!),
                                   );
                                 }),
-                                if (index < groupedHistory.length - 1) const SizedBox(height: 20),
+                                if (index < groupedHistory.length - 1)
+                                  const SizedBox(height: 14),
                               ],
                             );
                           },
@@ -573,26 +668,52 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
                   ),
                 ],
               ),
-              
+
               // --- OVERLAY DI CARICAMENTO ---
               if (_isCopying)
                 Positioned.fill(
                   child: Container(
-                    color: Colors.white.withOpacity(0.7),
+                    color: const Color(0xFFF4EBDD).withValues(alpha: 0.56),
                     child: Center(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withValues(alpha: 0.78),
+                              Colors.white.withValues(alpha: 0.62),
+                            ],
+                          ),
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))],
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.82),
+                            width: 1.1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _weeklyInk.withValues(alpha: 0.08),
+                              blurRadius: 16,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const CircularProgressIndicator(color: Color(0xFF5A8B9E)),
+                            const CircularProgressIndicator(
+                              color: _weeklyAccentDeep,
+                            ),
                             const SizedBox(height: 16),
-                            Text('Overwriting Week...', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFF5A8B9E))),
+                            Text(
+                              'Overwriting Week...',
+                              style: GoogleFonts.manrope(
+                                fontWeight: FontWeight.w700,
+                                color: _weeklyInk,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -612,161 +733,249 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
     required VoidCallback onCreateTask,
     required VoidCallback onCopyWeek,
   }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: _buildHeaderIcon(Icons.arrow_back_ios_new_rounded),
-        ),
-        
-        Expanded(
-          child: Column(
-            children: [
-              Text(
+    final hasActions = capabilities.canCopy || capabilities.canCreate;
+    final headerHeight = hasActions ? 100.0 : 78.0;
+    final rangeTopOffset = hasActions ? 40.0 : 38.0;
+
+    return SizedBox(
+      height: headerHeight,
+      child: Stack(
+        children: [
+          Align(
+            alignment: Alignment.topLeft,
+            child: _buildHeaderIconButton(
+              actionKey: 'back_week',
+              icon: Icons.arrow_back_ios_new_rounded,
+              onTap: () => Navigator.pop(context),
+              iconSize: 24,
+            ),
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
                 'Week Tasks',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF5A8B9E),
-                  height: 1.2,
+                style: GoogleFonts.manrope(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: _weeklyInk,
+                  letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 6),
-              GestureDetector(
-                onTap: _pickWeek,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5A8B9E).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: const Color(0xFF5A8B9E).withOpacity(0.2),
-                      width: 1,
+            ),
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.only(top: rangeTopOffset),
+              child: _buildWeekRangeControl(),
+            ),
+          ),
+          if (hasActions)
+            Align(
+              alignment: Alignment.topRight,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (capabilities.canCreate)
+                    _buildHeaderIconButton(
+                      actionKey: 'create_week_task',
+                      icon: Icons.add_rounded,
+                      onTap: onCreateTask,
+                      iconSize: 24,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.date_range_rounded, size: 14, color: Color(0xFF5A8B9E)),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatWeekRange(_selectedWeek),
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF5A8B9E),
-                        )
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Color(0xFF5A8B9E)),
-                    ],
-                  ),
+                  if (capabilities.canCopy && capabilities.canCreate)
+                    const SizedBox(height: (28)),
+                  if (capabilities.canCopy)
+                    _buildHeaderTextAction(
+                      actionKey: 'repeat_week',
+                      icon: Icons.repeat_rounded,
+                      label: 'Repeat',
+                      onTap: onCopyWeek,
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderIconButton({
+    required String actionKey,
+    required IconData icon,
+    required VoidCallback onTap,
+    double iconSize = 22,
+  }) {
+    final isPressed = _pressedHeaderActionKey == actionKey;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressedHeaderActionKey = actionKey),
+      onTapUp: (_) {
+        if (_pressedHeaderActionKey == actionKey) {
+          setState(() => _pressedHeaderActionKey = null);
+        }
+      },
+      onTapCancel: () {
+        if (_pressedHeaderActionKey == actionKey) {
+          setState(() => _pressedHeaderActionKey = null);
+        }
+      },
+      onTap: onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        scale: isPressed ? 0.97 : 1,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
+            child: Icon(
+              icon,
+              color: _weeklyInk.withValues(alpha: isPressed ? 0.64 : 0.94),
+              size: iconSize,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderTextAction({
+    required String actionKey,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final isPressed = _pressedHeaderActionKey == actionKey;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressedHeaderActionKey = actionKey),
+      onTapUp: (_) {
+        if (_pressedHeaderActionKey == actionKey) {
+          setState(() => _pressedHeaderActionKey = null);
+        }
+      },
+      onTapCancel: () {
+        if (_pressedHeaderActionKey == actionKey) {
+          setState(() => _pressedHeaderActionKey = null);
+        }
+      },
+      onTap: onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        scale: isPressed ? 0.98 : 1,
+        child: Container(
+          color: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: _weeklyInk.withValues(alpha: isPressed ? 0.66 : 0.9),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: GoogleFonts.manrope(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: _weeklyInk.withValues(alpha: isPressed ? 0.66 : 0.9),
                 ),
               ),
             ],
           ),
         ),
-        
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (capabilities.canCopy)
-              GestureDetector(
-                onTap: onCopyWeek,
-                child: _buildHeaderIcon(Icons.content_copy_rounded),
-              ),
-            if (capabilities.canCopy && capabilities.canCreate)
-              const SizedBox(width: 10),
-            if (capabilities.canCreate)
-              GestureDetector(
-                onTap: onCreateTask,
-                child: _buildHeaderIcon(Icons.add_rounded),
-              ),
-            if (!capabilities.canCopy && !capabilities.canCreate)
-              const SizedBox(width: 48, height: 48),
-          ],
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildHeaderIcon(IconData icon) {
-    const accent = Color(0xFF5A8B9E);
-
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: accent.withOpacity(0.1), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+  Widget _buildWeekRangeControl() {
+    return GestureDetector(
+      onTap: _pickWeek,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.24),
+                  _weeklyAccent.withValues(alpha: 0.12),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.36),
+                width: 1.1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.date_range_rounded,
+                  size: 14,
+                  color: _weeklyInk.withValues(alpha: 0.74),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _formatWeekRange(_selectedWeek),
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _weeklyInk.withValues(alpha: 0.82),
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: _weeklyInk.withValues(alpha: 0.74),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
-      child: Icon(icon, color: accent, size: 22),
     );
   }
 
   Widget _buildDayHeader(DateTime day) {
     final weekday = DateFormat('EEEE').format(day);
-    final fullDate = DateFormat('dd MMMM').format(day); 
-    
-    final now = DateTime.now();
-    final isToday = day.year == now.year && day.month == now.month && day.day == now.day;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isToday ? const Color(0xFFF4A261).withOpacity(0.15) : Colors.white.withOpacity(0.65),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isToday ? const Color(0xFFF4A261).withOpacity(0.3) : const Color(0xFF5A8B9E).withOpacity(0.16),
-              width: 1.2,
+    final fullDate = DateFormat('dd MMMM').format(day);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            weekday,
+            style: GoogleFonts.manrope(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: _weeklyInk,
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isToday ? 'Today' : weekday,
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: isToday ? const Color(0xFFF4A261) : const Color(0xFF3D342C),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    fullDate,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF3D342C).withOpacity(0.65),
-                    ),
-                  ),
-                ],
-              ),
-              if (isToday)
-                Icon(Icons.star_rounded, color: const Color(0xFFF4A261).withOpacity(0.8), size: 28),
-            ],
+          const SizedBox(height: 1),
+          Text(
+            fullDate,
+            style: GoogleFonts.manrope(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: _weeklyWarmGrey.withValues(alpha: 0.62),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -774,19 +983,57 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 36),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.55),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white, width: 2),
-        ),
-        child: Text(
-          "You're completely free this week! ✨",
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF3D342C).withOpacity(0.7),
+          color: Colors.white.withValues(alpha: 0.42),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.82),
+            width: 1.2,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: _weeklyInk.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _weeklyAccent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.calendar_month_rounded,
+                size: 44,
+                color: _weeklyAccentDeep.withValues(alpha: 0.76),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'All Caught Up!',
+              style: GoogleFonts.manrope(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: _weeklyInk,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "You're completely free this week!",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _weeklyWarmGrey.withValues(alpha: 0.58),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -794,27 +1041,31 @@ class _WeekTasksScreenState extends ConsumerState<WeekTasksScreen> {
 
   Widget _buildErrorState(String message) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF28482).withOpacity(0.1),
+          color: const Color(0xFFF28482).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: const Color(0xFFF28482).withOpacity(0.3),
+            color: const Color(0xFFF28482).withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.error_outline_rounded, color: Color(0xFFF28482)),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFF28482),
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
                 style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
                   color: const Color(0xFFF28482),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
             ),

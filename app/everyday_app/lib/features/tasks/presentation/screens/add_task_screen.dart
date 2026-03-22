@@ -8,9 +8,21 @@ import 'package:everyday_app/core/app_context.dart';
 import '../../data/models/task_with_details.dart';
 import '../../domain/services/task_service.dart';
 import 'package:everyday_app/features/household/data/models/household_room.dart';
+import 'package:everyday_app/shared/widgets/main_tab_screen_background.dart';
 import '../../../../shared/utils/date_utils.dart';
 import '../../../../shared/utils/status_color_utils.dart';
 import '../providers/task_providers.dart';
+
+const _addTaskInk = Color(0xFF1F3A44);
+const _addTaskWarmGrey = Color(0xFF3D342C);
+const _templateCategoryColors = <Color>[
+  Color(0xFF78A7A3), // teal milk
+  Color(0xFFD8AD90), // peach latte
+  Color(0xFF6794AA), // blue steel
+  Color(0xFFC0AF9E), // warm sand
+  Color(0xFF8D79A6), // soft violet
+  Color(0xFFC7A15A), // warm yellow
+];
 
 // ==========================================
 // 1. SCHERMATA PRINCIPALE (LIBRERIA TASK)
@@ -41,6 +53,7 @@ class AddTaskScreen extends StatefulWidget {
 
 class _AddTaskScreenState extends State<AddTaskScreen> {
   final TextEditingController _searchController = TextEditingController();
+  String? _pressedTemplateKey;
 
   final Map<String, List<String>> _suggestedTasks = {
     'Daily Chores': [
@@ -54,7 +67,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Tidy up the living room',
       'Sort the mail',
       'Set the table',
-      'Clear the table'
+      'Clear the table',
     ],
     'Weekly Cleaning': [
       'Vacuum all rooms',
@@ -70,7 +83,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Fold laundry',
       'Put away laundry',
       'Iron clothes',
-      'Take out recycling'
+      'Take out recycling',
     ],
     'Deep Cleaning & Seasonal': [
       'Defrost the freezer',
@@ -82,7 +95,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Clean the carpets',
       'Clean the fridge',
       'Descale coffee maker',
-      'Clean dishwasher filter'
+      'Clean dishwasher filter',
     ],
     'Kitchen & Meals': [
       'Grocery shopping',
@@ -95,7 +108,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Bake a cake / dessert',
       'Check for expired food',
       'Buy fresh bread',
-      'Restock water/beverages'
+      'Restock water/beverages',
     ],
     'Kids Management': [
       'School Drop-off',
@@ -108,7 +121,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Bedtime routine',
       'Pediatrician check-up',
       'Buy school supplies',
-      'Organize toys'
+      'Organize toys',
     ],
     'Pet Care': [
       'Walk the dog (Morning)',
@@ -119,7 +132,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Vet appointment',
       'Buy pet food',
       'Brush the pet',
-      'Wash pet bedding'
+      'Wash pet bedding',
     ],
     'Home Maintenance & Car': [
       'Change lightbulbs',
@@ -131,7 +144,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Wash the car',
       'Clean the garage',
       'Refuel the car',
-      'Schedule car service'
+      'Schedule car service',
     ],
     'Garden & Outdoor': [
       'Water the plants (Indoor)',
@@ -139,7 +152,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Mow the lawn',
       'Rake leaves',
       'Clean the patio / balcony',
-      'Take out the yard waste'
+      'Take out the yard waste',
     ],
     'Personal & Health': [
       'Workout / Gym',
@@ -149,7 +162,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Haircut appointment',
       'Beauty/Spa appointment',
       'Meditate / Relax',
-      'Read a book'
+      'Read a book',
     ],
     'Admin & Organization': [
       'Pay taxes',
@@ -160,8 +173,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       'Plan family holidays',
       'Organize family calendar',
       'Call parents/relatives',
-      'Buy a gift'
-    ]
+      'Buy a gift',
+    ],
   };
 
   @override
@@ -179,6 +192,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      barrierColor: const Color(0x2A3A271E),
       isScrollControlled: true,
       builder: (context) => AddTaskSheet(
         initialTitle: initialTitle,
@@ -200,286 +214,375 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     super.dispose();
   }
 
+  Color _categoryColorForGroup(String groupName) {
+    final groupKeys = _suggestedTasks.keys.toList(growable: false);
+    final index = groupKeys.indexOf(groupName);
+    final safeIndex = index < 0 ? 0 : index;
+    return _templateCategoryColors[safeIndex % _templateCategoryColors.length];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Color colorSafeAzzurro = getStatusColor('safe');
-    
     // --- LOGICA DI FILTRAGGIO RICERCA ---
     final query = _searchController.text.trim().toLowerCase();
-    
-    final filteredEntries = _suggestedTasks.entries.map((entry) {
-      final matchedTasks = entry.value
-          .where((task) => task.toLowerCase().contains(query))
-          .toList();
-      return MapEntry(entry.key, matchedTasks);
-    }).where((entry) => entry.value.isNotEmpty).toList();
+
+    final filteredEntries = _suggestedTasks.entries
+        .map((entry) {
+          final matchedTasks = entry.value
+              .where((task) => task.toLowerCase().contains(query))
+              .toList();
+          return MapEntry(entry.key, matchedTasks);
+        })
+        .where((entry) => entry.value.isNotEmpty)
+        .toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // --- HEADER PREMIUM ---
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 20.0,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: colorSafeAzzurro.withOpacity(0.1),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorSafeAzzurro.withOpacity(0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
+      backgroundColor: Colors.transparent,
+      body: MainTabScreenBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // --- HEADER PREMIUM ---
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 20.0,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            color: Colors.transparent,
+                            alignment: Alignment.centerLeft,
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: _addTaskInk,
+                              size: 24,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: colorSafeAzzurro,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    'Add a Task',
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: colorSafeAzzurro,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => _openTaskSheet(),
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: colorSafeAzzurro.withOpacity(0.1),
-                          width: 1,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorSafeAzzurro.withOpacity(0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: colorSafeAzzurro,
-                        size: 24,
                       ),
                     ),
-                  ),
-                ],
+                    Text(
+                      'Add a Task',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.manrope(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: _addTaskInk,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () => _openTaskSheet(),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: _addTaskInk,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // --- BARRA DI RICERCA GLASS BIANCA ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-                  child: Container(
-                    height: 55,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (value) {
-                              setState(() {}); 
-                            },
-                            decoration: InputDecoration(
-                              hintText: 'Search templates...',
-                              hintStyle: GoogleFonts.poppins(
-                                color: const Color(
-                                  0xFF3D342C,
-                                ).withOpacity(0.4),
-                                fontSize: 15,
-                              ),
-                              border: InputBorder.none,
-                            ),
-                            style: GoogleFonts.poppins(
-                              color: const Color(0xFF3D342C),
-                            ),
+              // --- BARRA DI RICERCA GLASS ---
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _addTaskInk.withOpacity(0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                      child: Container(
+                        height: 56,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: _addTaskInk.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.7),
+                            width: 1.5,
                           ),
                         ),
-                        Icon(
-                          Icons.search_rounded,
-                          color: colorSafeAzzurro,
-                          size: 24,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (_) => setState(() {}),
+                                decoration: InputDecoration(
+                                  hintText: 'Search templates...',
+                                  hintStyle: GoogleFonts.manrope(
+                                    color: _addTaskWarmGrey.withOpacity(0.45),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  border: InputBorder.none,
+                                ),
+                                style: GoogleFonts.manrope(
+                                  color: _addTaskInk,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.search_rounded,
+                              color: _addTaskInk.withOpacity(0.4),
+                              size: 24,
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 30),
+              const SizedBox(height: 30),
 
-            // --- LISTA DELLE CATEGORIE ---
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: filteredEntries.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 40.0),
-                        child: Center(
-                          child: Text(
-                            'No templates found',
-                            style: GoogleFonts.poppins(
-                              color: const Color(0xFF3D342C).withOpacity(0.5),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+              // --- LISTA DELLE CATEGORIE ---
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: filteredEntries.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 40.0),
+                          child: Center(
+                            child: Text(
+                              'No templates found',
+                              style: GoogleFonts.manrope(
+                                color: _addTaskWarmGrey.withOpacity(0.5),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: filteredEntries.map((entry) {
+                            final categoryColor = _categoryColorForGroup(
+                              entry.key,
+                            );
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 30.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    entry.key,
+                                    style: GoogleFonts.manrope(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: _addTaskWarmGrey.withOpacity(0.66),
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  ...entry.value.map(
+                                    (taskName) => _buildSuggestionPill(
+                                      taskName,
+                                      categoryColor,
+                                      '${entry.key}|$taskName',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                         ),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: filteredEntries.map((entry) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 30.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  entry.key,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF3D342C),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                ...entry.value.map(
-                                  (taskName) => _buildSuggestionPill(
-                                    taskName,
-                                    colorSafeAzzurro,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSuggestionPill(String taskName, Color colorSafeAzzurro) {
+  Widget _buildSuggestionPill(
+    String taskName,
+    Color categoryColor,
+    String tileKey,
+  ) {
+    final isPressed = _pressedTemplateKey == tileKey;
+
     return GestureDetector(
+      onTapDown: (_) => setState(() => _pressedTemplateKey = tileKey),
+      onTapUp: (_) {
+        if (_pressedTemplateKey == tileKey) {
+          setState(() => _pressedTemplateKey = null);
+        }
+      },
+      onTapCancel: () {
+        if (_pressedTemplateKey == tileKey) {
+          setState(() => _pressedTemplateKey = null);
+        }
+      },
       onTap: () => _openTaskSheet(initialTitle: taskName),
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 12),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    colorSafeAzzurro.withOpacity(0.15),
-                    Colors.white.withOpacity(0.4),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.8),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorSafeAzzurro.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            color: Colors.white.withOpacity(0.14),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.28),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
+            ],
+          ),
+          child: Stack(
+            children: [
+              if (isPressed)
+                Positioned.fill(
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: colorSafeAzzurro.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.check_circle_outline_rounded,
-                      color: colorSafeAzzurro,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      taskName,
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF3D342C),
+                      borderRadius: BorderRadius.circular(22),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          categoryColor.withOpacity(0.28),
+                          categoryColor.withOpacity(0.18),
+                        ],
                       ),
                     ),
                   ),
-                ],
+                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Icon(
+                        _templateIconForTask(taskName),
+                        color: categoryColor.withOpacity(0.93),
+                        size: 21,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        taskName,
+                        style: GoogleFonts.manrope(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: _addTaskInk,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  IconData _templateIconForTask(String taskName) {
+    final normalized = taskName.toLowerCase();
+
+    if (normalized.contains('bed')) return Icons.bed_outlined;
+    if (normalized.contains('dish') ||
+        normalized.contains('cook') ||
+        normalized.contains('meal') ||
+        normalized.contains('bread')) {
+      return Icons.restaurant_outlined;
+    }
+    if (normalized.contains('laundry') || normalized.contains('iron')) {
+      return Icons.local_laundry_service_outlined;
+    }
+    if (normalized.contains('trash') ||
+        normalized.contains('recycling') ||
+        normalized.contains('yard waste')) {
+      return Icons.delete_outline_rounded;
+    }
+    if (normalized.contains('sweep') ||
+        normalized.contains('vacuum') ||
+        normalized.contains('mop') ||
+        normalized.contains('clean')) {
+      return Icons.cleaning_services_outlined;
+    }
+    if (normalized.contains('pet') ||
+        normalized.contains('dog') ||
+        normalized.contains('vet') ||
+        normalized.contains('litter')) {
+      return Icons.pets_outlined;
+    }
+    if (normalized.contains('school') ||
+        normalized.contains('homework') ||
+        normalized.contains('backpack')) {
+      return Icons.school_outlined;
+    }
+    if (normalized.contains('doctor') ||
+        normalized.contains('dentist') ||
+        normalized.contains('pharmacy') ||
+        normalized.contains('health')) {
+      return Icons.medical_services_outlined;
+    }
+    if (normalized.contains('car') ||
+        normalized.contains('garage') ||
+        normalized.contains('refuel') ||
+        normalized.contains('service')) {
+      return Icons.directions_car_outlined;
+    }
+    if (normalized.contains('plant') ||
+        normalized.contains('garden') ||
+        normalized.contains('lawn')) {
+      return Icons.local_florist_outlined;
+    }
+    if (normalized.contains('tax') ||
+        normalized.contains('insurance') ||
+        normalized.contains('budget') ||
+        normalized.contains('document') ||
+        normalized.contains('bill')) {
+      return Icons.receipt_long_outlined;
+    }
+    return Icons.home_outlined;
   }
 }
 
@@ -532,9 +635,15 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
   // --- VARIAIBILE PER LA RIPETIZIONE MENSILE ---
   bool _repeatWeeklyInMonth = false;
+  String? _pressedActionKey;
 
-  final Color colorOrange = const Color(0xFFF4A261);
-  final Color colorRed = const Color(0xFFF28482);
+  static const Color _sheetAccent = Color(0xFF78A7A3);
+  static const Color _sheetAccentDeep = Color(0xFF5F8EA4);
+  static const Color _sheetAccentPrimary = _sheetAccentDeep;
+  static const Color _sheetDanger = Color(0xFFE08A86);
+
+  final Color colorOrange = _sheetAccentPrimary;
+  final Color colorRed = _sheetDanger;
 
   @override
   void initState() {
@@ -545,7 +654,8 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     _titleController = TextEditingController(
       text: initialTask?.task.title ?? widget.initialTitle ?? '',
     );
-    _selectedDate = initialTask?.task.taskDate ?? widget.initialDate ?? localToday;
+    _selectedDate =
+        initialTask?.task.taskDate ?? widget.initialDate ?? localToday;
 
     if (initialTask != null) {
       _selectedRoomId = initialTask.task.roomId;
@@ -574,7 +684,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.manrope(
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
@@ -776,18 +886,18 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
     try {
       final editingTask = widget.initialTask;
-      
+
       if (editingTask == null) {
         // --- CREAZIONE ---
         List<DateTime> datesToCreate = [];
-        
+
         if (_repeatWeeklyInMonth) {
           final year = targetDate.year;
           final month = targetDate.month;
           final weekday = targetDate.weekday;
-          
+
           final daysInMonth = DateTime(year, month + 1, 0).day;
-          
+
           for (int i = 1; i <= daysInMonth; i++) {
             final d = DateTime(year, month, i);
             if (d.weekday == weekday) {
@@ -860,13 +970,21 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFFF4EDE3).withOpacity(0.97),
+              const Color(0xFFE7DCCF).withOpacity(0.94),
+            ],
+          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: Colors.white.withOpacity(0.78), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+              color: _addTaskInk.withOpacity(0.16),
+              blurRadius: 28,
+              offset: const Offset(0, -8),
             ),
           ],
         ),
@@ -878,7 +996,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: _addTaskInk.withOpacity(0.1),
                       width: 1,
                     ),
                   ),
@@ -889,9 +1007,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     CupertinoButton(
                       child: Text(
                         'Cancel',
-                        style: GoogleFonts.poppins(
-                          color: Colors.grey,
+                        style: GoogleFonts.manrope(
+                          color: _addTaskWarmGrey.withOpacity(0.72),
                           fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       onPressed: () => Navigator.of(context).pop(),
@@ -899,9 +1018,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     CupertinoButton(
                       child: Text(
                         'Done',
-                        style: GoogleFonts.poppins(
-                          color: colorOrange,
-                          fontWeight: FontWeight.w700,
+                        style: GoogleFonts.manrope(
+                          color: _sheetAccentDeep,
+                          fontWeight: FontWeight.w800,
                           fontSize: 16,
                         ),
                       ),
@@ -959,78 +1078,104 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
       context: context,
       builder: (context) {
         return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Dialog(
-            backgroundColor: Colors.white.withOpacity(0.95),
+            backgroundColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(32),
-              side: const BorderSide(color: Colors.white, width: 2),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Select Room',
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF3D342C),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Divider(color: color.withOpacity(0.2)),
-
-                  ListTile(
-                    title: Text(
-                      'None',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        color: _selectedRoomId == null
-                            ? color
-                            : const Color(0xFF3D342C).withOpacity(0.5),
-                        fontWeight: _selectedRoomId == null
-                            ? FontWeight.w800
-                            : FontWeight.w600,
-                        fontSize: 18,
-                      ),
-                    ),
-                    onTap: () {
-                      setState(() => _selectedRoomId = null);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  Divider(color: color.withOpacity(0.1)),
-
-                  ..._rooms.map((room) {
-                    final isSelected = room.id == _selectedRoomId;
-                    return Column(
-                      children: [
-                        ListTile(
-                          title: Text(
-                            room.name,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              color: isSelected
-                                  ? color
-                                  : const Color(0xFF3D342C),
-                              fontWeight: isSelected
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              fontSize: 18,
-                            ),
-                          ),
-                          onTap: () {
-                            setState(() => _selectedRoomId = room.id);
-                            Navigator.pop(context);
-                          },
-                        ),
-                        Divider(color: color.withOpacity(0.1)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFFF5EFE6).withOpacity(0.9),
+                        const Color(0xFFE7DCCF).withOpacity(0.86),
                       ],
-                    );
-                  }),
-                ],
+                    ),
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.76),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _addTaskInk.withOpacity(0.16),
+                        blurRadius: 26,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Select Room',
+                        style: GoogleFonts.manrope(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          color: _addTaskInk,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Divider(color: color.withOpacity(0.24)),
+
+                      ListTile(
+                        title: Text(
+                          'None',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.manrope(
+                            color: _selectedRoomId == null
+                                ? color
+                                : _addTaskWarmGrey.withOpacity(0.6),
+                            fontWeight: _selectedRoomId == null
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            fontSize: 17,
+                          ),
+                        ),
+                        onTap: () {
+                          setState(() => _selectedRoomId = null);
+                          Navigator.pop(context);
+                        },
+                      ),
+                      Divider(color: color.withOpacity(0.14)),
+
+                      ..._rooms.map((room) {
+                        final isSelected = room.id == _selectedRoomId;
+                        return Column(
+                          children: [
+                            ListTile(
+                              title: Text(
+                                room.name,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.manrope(
+                                  color: isSelected ? color : _addTaskInk,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  fontSize: 17,
+                                ),
+                              ),
+                              onTap: () {
+                                setState(() => _selectedRoomId = room.id);
+                                Navigator.pop(context);
+                              },
+                            ),
+                            Divider(color: color.withOpacity(0.14)),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -1043,31 +1188,40 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
   String _getWeekdayName(int weekday) {
     switch (weekday) {
-      case 1: return 'Monday';
-      case 2: return 'Tuesday';
-      case 3: return 'Wednesday';
-      case 4: return 'Thursday';
-      case 5: return 'Friday';
-      case 6: return 'Saturday';
-      case 7: return 'Sunday';
-      default: return '';
+      case 1:
+        return 'Monday';
+      case 2:
+        return 'Tuesday';
+      case 3:
+        return 'Wednesday';
+      case 4:
+        return 'Thursday';
+      case 5:
+        return 'Friday';
+      case 6:
+        return 'Saturday';
+      case 7:
+        return 'Sunday';
+      default:
+        return '';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color colorSafeAzzurro = getStatusColor('safe');
+    const Color colorSafeAzzurro = _sheetAccentPrimary;
     final selectedRoomExists =
         _selectedRoomId != null &&
         _rooms.any((room) => room.id == _selectedRoomId);
 
     final currentTargetDate = _selectedDate ?? DateTime.now();
     final weekdayName = _getWeekdayName(currentTargetDate.weekday);
+    final canCreateTasks = _creationAccess?.canCreate ?? true;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30.0, sigmaY: 30.0),
+        filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
         child: Container(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.90,
@@ -1079,18 +1233,42 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            border: Border.all(color: Colors.white, width: 1.5),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.12, 1.0],
+              colors: [
+                const Color(0xFFFFFBF6).withOpacity(0.68),
+                const Color(0xFFF9F1E7).withOpacity(0.62),
+                const Color(0xFFF1E6D8).withOpacity(0.56),
+              ],
+            ),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.42),
+              width: 1.1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _addTaskInk.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, -1),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 50,
-                height: 5,
+                width: 58,
+                height: 6,
                 decoration: BoxDecoration(
-                  color: colorSafeAzzurro.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(999),
+                  gradient: LinearGradient(
+                    colors: [
+                      colorSafeAzzurro.withOpacity(0.74),
+                      colorOrange.withOpacity(0.72),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -1101,19 +1279,29 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: 14,
+                    vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: colorOrange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: [
+                        colorOrange.withOpacity(0.10),
+                        colorOrange.withOpacity(0.04),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: colorOrange.withOpacity(0.26),
+                      width: 1,
+                    ),
                   ),
                   child: Text(
                     'Assigning to ${widget.assignedMemberIds!.length} member(s)',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.manrope(
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: colorOrange,
+                      letterSpacing: 0.1,
                     ),
                   ),
                 ),
@@ -1122,12 +1310,12 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     child: LinearProgressIndicator(
                       minHeight: 4,
-                      backgroundColor: colorSafeAzzurro.withOpacity(0.2),
+                      backgroundColor: colorSafeAzzurro.withOpacity(0.18),
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        colorSafeAzzurro,
+                        _sheetAccentDeep,
                       ),
                     ),
                   ),
@@ -1141,10 +1329,10 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: colorRed.withOpacity(0.1),
+                    color: colorRed.withOpacity(0.14),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: colorRed.withOpacity(0.3),
+                      color: colorRed.withOpacity(0.34),
                       width: 1,
                     ),
                   ),
@@ -1159,9 +1347,9 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                       Expanded(
                         child: Text(
                           'Personnel members cannot create tasks.',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.manrope(
                             fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: colorRed,
                           ),
                         ),
@@ -1172,11 +1360,11 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
               Text(
                 widget.initialTask == null ? 'Task Details' : 'Edit Task',
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
+                style: GoogleFonts.manrope(
+                  fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  color: colorSafeAzzurro,
-                  letterSpacing: -0.5,
+                  color: _addTaskInk,
+                  letterSpacing: -0.6,
                 ),
               ),
               const SizedBox(height: 24),
@@ -1193,98 +1381,124 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                         color: colorSafeAzzurro,
                         isTitle: true,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                      // STANZA
                       _buildRoomSelector(colorSafeAzzurro, selectedRoomExists),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 18),
 
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        child: Row(
-                          children: [
-                            _buildActionPill(
-                              icon: Icons.calendar_today_rounded,
-                              text: _selectedDate != null
-                                  ? _formatDate(_selectedDate!)
-                                  : 'Set Date',
-                              color: colorOrange,
-                              onTap: _selectDate,
-                            ),
-                            const SizedBox(width: 10),
-                            _buildActionPill(
-                              icon: Icons.access_time_rounded,
-                              text: _startTime != null
-                                  ? TimeOfDay.fromDateTime(
-                                      _startTime!,
-                                    ).format(context)
-                                  : 'Start Time',
-                              color: colorOrange,
-                              onTap: () => _selectTime(true),
-                            ),
-                            const SizedBox(width: 10),
-                            _buildActionPill(
-                              icon: Icons.access_time_filled_rounded,
-                              text: _endTime != null
-                                  ? TimeOfDay.fromDateTime(
-                                      _endTime!,
-                                    ).format(context)
-                                  : 'End Time',
-                              color: colorOrange,
-                              onTap: () => _selectTime(false),
-                            ),
-                          ],
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: [
+                              _buildActionPill(
+                                actionKey: 'date',
+                                icon: Icons.calendar_today_rounded,
+                                text: _selectedDate != null
+                                    ? _formatDate(_selectedDate!)
+                                    : 'Set Date',
+                                color: colorOrange,
+                                onTap: _selectDate,
+                              ),
+                              const SizedBox(width: 10),
+                              _buildActionPill(
+                                actionKey: 'start_time',
+                                icon: Icons.access_time_rounded,
+                                text: _startTime != null
+                                    ? TimeOfDay.fromDateTime(
+                                        _startTime!,
+                                      ).format(context)
+                                    : 'Start Time',
+                                color: colorOrange,
+                                onTap: () => _selectTime(true),
+                              ),
+                              const SizedBox(width: 10),
+                              _buildActionPill(
+                                actionKey: 'end_time',
+                                icon: Icons.access_time_filled_rounded,
+                                text: _endTime != null
+                                    ? TimeOfDay.fromDateTime(
+                                        _endTime!,
+                                      ).format(context)
+                                    : 'End Time',
+                                color: colorOrange,
+                                onTap: () => _selectTime(false),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 24),
 
-                      // --- NUOVO DESIGN: TOGGLE RIPETIZIONE MENSILE (VETRO ROTONDO) ---
                       if (widget.initialTask == null) ...[
                         GestureDetector(
-                          onTap: () => setState(() => _repeatWeeklyInMonth = !_repeatWeeklyInMonth),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: ClipRRect(
+                          onTap: () => setState(
+                            () => _repeatWeeklyInMonth = !_repeatWeeklyInMonth,
+                          ),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.24),
+                                  colorSafeAzzurro.withOpacity(0.10),
+                                ],
+                              ),
                               borderRadius: BorderRadius.circular(20),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              border: Border.all(
+                                color: colorSafeAzzurro.withOpacity(0.20),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.event_repeat_rounded,
+                                  color: colorSafeAzzurro,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Add task on every $weekdayName of the month',
+                                    style: GoogleFonts.manrope(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: _addTaskWarmGrey.withOpacity(0.78),
+                                    ),
+                                  ),
+                                ),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  width: 26,
+                                  height: 26,
                                   decoration: BoxDecoration(
-                                    color: colorSafeAzzurro.withOpacity(0.05),
-                                    borderRadius: BorderRadius.circular(20),
+                                    color: _repeatWeeklyInMonth
+                                        ? colorSafeAzzurro.withOpacity(0.22)
+                                        : Colors.white.withOpacity(0.4),
+                                    borderRadius: BorderRadius.circular(13),
                                     border: Border.all(
-                                      color: colorSafeAzzurro.withOpacity(0.2),
+                                      color: _repeatWeeklyInMonth
+                                          ? colorSafeAzzurro.withOpacity(0.6)
+                                          : colorSafeAzzurro.withOpacity(0.25),
                                       width: 1,
                                     ),
                                   ),
-                                  child: Wrap(
-                                    spacing: 12,
-                                    runSpacing: 4,
-                                    crossAxisAlignment: WrapCrossAlignment.center,
-                                    children: [
-                                      // Testo prima
-                                      Text(
-                                        'Add task on every $weekdayName of the month',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF3D342C).withOpacity(0.7),
-                                        ),
-                                      ),
-                                      // Icona rotonda dopo a destra
-                                      Icon(
-                                        _repeatWeeklyInMonth 
-                                          ? Icons.check_circle_rounded 
-                                          : Icons.radio_button_unchecked_rounded,
-                                        color: colorSafeAzzurro,
-                                        size: 20,
-                                      ),
-                                    ],
+                                  child: Icon(
+                                    _repeatWeeklyInMonth
+                                        ? Icons.check_rounded
+                                        : Icons.add_rounded,
+                                    color: colorSafeAzzurro,
+                                    size: 16,
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
                         ),
@@ -1293,10 +1507,11 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
                       Text(
                         'Sub-tasks',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
+                        style: GoogleFonts.manrope(
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF3D342C),
+                          color: _addTaskWarmGrey.withOpacity(0.82),
+                          letterSpacing: 0.2,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -1314,23 +1529,29 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              GestureDetector(
-                                onTap: () => _removeSubTask(entry.key),
-                                child: Container(
-                                  width: 46,
-                                  height: 46,
-                                  decoration: BoxDecoration(
-                                    color: colorRed.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: colorRed.withOpacity(0.3),
-                                      width: 1.5,
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () => _removeSubTask(entry.key),
+                                  splashColor: colorRed.withOpacity(0.18),
+                                  highlightColor: colorRed.withOpacity(0.08),
+                                  child: Ink(
+                                    width: 46,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: colorRed.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: colorRed.withOpacity(0.3),
+                                        width: 1.2,
+                                      ),
                                     ),
-                                  ),
-                                  child: Icon(
-                                    Icons.remove_rounded,
-                                    color: colorRed,
-                                    size: 24,
+                                    child: Icon(
+                                      Icons.remove_rounded,
+                                      color: colorRed,
+                                      size: 22,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1342,6 +1563,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                       Align(
                         alignment: Alignment.center,
                         child: _buildActionPill(
+                          actionKey: 'add_subtask',
                           icon: Icons.add_rounded,
                           text: 'Sub-task',
                           color: colorSafeAzzurro,
@@ -1356,34 +1578,63 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _submitTask,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: colorSafeAzzurro,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                child: Opacity(
+                  opacity: canCreateTasks ? 1 : 0.65,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: canCreateTasks
+                            ? [_sheetAccentDeep, _sheetAccent]
+                            : const [Color(0xFFB4BCC0), Color(0xFFA8AFB3)],
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              (canCreateTasks ? _sheetAccentDeep : Colors.black)
+                                  .withOpacity(0.14),
+                          blurRadius: 10,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
-                    shadowColor: colorSafeAzzurro.withOpacity(0.4),
-                  ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          'Save Task',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 18,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(22),
+                        onTap: (_isSaving || !canCreateTasks)
+                            ? null
+                            : _submitTask,
+                        splashColor: Colors.white.withOpacity(0.2),
+                        highlightColor: Colors.black.withOpacity(0.05),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: _isSaving
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Save Task',
+                                    style: GoogleFonts.manrope(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 17,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
                           ),
                         ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -1400,43 +1651,53 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     required Color color,
     bool isTitle = false,
   }) {
+    final borderRadius = BorderRadius.circular(isTitle ? 22 : 18);
+
     return Container(
-      height: isTitle ? 65 : 55,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: isTitle
-            ? color.withOpacity(0.1)
-            : Colors.white.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(isTitle ? 24 : 16),
-        border: Border.all(
-          color: isTitle
-              ? color.withOpacity(0.4)
-              : color.withOpacity(0.2),
-          width: 1.5,
+      decoration: BoxDecoration(borderRadius: borderRadius),
+      child: TextField(
+        controller: controller,
+        cursorColor: color,
+        style: GoogleFonts.manrope(
+          fontSize: isTitle ? 21 : 15,
+          fontWeight: isTitle ? FontWeight.w800 : FontWeight.w600,
+          color: _addTaskInk,
         ),
-        boxShadow: isTitle
-            ? [
-                BoxShadow(
-                  color: color.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ]
-            : [],
-      ),
-      child: Center(
-        child: TextField(
-          controller: controller,
-          style: GoogleFonts.poppins(
-            fontSize: isTitle ? 20 : 16,
-            fontWeight: isTitle ? FontWeight.w800 : FontWeight.w600,
-            color: const Color(0xFF3D342C),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: isTitle ? 20 : 16,
+            vertical: isTitle ? 20 : 16,
           ),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            hintText: hint,
-            hintStyle: GoogleFonts.poppins(
-              color: const Color(0xFF3D342C).withOpacity(0.4),
+          hintText: hint,
+          hintStyle: GoogleFonts.manrope(
+            color: _addTaskWarmGrey.withOpacity(0.36),
+            fontWeight: FontWeight.w600,
+            fontSize: isTitle ? 20 : 15,
+          ),
+          filled: true,
+          fillColor: isTitle
+              ? const Color(0xFFFFFBF7).withOpacity(0.22)
+              : const Color(0xFFFFFBF7).withOpacity(0.17),
+          border: OutlineInputBorder(
+            borderRadius: borderRadius,
+            borderSide: BorderSide(
+              color: Colors.white.withOpacity(0.32),
+              width: 1.2,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: borderRadius,
+            borderSide: BorderSide(
+              color: Colors.white.withOpacity(0.32),
+              width: 1.2,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: borderRadius,
+            borderSide: BorderSide(
+              color: _sheetAccentPrimary.withOpacity(0.6),
+              width: 1.6,
             ),
           ),
         ),
@@ -1454,25 +1715,30 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     return GestureDetector(
       onTap: () => _showRoomPickerModal(color),
       child: Container(
-        height: 56,
+        height: 58,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFFFFBF7).withOpacity(0.22),
+              const Color(0xFFFFFBF7).withOpacity(0.17),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withOpacity(0.32), width: 1.2),
         ),
         child: Row(
           children: [
-            Icon(Icons.meeting_room_outlined, color: color, size: 22),
+            Icon(Icons.meeting_room_outlined, color: color, size: 21),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 displayText,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.manrope(
                   color: roomExists
-                      ? const Color(0xFF3D342C)
-                      : const Color(0xFF3D342C).withOpacity(0.5),
-                  fontWeight: roomExists ? FontWeight.w600 : FontWeight.w500,
+                      ? _addTaskInk
+                      : _addTaskWarmGrey.withOpacity(0.52),
+                  fontWeight: roomExists ? FontWeight.w700 : FontWeight.w600,
                   fontSize: 15,
                 ),
               ),
@@ -1495,41 +1761,66 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   }
 
   Widget _buildActionPill({
+    required String actionKey,
     required IconData icon,
     required String text,
     required Color color,
     required VoidCallback onTap,
   }) {
+    final isPressed = _pressedActionKey == actionKey;
+
     return GestureDetector(
+      onTapDown: (_) => setState(() => _pressedActionKey = actionKey),
+      onTapUp: (_) {
+        if (_pressedActionKey == actionKey) {
+          setState(() => _pressedActionKey = null);
+        }
+      },
+      onTapCancel: () {
+        if (_pressedActionKey == actionKey) {
+          setState(() => _pressedActionKey = null);
+        }
+      },
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        scale: isPressed ? 0.985 : 1,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isPressed
+                  ? [Colors.white.withOpacity(0.40), color.withOpacity(0.16)]
+                  : [Colors.white.withOpacity(0.32), color.withOpacity(0.12)],
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              text,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: color,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: actionKey == 'add_subtask'
+                  ? color.withOpacity(0.40)
+                  : isPressed
+                  ? color.withOpacity(0.24)
+                  : color.withOpacity(0.20),
+              width: 1.1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                text,
+                style: GoogleFonts.manrope(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
